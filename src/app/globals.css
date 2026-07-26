@@ -1,26 +1,178 @@
 @import "tailwindcss";
 
+/* IRANSansX Font Faces – تمام وزن‌ها */
+@font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-ThinD4.ttf') format('truetype'); font-weight: 100; font-style: normal; }
+@font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-UltraLightD4.ttf') format('truetype'); font-weight: 200; font-style: normal; }
+@font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-LightD4.ttf') format('truetype'); font-weight: 300; font-style: normal; }
+@font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-RegularD4.ttf') format('truetype'); font-weight: 400; font-style: normal; }
+@font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-MediumD4.ttf') format('truetype'); font-weight: 500; font-style: normal; }
+@font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-DemiBoldD4.ttf') format('truetype'); font-weight: 600; font-style: normal; }
+@font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-BoldD4.ttf') format('truetype'); font-weight: 700; font-style: normal; }
+@font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-ExtraBoldD4.ttf') format('truetype'); font-weight: 800; font-style: normal; }
+@font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-HeavyD4.ttf') format('truetype'); font-weight: 900; font-style: normal; }
+@font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-BlackD4.ttf') format('truetype'); font-weight: 900; font-style: normal; }
+@font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-ExtraBlackD4.ttf') format('truetype'); font-weight: 950; font-style: normal; }
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --core-verdigris-50:  #F1F9F8;
+  --core-verdigris-100: #DEF2EF;
+  --core-verdigris-200: #BEE4E0;
+  --core-verdigris-300: #96D4CC;
+  --core-verdigris-400: #6EC4B9;
+  --core-verdigris-500: #59BBAF;
+  --core-verdigris-600: #41A094;
+  --core-verdigris-700: #337B73;
+  --core-verdigris-800: #245751;
+  --core-verdigris-900: #183A36;
+
+  --core-ruby-50:  #FDEDF2;
+  --core-ruby-100: #FAD6E2;
+  --core-ruby-200: #F6ACC5;
+  --core-ruby-300: #F07AA1;
+  --core-ruby-400: #EB477E;
+  --core-ruby-500: #E0195B;
+  --core-ruby-600: #B21448;
+  --core-ruby-700: #840F36;
+  --core-ruby-800: #560A23;
+  --core-ruby-900: #320614;
+
+  --core-space-cadet-50:  #F0F2FA;
+  --core-space-cadet-100: #DDE1F3;
+  --core-space-cadet-200: #BBC3E7;
+  --core-space-cadet-300: #929ED8;
+  --core-space-cadet-400: #6979C9;
+  --core-space-cadet-500: #202A5A;
+  --core-space-cadet-600: #131834;
+  --core-space-cadet-700: #070913;
+  --core-space-cadet-800: #04050B;
+  --core-space-cadet-900: #030408;
+
+  --core-crayola-50:  #FDF6EC;
+  --core-crayola-100: #FBECD5;
+  --core-crayola-200: #F7D9AC;
+  --core-crayola-300: #F1C179;
+  --core-crayola-400: #ECAA46;
+  --core-crayola-500: #ECA842;
+  --core-crayola-600: #E49217;
+  --core-crayola-700: #B67412;
+  --core-crayola-800: #87570E;
+  --core-crayola-900: #623F0A;
+
+  --core-sonic-silver-50:  #F5F5F5;
+  --core-sonic-silver-100: #E8E8E8;
+  --core-sonic-silver-200: #D2D1D0;
+  --core-sonic-silver-300: #B6B5B4;
+  --core-sonic-silver-400: #9B9997;
+  --core-sonic-silver-500: #787674;
+  --core-sonic-silver-600: #5E5D5B;
+  --core-sonic-silver-700: #444342;
+  --core-sonic-silver-800: #2A2A29;
+  --core-sonic-silver-900: #151515;
+
+  --core-rebecca-purple-50:  #F5F0FA;
+  --core-rebecca-purple-100: #E8DDF3;
+  --core-rebecca-purple-200: #D1BBE7;
+  --core-rebecca-purple-300: #B591D9;
+  --core-rebecca-purple-400: #9A67CB;
+  --core-rebecca-purple-500: #5E308B;
+  --core-rebecca-purple-600: #442365;
+  --core-rebecca-purple-700: #2B163F;
+  --core-rebecca-purple-800: #110919;
+  --core-rebecca-purple-900: #050308;
+
+  --core-white: #FFFFFF;
+  --core-near-black: #11141D;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-canvas:      #FAF5F7;
+  --color-surface:     var(--core-white);
+  --color-surface-2:   #F8F4F6;
+  --color-border:      #F0ECEE;
+  --color-border-strong: #E0DCDF;
+
+  --color-text-default:    #2D2640;
+  --color-text-subtle:     #7A7380;
+  --color-text-muted:      #B0ABB3;
+  --color-text-on-brand:   var(--core-near-black);
+  --color-text-on-dark:    var(--core-white);
+
+  --color-action:          var(--core-verdigris-500);
+  --color-action-hover:    var(--core-verdigris-600);
+  --color-action-active:   var(--core-verdigris-700);
+  --color-action-subtle:   var(--core-verdigris-100);
+
+  --color-admin:           var(--core-rebecca-purple-500);
+  --color-admin-hover:     var(--core-rebecca-purple-600);
+  --color-admin-subtle:    var(--core-rebecca-purple-50);
+
+  --color-success:         var(--core-verdigris-600);
+  --color-success-subtle:  var(--core-verdigris-50);
+  --color-warning:         var(--core-crayola-500);
+  --color-warning-subtle:  var(--core-crayola-50);
+  --color-danger:          var(--core-ruby-500);
+  --color-danger-hover:    var(--core-ruby-600);
+  --color-danger-subtle:   var(--core-ruby-50);
+  --color-info:            var(--core-space-cadet-400);
+  --color-info-subtle:     var(--core-space-cadet-50);
+
+  --color-xp:              var(--core-crayola-500);
+
+  --color-stage-backlog:     var(--core-sonic-silver-400);
+  --color-stage-todo:        var(--core-rebecca-purple-400);
+  --color-stage-in-progress: var(--core-crayola-500);
+  --color-stage-done:        var(--core-verdigris-600);
+
+  --color-focus-ring: var(--core-verdigris-500);
+
+  --font-sans: 'IRANSansX', system-ui, sans-serif;
+  --font-mono: ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+[data-theme="dark"] {
+  --color-canvas:      var(--core-space-cadet-700);
+  --color-surface:     var(--core-space-cadet-600);
+  --color-surface-2:   var(--core-space-cadet-500);
+  --color-border:      var(--core-space-cadet-400);
+  --color-border-strong: var(--core-sonic-silver-500);
+
+  --color-text-default:    var(--core-white);
+  --color-text-subtle:     var(--core-sonic-silver-300);
+  --color-text-muted:      var(--core-sonic-silver-500);
+  --color-text-on-brand:   var(--core-near-black);
+  --color-text-on-dark:    var(--core-white);
+
+  --color-action:          var(--core-verdigris-400);
+  --color-action-hover:    var(--core-verdigris-300);
+  --color-action-active:   var(--core-verdigris-500);
+  --color-action-subtle:   var(--core-verdigris-800);
+
+  --color-admin:           var(--core-rebecca-purple-300);
+  --color-admin-hover:     var(--core-rebecca-purple-200);
+  --color-admin-subtle:    var(--core-rebecca-purple-800);
+
+  --color-success:         var(--core-verdigris-400);
+  --color-success-subtle:  var(--core-verdigris-800);
+  --color-warning:         var(--core-crayola-400);
+  --color-warning-subtle:  var(--core-crayola-800);
+  --color-danger:          var(--core-ruby-400);
+  --color-danger-hover:    var(--core-ruby-300);
+  --color-danger-subtle:   var(--core-ruby-800);
+  --color-info:            var(--core-space-cadet-300);
+  --color-info-subtle:     var(--core-space-cadet-800);
+
+  --color-xp:              var(--core-crayola-400);
+
+  --color-stage-backlog:     var(--core-sonic-silver-400);
+  --color-stage-todo:        var(--core-space-cadet-300);
+  --color-stage-in-progress: var(--core-crayola-400);
+  --color-stage-done:        var(--core-verdigris-400);
+
+  --color-focus-ring: var(--core-verdigris-400);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-text-default);
+  font-family: var(--font-sans);
 }
