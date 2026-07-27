@@ -25,8 +25,8 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-canvas px-4">
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-action/20 shadow-sm">
-          <Image src="/logog.png" alt="رکاد" width={48} height={48} className="object-contain" />
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl shadow-sm">
+          <Image src="/logog.png" alt="رکاد" width={32} height={48} className="object-contain" />
         </div>
         <h1 className="text-2xl font-bold text-default">رکاد</h1>
         <p className="mt-1 text-sm text-muted">ورود به سامانه مدیریت تسک</p>
