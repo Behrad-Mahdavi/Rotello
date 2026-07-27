@@ -42,8 +42,8 @@ export default function AppHeader({ profile }: AppHeaderProps) {
                 onClick={() => router.push(t.key)}
                 className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all sm:text-sm ${
                   activeTab === t.key || pathname === t.key
-                    ? 'bg-surface text-default shadow-sm'
-                    : 'text-muted hover:text-default'
+                    ? 'bg-white/[0.09] text-default'
+                    : 'text-muted hover:text-default hover:bg-white/[0.04]'
                 }`}
               >
                 {t.label}
