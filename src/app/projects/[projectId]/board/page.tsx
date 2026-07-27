@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, use } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
@@ -32,7 +32,7 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [error, setError] = useState('')
-  const [projectId, setProjectId] = useState('')
+  const { projectId } = use(params)
   const router = useRouter()
   const supabase = createClient()
 
@@ -40,8 +40,6 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
   )
-
-  useEffect(() => { params.then((p) => setProjectId(p.projectId)) }, [])
 
   useEffect(() => {
     if (!projectId) return

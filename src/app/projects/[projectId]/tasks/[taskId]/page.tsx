@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import LogoutButton from '@/components/LogoutButton'
@@ -8,14 +8,11 @@ import TaskDetailModal from '@/components/TaskDetailModal'
 import type { Profile } from '@/utils/database.types'
 
 export default function TaskDetailPage({ params }: { params: Promise<{ projectId: string; taskId: string }> }) {
-  const [taskId, setTaskId] = useState('')
-  const [projectId, setProjectId] = useState('')
+  const { projectId, taskId } = use(params)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const supabase = createClient()
-
-  useEffect(() => { params.then((p) => { setTaskId(p.taskId); setProjectId(p.projectId) }) }, [])
   useEffect(() => {
     if (!taskId) return
     async function load() {
