@@ -27,7 +27,7 @@ export default function LeaderboardPage() {
       if (!user) { router.push('/login'); return }
       const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setProfile(prof)
-      const { data } = await supabase.from('profiles').select('*').order('xp_total', { ascending: false })
+      const { data } = await supabase.from('profiles').select('*').neq('role', 'admin').order('xp_total', { ascending: false })
       if (data) setMembers(data)
       setLoading(false)
     }
