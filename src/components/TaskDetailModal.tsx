@@ -70,18 +70,54 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
   }
 
   if (loading) return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
-      <div className="rounded-2xl bg-surface p-8 text-sm text-muted shadow-sm">...</div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="rounded-lg bg-surface p-8 text-sm text-muted shadow-lg">...</div>
     </div>
   )
   if (!task) return null
 
   const canEdit = profile.role === 'admin'
-  const stageClass: Record<string, string> = {
-    backlog: 'bg-stage-backlog/12 text-stage-backlog',
-    todo: 'bg-stage-todo/12 text-stage-todo',
-    in_progress: 'bg-stage-in-progress/12 text-stage-in-progress',
-    done: 'bg-stage-done/12 text-stage-done',
+  const STATUS_BADGE: Record<string, string> = {
+    backlog: 'bg-gray-500/10 text-gray-400',
+    todo: 'bg-slate-500/10 text-slate-400',
+    in_progress: 'bg-emerald-500/10 text-emerald-400',
+    review: 'bg-amber-500/10 text-amber-400',
+    done: 'bg-teal-500/10 text-teal-400',
+  }
+  const PRIORITY_BADGE: Record<string, string> = {
+    normal: 'bg-sky-500/10 text-sky-400',
+    important: 'bg-orange-500/10 text-orange-400',
+    urgent: 'bg-rose-500/10 text-rose-400',
+  }
+  const PRIORITY_LABEL: Record<string, string> = {
+    normal: 'عادی',
+    important: 'مهم',
+    urgent: 'فوری',
+  }
+
+  const STATUS_LABEL: Record<string, string> = {
+    backlog: 'بک‌لاگ',
+    todo: 'در صف انجام',
+    in_progress: 'در حال انجام',
+    review: 'در حال بازبینی',
+    done: 'تکمیل‌شده',
+  }
+
+  const NEXT_STATUS: Record<string, string | null> = {
+    backlog: 'todo',
+    todo: 'in_progress',
+    in_progress: 'review',
+    review: profile?.role === 'admin' ? 'done' : null,
+    done: null,
+  }
+
+  async function handleMoveStatus() {
+    const next = NEXT_STATUS[task!.status]
+    if (!next) return
+    const { error: err } = await supabase.rpc('move_task_status', { p_task_id: taskId, p_new_status: next })
+    if (err) { setError(err.message); return }
+    setTask((prev) => prev ? { ...prev, status: next as Task['status'] } : prev)
+    setError('')
   }
 
   async function handleDeleteTask() {
@@ -93,22 +129,37 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full overflow-y-auto rounded-t-2xl bg-surface shadow-lg sm:max-h-[85vh] sm:max-w-xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 z-10 bg-surface p-4 sm:p-5">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
+      <div className="max-h-[90vh] w-full overflow-y-auto rounded-t-2xl border border-border bg-surface shadow-lg sm:max-h-[85vh] sm:max-w-xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 z-10 border-b border-border bg-surface px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
-              <h2 className="text-base font-bold text-default">{task.title}</h2>
+              <h2 className="text-sm font-semibold text-default sm:text-base">{task.title}</h2>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${stageClass[task.status]}`}>
-                  {task.status === 'backlog' ? 'Backlog' : task.status === 'todo' ? 'To Do' : task.status === 'in_progress' ? 'In Progress' : 'Done'}
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[task.status]}`}>
+                  {STATUS_LABEL[task.status]}
+                </span>
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_BADGE[task.priority]}`}>
+                  {PRIORITY_LABEL[task.priority]}
                 </span>
                 {task.xp_value > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-warning-subtle px-2.5 py-0.5 text-xs font-semibold text-xp">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-400">
                     <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                     {task.xp_value} XP
                   </span>
                 )}
+                {(() => {
+                  const next = NEXT_STATUS[task.status]
+                  if (!next) return null
+                  const canAct = canEdit || (profile.role === 'member' && task.status !== 'review')
+                  if (!canAct) return null
+                  return (
+                    <button onClick={handleMoveStatus}
+                      className="inline-flex items-center gap-1 rounded-full bg-action/10 px-2.5 py-0.5 text-xs font-medium text-action transition-colors hover:bg-action/20">
+                      انتقال به {STATUS_LABEL[next]}
+                    </button>
+                  )
+                })()}
               </div>
             </div>
             <div className="flex items-center gap-1.5">
@@ -120,7 +171,7 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
                   </svg>
                 </button>
               )}
-              <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-canvas hover:text-default">✕</button>
+              <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-default">✕</button>
             </div>
           </div>
         </div>
@@ -140,7 +191,7 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
                 {assignees.map((a) => (
                   <span key={a.id}
                     className="inline-flex items-center gap-1.5 rounded-full bg-action-subtle px-2.5 py-1 text-xs font-medium text-action">
-                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-action text-[9px] font-bold text-on-dark">
+                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-action text-[9px] font-bold text-white">
                       {a.full_name.charAt(0)}
                     </span>
                     {a.full_name}
@@ -160,11 +211,11 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
                     {cl.items.map((item) => {
                       const canToggle = canEdit || isAssignee
                       return (
-                        <label key={item.id} className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors ${canToggle ? 'cursor-pointer hover:bg-canvas' : ''}`}>
+                        <label key={item.id} className={`flex items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm transition-colors ${canToggle ? 'cursor-pointer hover:bg-surface-2' : ''}`}>
                           <input type="checkbox" checked={item.is_done}
                             onChange={() => canToggle && toggleChecklistItem(item)}
                             disabled={!canToggle}
-                            className="h-4 w-4 rounded-md text-action focus:ring-action/30 disabled:opacity-40" />
+                            className="h-4 w-4 rounded text-action focus:ring-action/30 disabled:opacity-40" />
                           <span className={`${item.is_done ? 'line-through text-muted' : 'text-default'}`}>{item.content}</span>
                         </label>
                       )
@@ -180,7 +231,7 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
             <div className="space-y-3 max-h-48 overflow-y-auto">
               {reports.length === 0 && <p className="text-sm text-muted py-4 text-center">هنوز گزارشی ثبت نشده است.</p>}
               {reports.map((report) => (
-                <div key={report.id} className="rounded-xl bg-canvas p-3.5">
+                <div key={report.id} className="rounded-lg bg-surface-2 p-3.5">
                   <div className="flex items-center justify-between text-xs text-muted">
                     <span className="font-medium text-subtle">{report.author?.full_name || 'کاربر'}</span>
                     <span>{new Date(report.created_at).toLocaleDateString('fa-IR')}</span>
@@ -194,10 +245,10 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
               <form onSubmit={handleAddReport} className="mt-3">
                 <textarea value={reportContent} onChange={(e) => setReportContent(e.target.value)}
                   placeholder="افزودن گزارش جدید..." rows={2}
-                  className="block w-full rounded-xl bg-canvas px-3.5 py-2.5 text-sm transition-colors placeholder:text-muted focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20" />
+                  className="block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors placeholder:text-muted focus:border-action/50 focus:bg-surface focus:outline-none" />
                 {error && <div className="mt-1.5 text-sm text-danger">{error}</div>}
                 <button type="submit" disabled={!reportContent.trim()}
-                  className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-action px-4 py-2 text-xs font-medium text-on-dark transition-all hover:bg-action-hover disabled:opacity-50 shadow-sm">
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-action px-3.5 py-2 text-xs font-medium text-white transition-all hover:bg-action-hover disabled:opacity-50 shadow-sm">
                   ثبت گزارش
                 </button>
               </form>

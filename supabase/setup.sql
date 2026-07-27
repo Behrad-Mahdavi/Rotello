@@ -27,7 +27,8 @@ create table if not exists public.tasks (
   project_id uuid not null references public.projects(id) on delete cascade,
   title text not null,
   description text,
-  status text not null default 'backlog' check (status in ('backlog', 'todo', 'in_progress', 'done')),
+  status text not null default 'backlog' check (status in ('backlog', 'todo', 'in_progress', 'review', 'done')),
+  priority text not null default 'normal' check (priority in ('normal', 'important', 'urgent')),
   xp_value integer not null default 0,
   xp_awarded boolean not null default false,
   created_by uuid not null references public.profiles(id) on delete cascade,
@@ -265,33 +266,26 @@ declare
   v_xp_awarded boolean;
   v_is_assignee boolean;
 begin
-  -- 1. Get current user
   v_user_id := auth.uid();
   if v_user_id is null then
     raise exception 'Not authenticated';
   end if;
 
-  -- 2. Get user role
   select role into v_user_role from public.profiles where id = v_user_id;
   if v_user_role is null then
     raise exception 'User profile not found';
   end if;
 
-  -- 3. Get task details
   select status, xp_value, xp_awarded into v_current_status, v_xp_value, v_xp_awarded
-  from public.tasks
-  where id = p_task_id;
+  from public.tasks where id = p_task_id;
   
   if v_current_status is null then
     raise exception 'Task not found';
   end if;
 
-  -- 4. Check role restrictions
   if v_user_role = 'admin' then
-    -- Admin can do anything
     null;
   elsif v_user_role = 'member' then
-    -- Check if user is assignee
     select exists (
       select 1 from public.task_assignees
       where task_id = p_task_id and user_id = v_user_id
@@ -301,43 +295,29 @@ begin
       raise exception 'Only assigned members can move this task';
     end if;
 
-    -- Member cannot move to done
     if p_new_status = 'done' then
       raise exception 'Only administrators can set a task to done';
     end if;
 
-    -- Member can only move one step forward: backlog -> todo -> in_progress
-    if v_current_status = 'backlog' and p_new_status <> 'todo' then
-      raise exception 'Invalid transition: backlog can only move to todo';
-    elsif v_current_status = 'todo' and p_new_status <> 'in_progress' then
-      raise exception 'Invalid transition: todo can only move to in_progress';
-    elsif v_current_status = 'in_progress' then
-      raise exception 'Only administrators can move a task out of in_progress';
-    elsif v_current_status = 'done' then
-      raise exception 'Cannot move a task that is already done';
+    if (v_current_status = 'backlog' and p_new_status <> 'todo') or
+       (v_current_status = 'todo' and p_new_status <> 'in_progress') or
+       (v_current_status = 'in_progress' and p_new_status <> 'review') or
+       (v_current_status = 'review') or
+       (v_current_status = 'done') then
+      raise exception 'You can only move the task one step forward';
     end if;
   else
     raise exception 'Unknown role: %', v_user_role;
   end if;
 
-  -- 5. If everything is valid, update the task status
-  update public.tasks
-  set status = p_new_status
-  where id = p_task_id;
+  update public.tasks set status = p_new_status where id = p_task_id;
 
-  -- 6. Award XP if moving to done and XP has not been awarded yet
   if p_new_status = 'done' and not v_xp_awarded then
-    -- Mark as awarded
-    update public.tasks
-    set xp_awarded = true
-    where id = p_task_id;
-
-    -- Award to each assignee
+    update public.tasks set xp_awarded = true where id = p_task_id;
     update public.profiles
     set xp_total = xp_total + v_xp_value
     where id in (
-      select user_id from public.task_assignees
-      where task_id = p_task_id
+      select user_id from public.task_assignees where task_id = p_task_id
     );
   end if;
 

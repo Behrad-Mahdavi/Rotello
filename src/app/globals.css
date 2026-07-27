@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-/* IRANSansX Font Faces – تمام وزن‌ها */
 @font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-ThinD4.ttf') format('truetype'); font-weight: 100; font-style: normal; }
 @font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-UltraLightD4.ttf') format('truetype'); font-weight: 200; font-style: normal; }
 @font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-LightD4.ttf') format('truetype'); font-weight: 300; font-style: normal; }
@@ -13,162 +12,70 @@
 @font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-BlackD4.ttf') format('truetype'); font-weight: 900; font-style: normal; }
 @font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-ExtraBlackD4.ttf') format('truetype'); font-weight: 950; font-style: normal; }
 
-:root {
-  --core-verdigris-50:  #F1F9F8;
-  --core-verdigris-100: #DEF2EF;
-  --core-verdigris-200: #BEE4E0;
-  --core-verdigris-300: #96D4CC;
-  --core-verdigris-400: #6EC4B9;
-  --core-verdigris-500: #59BBAF;
-  --core-verdigris-600: #41A094;
-  --core-verdigris-700: #337B73;
-  --core-verdigris-800: #245751;
-  --core-verdigris-900: #183A36;
-
-  --core-ruby-50:  #FDEDF2;
-  --core-ruby-100: #FAD6E2;
-  --core-ruby-200: #F6ACC5;
-  --core-ruby-300: #F07AA1;
-  --core-ruby-400: #EB477E;
-  --core-ruby-500: #E0195B;
-  --core-ruby-600: #B21448;
-  --core-ruby-700: #840F36;
-  --core-ruby-800: #560A23;
-  --core-ruby-900: #320614;
-
-  --core-space-cadet-50:  #F0F2FA;
-  --core-space-cadet-100: #DDE1F3;
-  --core-space-cadet-200: #BBC3E7;
-  --core-space-cadet-300: #929ED8;
-  --core-space-cadet-400: #6979C9;
-  --core-space-cadet-500: #202A5A;
-  --core-space-cadet-600: #131834;
-  --core-space-cadet-700: #070913;
-  --core-space-cadet-800: #04050B;
-  --core-space-cadet-900: #030408;
-
-  --core-crayola-50:  #FDF6EC;
-  --core-crayola-100: #FBECD5;
-  --core-crayola-200: #F7D9AC;
-  --core-crayola-300: #F1C179;
-  --core-crayola-400: #ECAA46;
-  --core-crayola-500: #ECA842;
-  --core-crayola-600: #E49217;
-  --core-crayola-700: #B67412;
-  --core-crayola-800: #87570E;
-  --core-crayola-900: #623F0A;
-
-  --core-sonic-silver-50:  #F5F5F5;
-  --core-sonic-silver-100: #E8E8E8;
-  --core-sonic-silver-200: #D2D1D0;
-  --core-sonic-silver-300: #B6B5B4;
-  --core-sonic-silver-400: #9B9997;
-  --core-sonic-silver-500: #787674;
-  --core-sonic-silver-600: #5E5D5B;
-  --core-sonic-silver-700: #444342;
-  --core-sonic-silver-800: #2A2A29;
-  --core-sonic-silver-900: #151515;
-
-  --core-rebecca-purple-50:  #F5F0FA;
-  --core-rebecca-purple-100: #E8DDF3;
-  --core-rebecca-purple-200: #D1BBE7;
-  --core-rebecca-purple-300: #B591D9;
-  --core-rebecca-purple-400: #9A67CB;
-  --core-rebecca-purple-500: #5E308B;
-  --core-rebecca-purple-600: #442365;
-  --core-rebecca-purple-700: #2B163F;
-  --core-rebecca-purple-800: #110919;
-  --core-rebecca-purple-900: #050308;
-
-  --core-white: #FFFFFF;
-  --core-near-black: #11141D;
-}
-
 @theme inline {
-  --color-canvas:      #FAF5F7;
-  --color-surface:     var(--core-white);
-  --color-surface-2:   #F8F4F6;
-  --color-border:      #F0ECEE;
-  --color-border-strong: #E0DCDF;
+  --color-canvas:      #0b0d11;
+  --color-surface:     #15171e;
+  --color-surface-2:   #1d1f27;
+  --color-border:      rgba(255,255,255,0.06);
+  --color-border-strong: rgba(255,255,255,0.12);
 
-  --color-text-default:    #2D2640;
-  --color-text-subtle:     #7A7380;
-  --color-text-muted:      #B0ABB3;
-  --color-text-on-brand:   var(--core-near-black);
-  --color-text-on-dark:    var(--core-white);
+  --color-text-default:    #f0f1f5;
+  --color-text-subtle:     #a0a2b0;
+  --color-text-muted:      #6b6e7c;
+  --color-text-on-brand:   #0b0d11;
+  --color-text-on-dark:    #ffffff;
 
-  --color-action:          var(--core-verdigris-500);
-  --color-action-hover:    var(--core-verdigris-600);
-  --color-action-active:   var(--core-verdigris-700);
-  --color-action-subtle:   var(--core-verdigris-100);
+  --color-action:          #10b981;
+  --color-action-hover:    #059669;
+  --color-action-active:   #047857;
+  --color-action-subtle:   rgba(16,185,129,0.1);
 
-  --color-admin:           var(--core-rebecca-purple-500);
-  --color-admin-hover:     var(--core-rebecca-purple-600);
-  --color-admin-subtle:    var(--core-rebecca-purple-50);
+  --color-admin:           #8b5cf6;
+  --color-admin-hover:     #7c3aed;
+  --color-admin-subtle:    rgba(139,92,246,0.1);
 
-  --color-success:         var(--core-verdigris-600);
-  --color-success-subtle:  var(--core-verdigris-50);
-  --color-warning:         var(--core-crayola-500);
-  --color-warning-subtle:  var(--core-crayola-50);
-  --color-danger:          var(--core-ruby-500);
-  --color-danger-hover:    var(--core-ruby-600);
-  --color-danger-subtle:   var(--core-ruby-50);
-  --color-info:            var(--core-space-cadet-400);
-  --color-info-subtle:     var(--core-space-cadet-50);
+  --color-success:         #14b8a6;
+  --color-success-subtle:  rgba(20,184,166,0.1);
+  --color-warning:         #f59e0b;
+  --color-warning-subtle:  rgba(245,158,11,0.1);
+  --color-danger:          #f43f5e;
+  --color-danger-hover:    #e11d48;
+  --color-danger-subtle:   rgba(244,63,94,0.1);
+  --color-info:            #6366f1;
+  --color-info-subtle:     rgba(99,102,241,0.1);
 
-  --color-xp:              var(--core-crayola-500);
+  --color-xp:              #f59e0b;
 
-  --color-stage-backlog:     var(--core-sonic-silver-400);
-  --color-stage-todo:        var(--core-rebecca-purple-400);
-  --color-stage-in-progress: var(--core-crayola-500);
-  --color-stage-done:        var(--core-verdigris-600);
+  --color-stage-backlog:     #9ca3af;
+  --color-stage-todo:        #94a3b8;
+  --color-stage-in-progress: #10b981;
+  --color-stage-done:        #14b8a6;
 
-  --color-focus-ring: var(--core-verdigris-500);
+  --color-focus-ring: #10b981;
 
   --font-sans: 'IRANSansX', system-ui, sans-serif;
   --font-mono: ui-monospace, monospace;
 }
 
-[data-theme="dark"] {
-  --color-canvas:      var(--core-space-cadet-700);
-  --color-surface:     var(--core-space-cadet-600);
-  --color-surface-2:   var(--core-space-cadet-500);
-  --color-border:      var(--core-space-cadet-400);
-  --color-border-strong: var(--core-sonic-silver-500);
-
-  --color-text-default:    var(--core-white);
-  --color-text-subtle:     var(--core-sonic-silver-300);
-  --color-text-muted:      var(--core-sonic-silver-500);
-  --color-text-on-brand:   var(--core-near-black);
-  --color-text-on-dark:    var(--core-white);
-
-  --color-action:          var(--core-verdigris-400);
-  --color-action-hover:    var(--core-verdigris-300);
-  --color-action-active:   var(--core-verdigris-500);
-  --color-action-subtle:   var(--core-verdigris-800);
-
-  --color-admin:           var(--core-rebecca-purple-300);
-  --color-admin-hover:     var(--core-rebecca-purple-200);
-  --color-admin-subtle:    var(--core-rebecca-purple-800);
-
-  --color-success:         var(--core-verdigris-400);
-  --color-success-subtle:  var(--core-verdigris-800);
-  --color-warning:         var(--core-crayola-400);
-  --color-warning-subtle:  var(--core-crayola-800);
-  --color-danger:          var(--core-ruby-400);
-  --color-danger-hover:    var(--core-ruby-300);
-  --color-danger-subtle:   var(--core-ruby-800);
-  --color-info:            var(--core-space-cadet-300);
-  --color-info-subtle:     var(--core-space-cadet-800);
-
-  --color-xp:              var(--core-crayola-400);
-
-  --color-stage-backlog:     var(--core-sonic-silver-400);
-  --color-stage-todo:        var(--core-space-cadet-300);
-  --color-stage-in-progress: var(--core-crayola-400);
-  --color-stage-done:        var(--core-verdigris-400);
-
-  --color-focus-ring: var(--core-verdigris-400);
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.15) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgba(255,255,255,0.15);
+    border-radius: 9999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255,255,255,0.25);
+  }
 }
 
 body {

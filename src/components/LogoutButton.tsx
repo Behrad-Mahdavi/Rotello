@@ -1,35 +1,37 @@
 'use client'
 
+import { useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 
 export default function LogoutButton({ minimal }: { minimal?: boolean }) {
+  const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
   async function handleLogout() {
+    setLoading(true)
     await supabase.auth.signOut()
-    router.refresh()
     router.push('/login')
   }
 
   if (minimal) {
     return (
-      <button onClick={handleLogout}
-        className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-subtle transition-all hover:bg-danger-subtle hover:text-danger">
+      <button onClick={handleLogout} disabled={loading}
+        className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-default"
+        title="خروج">
         <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
         </svg>
-        خروج
       </button>
     )
   }
 
   return (
-    <button onClick={handleLogout}
-      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-subtle transition-all hover:bg-danger-subtle hover:text-danger">
+    <button onClick={handleLogout} disabled={loading}
+      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted transition-all hover:bg-surface-2 hover:text-default">
       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
       </svg>
       خروج
     </button>

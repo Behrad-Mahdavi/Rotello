@@ -1,6 +1,8 @@
 export type Role = 'admin' | 'member'
 
-export type TaskStatus = 'backlog' | 'todo' | 'in_progress' | 'done'
+export type TaskStatus = 'backlog' | 'todo' | 'in_progress' | 'review' | 'done'
+
+export type TaskPriority = 'normal' | 'important' | 'urgent'
 
 export interface Profile {
   id: string
@@ -24,6 +26,7 @@ export interface Task {
   title: string
   description: string | null
   status: TaskStatus
+  priority: TaskPriority
   xp_value: number
   xp_awarded: boolean
   created_by: string

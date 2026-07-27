@@ -25,35 +25,35 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-canvas px-4">
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-surface shadow-sm overflow-hidden">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-action/20 shadow-sm">
           <Image src="/logog.png" alt="رکاد" width={48} height={48} className="object-contain" />
         </div>
         <h1 className="text-2xl font-bold text-default">رکاد</h1>
-        <p className="mt-1 text-sm text-subtle">ورود به سامانه مدیریت تسک</p>
+        <p className="mt-1 text-sm text-muted">ورود به سامانه مدیریت تسک</p>
       </div>
 
-      <div className="w-full max-w-sm rounded-2xl bg-surface p-7 shadow-sm">
+      <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-7 shadow-sm">
         <form onSubmit={handleLogin} className="space-y-4" dir="rtl">
           <div>
-            <label className="block text-sm font-medium text-subtle">ایمیل</label>
+            <label className="block text-sm font-medium text-muted">ایمیل</label>
             <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-              className="mt-1.5 block w-full rounded-xl bg-canvas px-4 py-2.5 text-sm text-default placeholder:text-muted transition-all focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20" />
+              className="mt-1.5 block w-full rounded-lg border border-border bg-surface-2 px-4 py-2.5 text-sm text-default placeholder:text-muted transition-all focus:border-action/50 focus:bg-surface focus:outline-none" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-subtle">رمز عبور</label>
+            <label className="block text-sm font-medium text-muted">رمز عبور</label>
             <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
-              className="mt-1.5 block w-full rounded-xl bg-canvas px-4 py-2.5 text-sm text-default placeholder:text-muted transition-all focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20" />
+              className="mt-1.5 block w-full rounded-lg border border-border bg-surface-2 px-4 py-2.5 text-sm text-default placeholder:text-muted transition-all focus:border-action/50 focus:bg-surface focus:outline-none" />
           </div>
 
-          {error && <div className="rounded-xl bg-danger-subtle px-4 py-3 text-sm text-danger">{error}</div>}
+          {error && <div className="rounded-lg bg-danger-subtle px-4 py-3 text-sm text-danger">{error}</div>}
 
           <button type="submit" disabled={loading}
-            className="w-full rounded-xl bg-action px-4 py-2.5 text-sm font-medium text-on-dark transition-all hover:bg-action-hover disabled:opacity-50 shadow-sm">
+            className="w-full rounded-lg bg-action px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-action-hover disabled:opacity-50 shadow-sm">
             {loading ? 'در حال ورود...' : 'ورود'}
           </button>
         </form>
 
-        <div className="mt-6 text-center text-sm text-subtle">
+        <div className="mt-6 text-center text-sm text-muted">
           حساب کاربری ندارید؟{' '}
           <Link href="/signup" className="font-medium text-action transition-colors hover:text-action-hover">ثبت‌نام کنید</Link>
         </div>

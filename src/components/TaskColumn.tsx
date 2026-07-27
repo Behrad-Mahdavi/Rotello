@@ -13,11 +13,12 @@ interface TaskColumnProps {
   onTaskClick: (task: Task) => void
 }
 
-const STAGE_META: Record<TaskStatus, { dot: string; bg: string; labelBg: string }> = {
-  backlog:     { dot: 'bg-stage-backlog',     bg: 'bg-stage-backlog/8',     labelBg: 'bg-stage-backlog/12' },
-  todo:        { dot: 'bg-stage-todo',        bg: 'bg-stage-todo/8',        labelBg: 'bg-stage-todo/12' },
-  in_progress: { dot: 'bg-stage-in-progress', bg: 'bg-stage-in-progress/8', labelBg: 'bg-stage-in-progress/12' },
-  done:        { dot: 'bg-stage-done',        bg: 'bg-stage-done/8',        labelBg: 'bg-stage-done/12' },
+const STAGE_META: Record<TaskStatus, { dot: string; badge: string }> = {
+  backlog:     { dot: 'bg-gray-400',        badge: 'bg-gray-500/10 text-gray-400' },
+  todo:        { dot: 'bg-slate-400',       badge: 'bg-slate-500/10 text-slate-400' },
+  in_progress: { dot: 'bg-emerald-500',     badge: 'bg-emerald-500/10 text-emerald-400' },
+  review:      { dot: 'bg-amber-500',       badge: 'bg-amber-500/10 text-amber-400' },
+  done:        { dot: 'bg-teal-500',        badge: 'bg-teal-500/10 text-teal-400' },
 }
 
 export default function TaskColumn({ id, title, tasks, canDragTask, onTaskClick }: TaskColumnProps) {
@@ -25,30 +26,34 @@ export default function TaskColumn({ id, title, tasks, canDragTask, onTaskClick 
   const meta = STAGE_META[id]
 
   return (
-    <div ref={setNodeRef}
-      className={`flex w-[244px] shrink-0 flex-col rounded-2xl transition-all sm:w-[272px] ${
-        isOver ? 'bg-action/5 shadow-sm' : meta.bg
-      }`}>
-      <div className="flex items-center gap-2 px-2.5 pt-2.5 pb-1.5 sm:px-4 sm:pt-4 sm:pb-3">
-        <div className={`h-2 w-2 rounded-full ${meta.dot}`} />
-        <h3 className="text-xs font-bold text-default">{title}</h3>
-        <span className={`mr-auto flex h-5 min-w-[20px] items-center justify-center rounded-full ${meta.labelBg} px-1.5 text-[11px] font-semibold text-subtle`}>
-          {tasks.length}
-        </span>
+    <div className="flex w-[244px] shrink-0 flex-col rounded-xl bg-surface-2/40 ring-1 ring-border/60 transition-all sm:w-[272px]">
+      <div className="flex items-center justify-between gap-2 px-2.5 py-2 sm:px-3 sm:py-2.5">
+        <div className="flex items-center gap-2">
+          <span className={`h-2.5 w-2.5 rounded-full ${meta.dot}`} />
+          <h3 className="text-xs font-semibold text-default sm:text-sm">{title}</h3>
+          <span className={`rounded-full px-1.5 text-[11px] font-medium ${meta.badge}`}>
+            {tasks.length}
+          </span>
+        </div>
       </div>
 
-      <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-        <div className={`flex flex-1 flex-col gap-1.5 p-1.5 pt-0 sm:gap-2 sm:p-3 min-h-[50px] sm:min-h-[80px] overflow-y-auto`}>
+      <div
+        ref={setNodeRef}
+        className={`flex min-h-[100px] flex-1 flex-col gap-1.5 px-1.5 pb-1.5 transition-colors sm:gap-2 sm:px-2 sm:pb-2 ${
+          isOver ? 'bg-emerald-500/5' : ''
+        }`}
+      >
+        <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tasks.map((task) => (
             <TaskCard key={task.id} task={task} canDrag={canDragTask(task)} onClick={() => onTaskClick(task)} />
           ))}
-          {tasks.length === 0 && !isOver && (
-            <div className="flex flex-1 items-center justify-center rounded-xl py-6 text-[11px] text-muted sm:text-xs">
-              بدون تسک
-            </div>
-          )}
-        </div>
-      </SortableContext>
+        </SortableContext>
+        {tasks.length === 0 && (
+          <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-border py-6 text-[11px] text-muted sm:text-xs">
+            بدون تسک
+          </div>
+        )}
+      </div>
     </div>
   )
 }
