@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import type { Task, Profile, TaskPriority } from '@/utils/database.types'
 
@@ -16,13 +16,21 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: C
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [xpValue, setXpValue] = useState(0)
+  const [deadline, setDeadline] = useState('')
   const [priority, setPriority] = useState<TaskPriority>('normal')
   const [members, setMembers] = useState<Profile[]>([])
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showDropdown, setShowDropdown] = useState(false)
   const [checklists, setChecklists] = useState<CL[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const searchRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
+
+  const filteredMembers = members.filter((m) =>
+    m.full_name.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   useEffect(() => {
     async function load() {
@@ -30,6 +38,16 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: C
       if (data) setMembers(data)
     }
     load()
+  }, [])
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   const addCL = () => setChecklists([...checklists, { title: '', items: [''] }])
@@ -47,7 +65,7 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: C
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setError('Not authenticated'); setLoading(false); return }
-    const { data: task, error: err } = await supabase.from('tasks').insert({ project_id: projectId, title, description, priority, xp_value: xpValue, created_by: user.id, status: 'backlog' }).select().single()
+    const { data: task, error: err } = await supabase.from('tasks').insert({ project_id: projectId, title, description, deadline: deadline || null, priority, xp_value: xpValue, created_by: user.id, status: 'backlog' }).select().single()
     if (err) { setError(err.message); setLoading(false); return }
 
     await supabase.from('task_assignees').insert(selectedMembers.map((uid) => ({ task_id: task.id, user_id: uid })))
@@ -91,6 +109,12 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: C
           </div>
 
           <div>
+            <label className="block text-xs font-medium text-muted">ددلاین</label>
+            <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)}
+              className="mt-1.5 block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors focus:border-action/50 focus:bg-surface focus:outline-none [color-scheme:dark]" />
+          </div>
+
+          <div>
             <label className="block text-xs font-medium text-muted mb-2">اولویت</label>
             <div className="flex gap-1.5">
               {(['normal', 'important', 'urgent'] as TaskPriority[]).map((p) => (
@@ -108,20 +132,46 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: C
             </div>
           </div>
 
-          <div>
+          <div ref={searchRef} className="relative">
             <label className="block text-xs font-medium text-muted mb-2">مسئولین</label>
-            <div className="flex flex-wrap gap-1.5">
-              {members.map((m) => (
-                <button key={m.id} type="button" onClick={() => toggle(m.id)}
-                  className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all ${
-                    selectedMembers.includes(m.id)
-                      ? 'bg-action text-white shadow-sm' 
-                      : 'border border-border bg-surface-2 text-subtle hover:bg-surface'
-                  }`}>
-                  {m.full_name}
-                </button>
-              ))}
-            </div>
+            {selectedMembers.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {selectedMembers.map((uid) => {
+                  const m = members.find((mm) => mm.id === uid)
+                  if (!m) return null
+                  return (
+                    <span key={uid} className="inline-flex items-center gap-1 rounded-full bg-action/15 px-2.5 py-1 text-xs font-medium text-action">
+                      {m.full_name}
+                      <button type="button" onClick={() => toggle(uid)} className="mr-0.5 text-action/60 hover:text-action">✕</button>
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+            <input type="text" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setShowDropdown(true) }}
+              onFocus={() => setShowDropdown(true)} placeholder="جستجوی اعضا..."
+              className="mt-1 block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors placeholder:text-muted focus:border-action/50 focus:bg-surface focus:outline-none" />
+            {showDropdown && searchQuery && filteredMembers.length > 0 && (
+              <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border bg-surface shadow-lg">
+                {filteredMembers.map((m) => {
+                  const isSelected = selectedMembers.includes(m.id)
+                  return (
+                    <button key={m.id} type="button" onClick={() => { toggle(m.id); setSearchQuery('') }}
+                      className={`flex w-full items-center gap-2 px-3 py-2 text-xs text-right transition-colors ${
+                        isSelected ? 'bg-action/10 text-action' : 'text-subtle hover:bg-surface-2 hover:text-default'
+                      }`}>
+                      <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white bg-gradient-to-br ${
+                        m.role === 'admin' ? 'from-violet-500 to-purple-600' : 'from-emerald-500 to-teal-600'
+                      }`}>
+                        {m.full_name.charAt(0)}
+                      </span>
+                      <span className="flex-1">{m.full_name}</span>
+                      {isSelected && <span className="text-action">✓</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           <div>

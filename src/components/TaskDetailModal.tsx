@@ -142,6 +142,14 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
                 <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_BADGE[task.priority]}`}>
                   {PRIORITY_LABEL[task.priority]}
                 </span>
+                {task.deadline && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-action/10 px-2 py-0.5 text-xs font-medium text-action">
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {new Date(task.deadline).toLocaleDateString('fa-IR')}
+                  </span>
+                )}
                 {task.xp_value > 0 && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-400">
                     <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>

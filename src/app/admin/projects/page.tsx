@@ -13,6 +13,7 @@ export default function AdminProjectsPage() {
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [deadline, setDeadline] = useState('')
   const [error, setError] = useState('')
   const router = useRouter()
   const supabase = createClient()
@@ -39,9 +40,9 @@ export default function AdminProjectsPage() {
     e.preventDefault(); setLoading(true); setError('')
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setError('Not authenticated'); setLoading(false); return }
-    const { error: err } = await supabase.from('projects').insert({ name, description: description || null, created_by: user.id })
+    const { error: err } = await supabase.from('projects').insert({ name, description: description || null, deadline: deadline || null, created_by: user.id })
     if (err) { setError(err.message); setLoading(false); return }
-    setName(''); setDescription(''); setShowForm(false)
+    setName(''); setDescription(''); setDeadline(''); setShowForm(false)
     await reload()
   }
 
@@ -82,7 +83,7 @@ export default function AdminProjectsPage() {
           <div className="mb-6 rounded-xl border border-border bg-surface p-5 shadow-sm">
             <h3 className="mb-4 text-sm font-semibold text-default">پروژه جدید</h3>
             <form onSubmit={handleCreateProject} className="space-y-3" dir="rtl">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-muted">نام پروژه</label>
                   <input type="text" value={name} onChange={(e) => setName(e.target.value)} required
@@ -92,6 +93,11 @@ export default function AdminProjectsPage() {
                   <label className="block text-xs font-medium text-muted">توضیحات</label>
                   <input type="text" value={description} onChange={(e) => setDescription(e.target.value)}
                     className="mt-1 block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-all focus:border-emerald-500/50 focus:bg-surface focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted">ددلاین</label>
+                  <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)}
+                    className="mt-1 block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-all focus:border-emerald-500/50 focus:bg-surface focus:outline-none [color-scheme:dark]" />
                 </div>
               </div>
               {error && <div className="rounded-lg bg-danger-subtle px-3 py-2 text-sm text-danger">{error}</div>}
@@ -131,6 +137,14 @@ export default function AdminProjectsPage() {
                   <p className="mt-3 line-clamp-2 min-h-[2.5rem] text-xs text-muted sm:text-sm">
                     {project.description || 'بدون توضیحات'}
                   </p>
+                  {project.deadline && (
+                    <div className="mt-2 flex items-center gap-1 text-[11px] text-muted">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{new Date(project.deadline).toLocaleDateString('fa-IR')}</span>
+                    </div>
+                  )}
                   <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
                     <button onClick={() => router.push(`/projects/${project.id}/board`)}
                       className="rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-400 transition-colors hover:bg-emerald-600 hover:text-white">

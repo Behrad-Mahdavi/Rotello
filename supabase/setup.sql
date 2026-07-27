@@ -17,6 +17,7 @@ create table if not exists public.projects (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   description text,
+  deadline date,
   created_by uuid not null references public.profiles(id) on delete cascade,
   created_at timestamptz not null default now()
 );
@@ -27,6 +28,7 @@ create table if not exists public.tasks (
   project_id uuid not null references public.projects(id) on delete cascade,
   title text not null,
   description text,
+  deadline date,
   status text not null default 'backlog' check (status in ('backlog', 'todo', 'in_progress', 'review', 'done')),
   priority text not null default 'normal' check (priority in ('normal', 'important', 'urgent')),
   xp_value integer not null default 0,

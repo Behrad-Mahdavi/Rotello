@@ -74,6 +74,14 @@ export default function ProjectsListPage() {
                   </span>
                   <h3 className="mt-3 font-semibold text-default">{project.name}</h3>
                   {project.description && <p className="mt-1 text-xs text-muted line-clamp-2 sm:text-sm">{project.description}</p>}
+                  {project.deadline && (
+                    <div className="mt-2 flex items-center gap-1 text-[11px] text-muted">
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{new Date(project.deadline).toLocaleDateString('fa-IR')}</span>
+                    </div>
+                  )}
                 </div>
               </button>
             )

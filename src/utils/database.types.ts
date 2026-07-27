@@ -16,6 +16,7 @@ export interface Project {
   id: string
   name: string
   description: string | null
+  deadline: string | null
   created_by: string
   created_at: string
 }
@@ -25,6 +26,7 @@ export interface Task {
   project_id: string
   title: string
   description: string | null
+  deadline: string | null
   status: TaskStatus
   priority: TaskPriority
   xp_value: number
