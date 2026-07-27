@@ -63,14 +63,14 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: C
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-surface shadow-lg" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 z-10 flex items-center justify-between bg-surface px-5 py-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
+      <div className="max-h-[90vh] w-full overflow-y-auto rounded-t-2xl bg-surface shadow-lg sm:max-h-[85vh] sm:max-w-lg sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 z-10 flex items-center justify-between bg-surface px-4 py-3 sm:px-5 sm:py-4">
           <h2 className="text-sm font-bold text-default">تسک جدید</h2>
-          <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted transition-colors hover:bg-canvas hover:text-default">✕</button>
+          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-canvas hover:text-default">✕</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4" dir="rtl">
+        <form onSubmit={handleSubmit} className="space-y-4 p-4 sm:p-5" dir="rtl">
           <div>
             <label className="block text-xs font-medium text-subtle">عنوان تسک</label>
             <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required
@@ -81,12 +81,10 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: C
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} required
               className="mt-1.5 block w-full rounded-xl bg-canvas px-3.5 py-2.5 text-sm transition-colors placeholder:text-muted focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-subtle">مقدار XP</label>
-              <input type="number" value={xpValue} onChange={(e) => setXpValue(Number(e.target.value))} min={0} required
-                className="mt-1.5 block w-full rounded-xl bg-canvas px-3.5 py-2.5 text-sm transition-colors focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20" />
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-subtle">مقدار XP</label>
+            <input type="number" value={xpValue} onChange={(e) => setXpValue(Number(e.target.value))} min={0} required
+              className="mt-1.5 block w-full rounded-xl bg-canvas px-3.5 py-2.5 text-sm transition-colors focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20" />
           </div>
 
           <div>

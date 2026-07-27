@@ -11,7 +11,7 @@ import TaskCard from '@/components/TaskCard'
 import TaskDetailModal from '@/components/TaskDetailModal'
 import CreateTaskModal from '@/components/CreateTaskModal'
 import {
-  DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
+  DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors,
   type DragStartEvent, type DragEndEvent,
 } from '@dnd-kit/core'
 import type { Task, TaskStatus, Profile, Project } from '@/utils/database.types'
@@ -23,41 +23,49 @@ const COLUMNS: { id: TaskStatus; title: string }[] = [
   { id: 'done', title: 'Done' },
 ]
 
-function Sidebar({ currentPath }: { currentPath: string }) {
+function Sidebar({ currentPath, open, onClose }: { currentPath: string; open: boolean; onClose: () => void }) {
   return (
-    <aside className="flex w-56 shrink-0 flex-col bg-surface">
-      <div className="flex h-14 items-center gap-2.5 px-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-surface shadow-sm overflow-hidden">
-          <Image src="/logog.png" alt="رکاد" width={24} height={24} className="object-contain" />
+    <>
+      {open && <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm lg:hidden" onClick={onClose} />}
+      <aside className={`fixed inset-y-0 right-0 z-50 flex w-56 flex-col bg-surface transition-transform lg:relative lg:z-0 lg:translate-x-0 ${open ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
+        <div className="flex h-14 items-center justify-between px-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-surface shadow-sm overflow-hidden">
+              <Image src="/logog.png" alt="رکاد" width={24} height={24} className="object-contain" />
+            </div>
+            <span className="text-sm font-bold text-default">پنل مدیریت</span>
+          </div>
+          <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-muted hover:bg-canvas hover:text-default lg:hidden">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
         </div>
-        <span className="text-sm font-bold text-default">پنل مدیریت</span>
-      </div>
 
-      <nav className="flex-1 space-y-0.5 px-3" dir="rtl">
-        <Link href="/admin/members"
-          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
-            currentPath === '/admin/members' ? 'bg-admin-subtle text-admin' : 'text-subtle hover:bg-admin-subtle hover:text-admin'
-          }`}>
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-          </svg>
-          مدیریت اعضا
-        </Link>
-        <Link href="/admin/projects"
-          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
-            currentPath === '/admin/projects' ? 'bg-admin-subtle text-admin' : 'text-subtle hover:bg-admin-subtle hover:text-admin'
-          }`}>
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-          </svg>
-          پروژه‌ها
-        </Link>
-      </nav>
+        <nav className="flex-1 space-y-0.5 px-3" dir="rtl">
+          <Link href="/admin/members" onClick={onClose}
+            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+              currentPath === '/admin/members' ? 'bg-admin-subtle text-admin' : 'text-subtle hover:bg-admin-subtle hover:text-admin'
+            }`}>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+            </svg>
+            مدیریت اعضا
+          </Link>
+          <Link href="/admin/projects" onClick={onClose}
+            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+              currentPath === '/admin/projects' ? 'bg-admin-subtle text-admin' : 'text-subtle hover:bg-admin-subtle hover:text-admin'
+            }`}>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+            پروژه‌ها
+          </Link>
+        </nav>
 
-      <div className="p-3">
-        <LogoutButton />
-      </div>
-    </aside>
+        <div className="p-3">
+          <LogoutButton />
+        </div>
+      </aside>
+    </>
   )
 }
 
@@ -72,10 +80,14 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [error, setError] = useState('')
   const [projectId, setProjectId] = useState('')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  )
 
   useEffect(() => { params.then((p) => setProjectId(p.projectId)) }, [])
 
@@ -131,42 +143,45 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
   const boardContent = (
     <>
       {isAdmin ? (
-        <header className="flex shrink-0 items-center justify-between bg-surface/80 backdrop-blur-lg px-4 h-14 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface shadow-sm overflow-hidden">
+        <header className="flex shrink-0 items-center justify-between bg-surface/80 backdrop-blur-lg px-3 h-12 shadow-sm sm:h-14 sm:px-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button onClick={() => setSidebarOpen(true)} className="flex h-8 w-8 items-center justify-center rounded-lg text-subtle hover:bg-canvas lg:hidden">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+            </button>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface shadow-sm overflow-hidden sm:h-8 sm:w-8">
               <Image src="/logog.png" alt="رکاد" width={20} height={20} className="object-contain" />
             </div>
-            <span className="text-sm font-bold text-default">{project?.name || 'بورد'}</span>
+            <span className="text-xs font-bold text-default sm:text-sm">{project?.name || 'بورد'}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-action px-3.5 py-1.5 text-xs font-medium text-on-dark transition-all hover:bg-action-hover shadow-sm">
+              className="inline-flex items-center gap-1 rounded-xl bg-action px-2 py-1.5 text-xs font-medium text-on-dark transition-all hover:bg-action-hover shadow-sm sm:gap-1.5 sm:px-3">
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              تسک جدید
+              <span className="hidden sm:inline">تسک جدید</span>
             </button>
             <LogoutButton minimal />
           </div>
         </header>
       ) : (
-        <header className="flex shrink-0 items-center justify-between bg-surface/80 backdrop-blur-lg px-4 h-14 shadow-sm">
-          <div className="flex items-center gap-3">
+        <header className="flex shrink-0 items-center justify-between bg-surface/80 backdrop-blur-lg px-3 h-12 shadow-sm sm:h-14 sm:px-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button onClick={() => router.push('/projects')}
-              className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-medium text-subtle transition-colors hover:bg-canvas">
+              className="flex items-center gap-1 rounded-xl px-2 py-1.5 text-xs font-medium text-subtle transition-colors hover:bg-canvas">
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
-              بازگشت
+              <span className="hidden sm:inline">بازگشت</span>
             </button>
-            <div className="h-4 w-px bg-border" />
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface shadow-sm overflow-hidden">
+            <div className="hidden h-4 w-px bg-border sm:block" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface shadow-sm overflow-hidden sm:h-8 sm:w-8">
               <Image src="/logog.png" alt="رکاد" width={20} height={20} className="object-contain" />
             </div>
-            <span className="text-sm font-bold text-default">{project?.name || 'بورد'}</span>
+            <span className="text-xs font-bold text-default sm:text-sm">{project?.name || 'بورد'}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-xl bg-warning-subtle px-3 py-1.5 text-xs font-medium text-xp">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="inline-flex items-center gap-1 rounded-xl bg-warning-subtle px-2 py-1.5 text-xs font-medium text-xp sm:gap-1.5 sm:px-3">
               <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
               {profile?.xp_total}
             </span>
@@ -176,14 +191,14 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
       )}
 
       {error && (
-        <div className="mx-4 mt-2">
-          <div className="rounded-xl bg-danger-subtle px-4 py-2.5 text-sm text-danger">{error}</div>
+        <div className="mx-3 mt-2 sm:mx-4">
+          <div className="rounded-xl bg-danger-subtle px-3 py-2 text-xs text-danger sm:px-4 sm:py-2.5 sm:text-sm">{error}</div>
         </div>
       )}
 
-      <main className="flex-1 overflow-x-auto overflow-y-hidden p-4">
+      <main className="flex-1 overflow-x-auto overflow-y-hidden p-2 sm:p-4">
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div className="flex h-full gap-3" style={{ minWidth: COLUMNS.length * 280 + (COLUMNS.length - 1) * 12 }}>
+          <div className="flex h-full gap-2 sm:gap-3" style={{ minWidth: COLUMNS.length * 252 + (COLUMNS.length - 1) * 8 }}>
             {COLUMNS.map((col) => (
               <TaskColumn key={col.id} id={col.id} title={col.title}
                 tasks={getTasksByStatus(col.id)} canDragTask={canDragTask} onTaskClick={setSelectedTask} />
@@ -194,6 +209,13 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
           </DragOverlay>
         </DndContext>
       </main>
+
+      <div className="flex shrink-0 items-center justify-center gap-1.5 py-1.5 sm:hidden">
+        <div className="h-1.5 w-1.5 rounded-full bg-muted/40" />
+        <div className="h-1.5 w-1.5 rounded-full bg-muted/40" />
+        <div className="h-1.5 w-1.5 rounded-full bg-muted/40" />
+        <span className="mr-1 text-[10px] text-muted/60">اسکرول کنید ←</span>
+      </div>
 
       {selectedTask && <TaskDetailModal taskId={selectedTask.id} onClose={() => setSelectedTask(null)} profile={profile!}
         onTaskDeleted={(id) => setTasks((prev) => prev.filter((t) => t.id !== id))} />}
@@ -207,8 +229,8 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
   if (isAdmin) {
     return (
       <div className="flex h-screen" dir="rtl">
-        <Sidebar currentPath="/admin/projects" />
-        <div className="flex flex-1 flex-col bg-canvas">
+        <Sidebar currentPath="/admin/projects" open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex flex-1 flex-col bg-canvas overflow-hidden">
           {boardContent}
         </div>
       </div>
@@ -216,7 +238,7 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
   }
 
   return (
-    <div className="flex h-screen flex-col bg-canvas" dir="rtl">
+    <div className="flex h-screen flex-col bg-canvas overflow-hidden" dir="rtl">
       {boardContent}
     </div>
   )

@@ -62,7 +62,7 @@ export default function AdminMembersPage() {
         <div className="mb-6 rounded-2xl bg-surface p-5 shadow-sm">
           <h3 className="mb-4 text-sm font-semibold text-default">ساخت حساب جدید</h3>
           <form onSubmit={handleCreateMember} className="space-y-3">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium text-subtle">نام و نام خانوادگی</label>
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} required
@@ -89,7 +89,8 @@ export default function AdminMembersPage() {
       )}
 
       <div className="overflow-hidden rounded-2xl bg-surface shadow-sm">
-        <table className="w-full text-sm">
+        <div className="hidden sm:block overflow-x-auto">
+          <table className="w-full text-sm min-w-[500px]">
           <thead>
             <tr className="bg-canvas">
               <th className="px-5 py-3.5 text-right text-xs font-semibold text-muted">نام</th>
@@ -128,6 +129,35 @@ export default function AdminMembersPage() {
             ))}
           </tbody>
         </table>
+        </div>
+
+        <div className="sm:hidden divide-y divide-border">
+          {members.map((m) => (
+            <div key={m.id} className="p-4 transition-colors hover:bg-admin-subtle/30">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-admin-subtle text-xs font-bold text-admin">
+                    {m.full_name.charAt(0)}
+                  </div>
+                  <span className="font-medium text-default">{m.full_name}</span>
+                </div>
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                  m.role === 'admin' ? 'bg-admin-subtle text-admin' : 'bg-warning-subtle text-xp'
+                }`}>
+                  {m.role === 'admin' ? 'مدیر' : 'عضو'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between mr-[42px]">
+                <span className="inline-flex items-center gap-1 rounded-full bg-warning-subtle px-2 py-0.5 text-xs font-semibold text-xp">
+                  {m.xp_total} XP
+                </span>
+                <span className="text-xs text-muted">
+                  {new Date(m.created_at).toLocaleDateString('fa-IR')}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

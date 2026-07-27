@@ -64,7 +64,7 @@ export default function AdminProjectsPage() {
         <div className="mb-6 rounded-2xl bg-surface p-5 shadow-sm">
           <h3 className="mb-4 text-sm font-semibold text-default">پروژه جدید</h3>
           <form onSubmit={handleCreateProject} className="space-y-3" dir="rtl">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-subtle">نام پروژه</label>
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} required
@@ -87,14 +87,14 @@ export default function AdminProjectsPage() {
 
       <div className="grid gap-3">
         {projects.map((project) => (
-          <div key={project.id} className="flex items-center justify-between rounded-2xl bg-surface p-5 shadow-sm transition-all hover:shadow-md">
-            <div>
-              <h3 className="font-semibold text-default">{project.name}</h3>
-              {project.description && <p className="mt-0.5 text-sm text-subtle">{project.description}</p>}
+          <div key={project.id} className="flex flex-col gap-3 rounded-2xl bg-surface p-4 shadow-sm transition-all hover:shadow-md sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-default truncate">{project.name}</h3>
+              {project.description && <p className="mt-0.5 text-sm text-subtle line-clamp-1">{project.description}</p>}
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => router.push(`/projects/${project.id}/board`)}
-                className="rounded-xl bg-admin-subtle px-3.5 py-2 text-xs font-medium text-admin transition-colors hover:bg-admin hover:text-white">
+                className="flex-1 sm:flex-none rounded-xl bg-admin-subtle px-3.5 py-2 text-xs font-medium text-admin transition-colors hover:bg-admin hover:text-white text-center">
                 ورود به بورد
               </button>
               <button onClick={() => handleDeleteProject(project.id)}

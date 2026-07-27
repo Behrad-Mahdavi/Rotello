@@ -38,10 +38,10 @@ export default function ProjectsListPage() {
             </div>
             <span className="text-sm font-bold text-default">رکاد</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button onClick={() => router.push('/profile')}
-              className="flex items-center gap-2 rounded-xl bg-action-subtle px-3 py-1.5 text-xs font-medium text-action transition-colors hover:bg-action hover:text-on-dark">
-              <span>{profile?.full_name}</span>
+              className="flex items-center gap-1.5 rounded-xl bg-action-subtle px-2.5 py-1.5 text-xs font-medium text-action transition-colors hover:bg-action hover:text-on-dark sm:gap-2 sm:px-3">
+              <span className="hidden sm:inline">{profile?.full_name}</span>
               <span className="rounded-full bg-warning-subtle px-2 py-0.5 text-xp">{profile?.xp_total} XP</span>
             </button>
             <LogoutButton minimal />
