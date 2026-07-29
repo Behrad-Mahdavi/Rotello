@@ -39,9 +39,10 @@ export default function TaskColumn({ id, title, tasks, canDragTask, onTaskClick 
 
       <div
         ref={setNodeRef}
-        className={`flex min-h-[100px] flex-1 flex-col gap-1.5 px-1.5 pb-1.5 transition-colors sm:gap-2 sm:px-2 sm:pb-2 ${
+        className={`flex min-h-[100px] flex-1 flex-col gap-1.5 px-1.5 pb-1.5 transition-colors overflow-y-auto scrollbar-thin sm:gap-2 sm:px-2 sm:pb-2 ${
           isOver ? 'bg-emerald-500/5' : ''
         }`}
+        style={{ maxHeight: 'calc(100vh - 180px)' }}
       >
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tasks.map((task) => (
