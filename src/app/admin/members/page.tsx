@@ -9,8 +9,10 @@ import type { Profile } from '@/utils/database.types'
 export default function AdminMembersPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [members, setMembers] = useState<Profile[]>([])
+  const [assignments, setAssignments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
@@ -26,7 +28,10 @@ export default function AdminMembersPage() {
       if (prof?.role !== 'admin') { router.push('/projects'); return }
       setProfile(prof)
       const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
-      if (data) setMembers(data); setLoading(false)
+      if (data) setMembers(data)
+      const { data: assignData } = await supabase.from('task_assignees').select('user_id, tasks(id, title, status, deadline)')
+      if (assignData) setAssignments(assignData)
+      setLoading(false)
     }
     load()
   }, [])
@@ -34,6 +39,8 @@ export default function AdminMembersPage() {
   async function reload() {
     const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
     if (data) setMembers(data)
+    const { data: assignData } = await supabase.from('task_assignees').select('user_id, tasks(id, title, status, deadline)')
+    if (assignData) setAssignments(assignData)
   }
 
   async function handleDeleteMember(id: string, name: string) {
@@ -71,18 +78,27 @@ export default function AdminMembersPage() {
       <AppHeader profile={profile} />
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-5">
-        <div className="mb-6 flex items-center justify-between gap-3">
+        <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <h2 className="text-lg font-bold text-default">مدیریت اعضا</h2>
             <p className="text-sm text-muted">{members.length} عضو</p>
           </div>
-          <button onClick={() => setShowForm(!showForm)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-medium text-white transition-all hover:bg-emerald-700 shadow-sm">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            {showForm ? 'لغو' : 'عضو جدید'}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => setShowDetailsModal(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-2 px-3.5 py-2 text-sm font-medium text-default transition-all hover:bg-surface shadow-sm">
+              <svg className="h-4 w-4 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+              مشاهده جزئیات تسک‌ها
+            </button>
+            <button onClick={() => setShowForm(!showForm)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-medium text-white transition-all hover:bg-emerald-700 shadow-sm">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              {showForm ? 'لغو' : 'عضو جدید'}
+            </button>
+          </div>
         </div>
 
         {showForm && (
@@ -159,6 +175,83 @@ export default function AdminMembersPage() {
           </div>
         )}
       </main>
+
+      {showDetailsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setShowDetailsModal(false)}>
+          <div className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-surface p-5 shadow-xl sm:p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 z-10 -mx-5 -mt-5 mb-5 flex items-center justify-between border-b border-border bg-surface px-5 py-3.5 sm:-mx-6 sm:-mt-6 sm:px-6">
+              <h3 className="text-base font-bold text-default">جزئیات تسک‌های اعضا</h3>
+              <button onClick={() => setShowDetailsModal(false)} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-default">✕</button>
+            </div>
+
+            <div className="space-y-4" dir="rtl">
+              {members.filter(m => m.role !== 'admin').map((m) => {
+                const userAssignments = assignments.filter((a) => a.user_id === m.id && a.tasks)
+                return (
+                  <div key={m.id} className="rounded-xl border border-border bg-surface-2/40 p-4">
+                    <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-xs font-bold text-white">
+                          {m.full_name.charAt(0)}
+                        </span>
+                        <h4 className="text-sm font-bold text-default">{m.full_name}</h4>
+                      </div>
+                      <span className="text-xs font-medium text-amber-400">{m.xp_total} XP</span>
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      {userAssignments.length > 0 ? (
+                        userAssignments.map((a) => {
+                          const t = a.tasks
+                          const statusLabels: Record<string, string> = {
+                            backlog: 'بک‌لاگ',
+                            todo: 'صف',
+                            in_progress: 'در حال',
+                            review: 'بازبینی',
+                            done: 'تکمیل',
+                          }
+                          const statusColors: Record<string, string> = {
+                            backlog: 'bg-gray-500/10 text-gray-400 border border-gray-500/20',
+                            todo: 'bg-slate-500/10 text-slate-400 border border-slate-500/20',
+                            in_progress: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+                            review: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
+                            done: 'bg-teal-500/10 text-teal-400 border border-teal-500/20',
+                          }
+                          return (
+                            <div key={t.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2">
+                              <span className="text-xs font-medium text-default line-clamp-1">{t.title}</span>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${statusColors[t.status] || 'bg-gray-500/10 text-gray-400'}`}>
+                                  {statusLabels[t.status] || t.status}
+                                </span>
+                                {t.deadline ? (
+                                  <span className="flex items-center gap-1 text-[10px] text-muted">
+                                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    {new Date(t.deadline).toLocaleDateString('fa-IR')}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-muted">بدون ددلاین</span>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })
+                      ) : (
+                        <div className="flex items-center justify-between rounded-lg border border-dashed border-border/80 bg-surface-2/20 px-3 py-2.5">
+                          <span className="text-xs text-muted">هیچ کار محول‌شده‌ای یافت نشد.</span>
+                          <span className="rounded-full bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-400">بدون تسک</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

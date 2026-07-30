@@ -18,6 +18,7 @@ export default function AppHeader({ profile }: AppHeaderProps) {
     ...(isAdmin ? [{ key: '/admin/members', label: 'مدیریت اعضا' }] : []),
     { key: '/projects', label: 'پروژه‌ها' },
     { key: '/leaderboard', label: 'لیدربورد' },
+    ...(!isAdmin ? [{ key: '/my-tasks', label: 'تسک‌های من' }] : []),
   ]
 
   const activeTab = TABS.find((t) => pathname.startsWith(t.key))?.key || ''
