@@ -34,7 +34,7 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: C
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from('profiles').select('*').eq('role', 'member').order('full_name')
+      const { data } = await supabase.from('profiles').select('*').order('full_name')
       if (data) setMembers(data)
     }
     load()

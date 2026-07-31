@@ -46,7 +46,7 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
         supabase.from('checklists').select('*, items:checklist_items(*)').eq('task_id', taskId).order('sort_order'),
         supabase.from('task_reports').select('*, author:profiles(full_name)').eq('task_id', taskId).order('created_at', { ascending: true }),
         supabase.from('task_assignees').select('user_id').eq('task_id', taskId),
-        profile.role === 'admin' ? supabase.from('profiles').select('*').eq('role', 'member').order('full_name') : null,
+        profile.role === 'admin' ? supabase.from('profiles').select('*').order('full_name') : null,
       ])
       const t = tRes.data
       const cls = clsRes.data
@@ -325,7 +325,7 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
                     {allMembers.filter((m) => editAssigneeIds.includes(m.id)).map((m) => (
                       <span key={m.id}
                         className="inline-flex items-center gap-1.5 rounded-full bg-action-subtle px-2.5 py-1 text-xs font-medium text-action">
-                        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-action text-[9px] font-bold text-white">{m.full_name.charAt(0)}</span>
+                        <span className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white bg-gradient-to-br ${m.role === 'admin' ? 'from-violet-500 to-purple-600' : 'from-emerald-500 to-teal-600'}`}>{m.full_name.charAt(0)}</span>
                         {m.full_name}
                         <button type="button" onClick={() => setEditAssigneeIds((prev) => prev.filter((id) => id !== m.id))}
                           className="text-action/60 transition-colors hover:text-danger" aria-label="حذف">
@@ -348,7 +348,7 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
                         allMembers.filter((m) => !editAssigneeIds.includes(m.id) && m.full_name.toLowerCase().includes(memberSearch.toLowerCase())).map((m) => (
                           <button key={m.id} type="button" onClick={() => setEditAssigneeIds((prev) => [...prev, m.id])}
                             className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-default transition-colors hover:bg-surface">
-                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-action text-[10px] font-bold text-white">{m.full_name.charAt(0)}</span>
+                            <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white bg-gradient-to-br ${m.role === 'admin' ? 'from-violet-500 to-purple-600' : 'from-emerald-500 to-teal-600'}`}>{m.full_name.charAt(0)}</span>
                             {m.full_name}
                           </button>
                         ))
