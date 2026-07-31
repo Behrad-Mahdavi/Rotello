@@ -58,13 +58,18 @@ export default function DashboardPage() {
       const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (!prof || prof.role !== 'admin') { router.push('/projects'); return }
 
-      const { data: projects } = await supabase.from('projects').select('*')
-      const { data: tasks } = await supabase.from('tasks').select('*')
-      const { data: members } = await supabase.from('profiles').select('*')
+      const [projectsRes, tasksRes, membersRes] = await Promise.all([
+        supabase.from('projects').select('*'),
+        supabase.from('tasks').select('*'),
+        supabase.from('profiles').select('*'),
+      ])
+      const projects: Project[] = projectsRes.data || []
+      const tasks: Task[] = tasksRes.data || []
+      const members: Profile[] = membersRes.data || []
 
-      const pList = projects || []
-      const tList = tasks || []
-      const mList = members || []
+      const pList = projects
+      const tList = tasks
+      const mList = members
       const doneTasks = tList.filter((t) => t.status === 'done').length
       const activeProjects = pList.filter(() => true).length
 

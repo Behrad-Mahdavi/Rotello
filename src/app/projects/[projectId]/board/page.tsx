@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, use } from 'react'
+import { useEffect, useState, useCallback, use, useMemo } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
@@ -46,20 +46,26 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
-      const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      setProfile(prof)
-      const { data: proj } = await supabase.from('projects').select('*').eq('id', projectId).single()
-      setProject(proj)
-      const { data: t } = await supabase.from('tasks').select('*').eq('project_id', projectId).order('created_at', { ascending: true })
-      if (t) setTasks(t)
-      const { data: aa } = await supabase.from('task_assignees').select('task_id').eq('user_id', user.id)
-      if (aa) setMyAssigneeTaskIds(aa.map((a) => a.task_id))
+      const [profRes, projRes, tasksRes, assigneeRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('projects').select('*').eq('id', projectId).single(),
+        supabase.from('tasks').select('*').eq('project_id', projectId).order('created_at', { ascending: true }),
+        supabase.from('task_assignees').select('task_id').eq('user_id', user.id),
+      ])
+      if (profRes.data) setProfile(profRes.data)
+      if (projRes.data) setProject(projRes.data)
+      if (tasksRes.data) setTasks(tasksRes.data)
+      if (assigneeRes.data) setMyAssigneeTaskIds(assigneeRes.data.map((a: { task_id: string }) => a.task_id))
       setLoading(false)
     }
     load()
   }, [projectId])
 
-  const getTasksByStatus = (s: TaskStatus) => tasks.filter((t) => t.status === s)
+  const tasksByStatus = useMemo(() => {
+    const grouped: Record<TaskStatus, Task[]> = { backlog: [], todo: [], in_progress: [], review: [], done: [] }
+    for (const t of tasks) grouped[t.status]?.push(t)
+    return grouped
+  }, [tasks])
 
   const canDragTask = useCallback((task: Task) => {
     if (!profile) return false
@@ -140,7 +146,7 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
           <div className="flex h-full gap-2 sm:gap-3" style={{ minWidth: COLUMNS.length * 252 + (COLUMNS.length - 1) * 8 }}>
             {COLUMNS.map((col) => (
               <TaskColumn key={col.id} id={col.id} title={col.title}
-                tasks={getTasksByStatus(col.id)} canDragTask={canDragTask} onTaskClick={setSelectedTask} />
+                tasks={tasksByStatus[col.id] || []} canDragTask={canDragTask} onTaskClick={setSelectedTask} />
             ))}
           </div>
           <DragOverlay>

@@ -27,19 +27,25 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
 
   useEffect(() => {
     async function load() {
-      const { data: t } = await supabase.from('tasks').select('*').eq('id', taskId).single()
+      const [tRes, clsRes, rptsRes, aaRes] = await Promise.all([
+        supabase.from('tasks').select('*').eq('id', taskId).single(),
+        supabase.from('checklists').select('*, items:checklist_items(*)').eq('task_id', taskId).order('sort_order'),
+        supabase.from('task_reports').select('*, author:profiles(full_name)').eq('task_id', taskId).order('created_at', { ascending: true }),
+        supabase.from('task_assignees').select('user_id').eq('task_id', taskId),
+      ])
+      const t = tRes.data
+      const cls = clsRes.data
+      const rpts = rptsRes.data
+      const aa = aaRes.data
       if (t) setTask(t)
-      const { data: cls } = await supabase.from('checklists').select('*, items:checklist_items(*)').eq('task_id', taskId).order('sort_order')
       if (cls) setChecklists(cls as unknown as WithItems[])
-      const { data: rpts } = await supabase.from('task_reports').select('*, author:profiles(full_name)').eq('task_id', taskId).order('created_at', { ascending: true })
       if (rpts) setReports(rpts as unknown as WithAuthor[])
-      const { data: aa } = await supabase.from('task_assignees').select('user_id').eq('task_id', taskId)
       if (aa) {
-        const userIds = aa.map((a) => a.user_id)
+        const userIds = aa.map((a: { user_id: string }) => a.user_id)
         setIsAssignee(userIds.includes(profile.id))
         if (userIds.length > 0) {
           const { data: profs } = await supabase.from('profiles').select('*').in('id', userIds)
-          if (profs) setAssignees(profs)
+          if (profs) setAssignees(profs as unknown as Profile[])
         }
       }
       setLoading(false)

@@ -27,10 +27,12 @@ export default function AdminMembersPage() {
       const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (prof?.role !== 'admin') { router.push('/projects'); return }
       setProfile(prof)
-      const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
-      if (data) setMembers(data)
-      const { data: assignData } = await supabase.from('task_assignees').select('user_id, tasks(id, title, status, deadline)')
-      if (assignData) setAssignments(assignData)
+      const [membersRes, assignRes] = await Promise.all([
+        supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+        supabase.from('task_assignees').select('user_id, tasks(id, title, status, deadline)'),
+      ])
+      if (membersRes.data) setMembers(membersRes.data)
+      if (assignRes.data) setAssignments(assignRes.data)
       setLoading(false)
     }
     load()

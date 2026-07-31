@@ -58,7 +58,7 @@ export default function MyTasksPage() {
         .eq('user_id', user.id)
 
       if (assignData && assignData.length > 0) {
-        const taskIds = assignData.map((a) => a.task_id)
+        const taskIds = assignData.map((a: { task_id: string }) => a.task_id)
 
         const { data: fullTasks } = await supabase
           .from('tasks')
@@ -67,16 +67,17 @@ export default function MyTasksPage() {
           .order('created_at', { ascending: false })
 
         if (fullTasks) {
-          const projectIds = [...new Set(fullTasks.map((t) => t.project_id))] as string[]
+          const taskList = fullTasks as Task[]
+          const projectIds = [...new Set(taskList.map((t) => t.project_id))] as string[]
 
           const { data: projects } = await supabase
             .from('projects')
             .select('id, name')
             .in('id', projectIds)
 
-          const projectMap = new Map(projects?.map((p) => [p.id, p.name]) || [])
+          const projectMap = new Map<string, string>(projects?.map((p: { id: string; name: string }) => [p.id, p.name]) || [])
 
-          const enriched = fullTasks.map((t) => ({
+          const enriched = taskList.map((t) => ({
             ...t,
             project_name: projectMap.get(t.project_id) || 'پروژه ناشناخته',
           }))
