@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import type { Task, Profile, Checklist, ChecklistItem, TaskReport } from '@/utils/database.types'
 
@@ -9,12 +9,13 @@ interface TaskDetailModalProps {
   onClose: () => void
   profile: Profile
   onTaskDeleted?: (taskId: string) => void
+  onTaskUpdated?: (task: Task) => void
 }
 
 type WithItems = Checklist & { items: ChecklistItem[] }
 type WithAuthor = TaskReport & { author: { full_name: string } }
 
-export default function TaskDetailModal({ taskId, onClose, profile, onTaskDeleted }: TaskDetailModalProps) {
+export default function TaskDetailModal({ taskId, onClose, profile, onTaskDeleted, onTaskUpdated }: TaskDetailModalProps) {
   const [task, setTask] = useState<Task | null>(null)
   const [assignees, setAssignees] = useState<Profile[]>([])
   const [checklists, setChecklists] = useState<WithItems[]>([])
@@ -23,15 +24,29 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
   const [isAssignee, setIsAssignee] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  const [isEditing, setIsEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editXpValue, setEditXpValue] = useState(0)
+  const [editDeadline, setEditDeadline] = useState('')
+  const [editPriority, setEditPriority] = useState<Task['priority']>('normal')
+  const [editAssigneeIds, setEditAssigneeIds] = useState<string[]>([])
+  const [allMembers, setAllMembers] = useState<Profile[]>([])
+  const [memberSearch, setMemberSearch] = useState('')
+  const [memberDropdownOpen, setMemberDropdownOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const memberDropdownRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
   useEffect(() => {
     async function load() {
-      const [tRes, clsRes, rptsRes, aaRes] = await Promise.all([
+      const [tRes, clsRes, rptsRes, aaRes, memRes] = await Promise.all([
         supabase.from('tasks').select('*').eq('id', taskId).single(),
         supabase.from('checklists').select('*, items:checklist_items(*)').eq('task_id', taskId).order('sort_order'),
         supabase.from('task_reports').select('*, author:profiles(full_name)').eq('task_id', taskId).order('created_at', { ascending: true }),
         supabase.from('task_assignees').select('user_id').eq('task_id', taskId),
+        profile.role === 'admin' ? supabase.from('profiles').select('*').eq('role', 'member').order('full_name') : null,
       ])
       const t = tRes.data
       const cls = clsRes.data
@@ -43,15 +58,77 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
       if (aa) {
         const userIds = aa.map((a: { user_id: string }) => a.user_id)
         setIsAssignee(userIds.includes(profile.id))
+        setEditAssigneeIds(userIds)
         if (userIds.length > 0) {
           const { data: profs } = await supabase.from('profiles').select('*').in('id', userIds)
           if (profs) setAssignees(profs as unknown as Profile[])
         }
       }
+      if (memRes) setAllMembers(memRes.data as unknown as Profile[])
       setLoading(false)
     }
     load()
   }, [taskId])
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (memberDropdownRef.current && !memberDropdownRef.current.contains(e.target as Node)) {
+        setMemberDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  function startEditing() {
+    if (!task) return
+    setEditTitle(task.title)
+    setEditDescription(task.description || '')
+    setEditXpValue(task.xp_value)
+    setEditDeadline(task.deadline ? task.deadline.slice(0, 10) : '')
+    setEditPriority(task.priority)
+    setMemberSearch('')
+    setMemberDropdownOpen(false)
+    setIsEditing(true)
+  }
+
+  async function handleSave() {
+    if (!task) return
+    if (!editTitle.trim()) { setError('عنوان تسک نمی‌تواند خالی باشد.'); return }
+    setSaving(true)
+    setError('')
+    const { error: err } = await supabase.from('tasks').update({
+      title: editTitle.trim(),
+      description: editDescription.trim() || null,
+      xp_value: editXpValue,
+      deadline: editDeadline || null,
+      priority: editPriority,
+    }).eq('id', taskId)
+    if (err) { setError(err.message); setSaving(false); return }
+
+    const { data: existing, error: errExisting } = await supabase.from('task_assignees').select('user_id').eq('task_id', taskId)
+    if (errExisting) { setError(errExisting.message); setSaving(false); return }
+    const currentIds: string[] = ((existing as { user_id: string }[]) || []).map((r) => r.user_id)
+    const toRemove = currentIds.filter((id) => !editAssigneeIds.includes(id))
+    const toAdd = editAssigneeIds.filter((id) => !currentIds.includes(id))
+
+    const ops: Promise<{ error: { message: string } | null }>[] = []
+    if (toRemove.length > 0) ops.push(supabase.from('task_assignees').delete().eq('task_id', taskId).in('user_id', toRemove))
+    if (toAdd.length > 0) ops.push(supabase.from('task_assignees').insert(toAdd.map((user_id) => ({ task_id: taskId, user_id }))))
+    const results = await Promise.all(ops)
+    const assignErr = results.find((r) => r.error)
+    if (assignErr) { setError(assignErr.error!.message); setSaving(false); return }
+
+    const { data: profs } = await supabase.from('profiles').select('*').in('id', editAssigneeIds.length > 0 ? editAssigneeIds : [''])
+    if (profs) setAssignees(profs as unknown as Profile[])
+    setIsAssignee(editAssigneeIds.includes(profile.id))
+
+    const updated: Task = { ...task, title: editTitle.trim(), description: editDescription.trim() || null, xp_value: editXpValue, deadline: editDeadline || null, priority: editPriority }
+    setTask(updated)
+    onTaskUpdated?.(updated)
+    setIsEditing(false)
+    setSaving(false)
+  }
 
   async function toggleChecklistItem(item: ChecklistItem) {
     const newDone = !item.is_done
@@ -140,8 +217,15 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
         <div className="sticky top-0 z-10 border-b border-border bg-surface px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
-              <h2 className="text-sm font-semibold text-default sm:text-base">{task.title}</h2>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
+              {isEditing ? (
+                <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="عنوان تسک"
+                  className="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm font-semibold text-default transition-colors placeholder:text-muted focus:border-action/50 focus:outline-none" />
+              ) : (
+                <h2 className="text-sm font-semibold text-default sm:text-base">{task.title}</h2>
+              )}
+              {!isEditing && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[task.status]}`}>
                   {STATUS_LABEL[task.status]}
                 </span>
@@ -175,8 +259,17 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
                   )
                 })()}
               </div>
+              )}
             </div>
             <div className="flex items-center gap-1.5">
+              {canEdit && !isEditing && (
+                <button onClick={startEditing}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-default">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                  </svg>
+                </button>
+              )}
               {canEdit && (
                 <button onClick={handleDeleteTask}
                   className="flex h-8 w-8 items-center justify-center rounded-lg text-danger/60 transition-colors hover:bg-danger-subtle hover:text-danger">
@@ -191,7 +284,95 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
         </div>
 
         <div className="space-y-5 p-4 sm:space-y-6 sm:p-5">
-          {task.description && (
+          {isEditing && (
+            <div className="space-y-4">
+              <div>
+                <h4 className="mb-1.5 text-xs font-semibold text-muted">توضیحات تسک</h4>
+                <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="توضیحات تسک..."
+                  rows={3}
+                  className="block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors placeholder:text-muted focus:border-action/50 focus:bg-surface focus:outline-none" />
+              </div>
+
+              <div>
+                <h4 className="mb-1.5 text-xs font-semibold text-muted">میزان XP</h4>
+                <input type="number" min={0} value={editXpValue} onChange={(e) => setEditXpValue(Math.max(0, Number(e.target.value)))}
+                  className="block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors focus:border-action/50 focus:bg-surface focus:outline-none" />
+              </div>
+
+              <div>
+                <h4 className="mb-1.5 text-xs font-semibold text-muted">ددلاین</h4>
+                <input type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)}
+                  className="block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors [color-scheme:dark] focus:border-action/50 focus:bg-surface focus:outline-none" />
+              </div>
+
+              <div>
+                <h4 className="mb-1.5 text-xs font-semibold text-muted">سطح فوریت</h4>
+                <div className="flex gap-2">
+                  {(['normal', 'important', 'urgent'] as const).map((p) => (
+                    <button key={p} type="button" onClick={() => setEditPriority(p)}
+                      className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${editPriority === p ? `${PRIORITY_BADGE[p]} border-current` : 'border-border text-muted hover:bg-surface-2'}`}>
+                      {PRIORITY_LABEL[p]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div ref={memberDropdownRef}>
+                <h4 className="mb-1.5 text-xs font-semibold text-muted">مسئولین</h4>
+                {editAssigneeIds.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {allMembers.filter((m) => editAssigneeIds.includes(m.id)).map((m) => (
+                      <span key={m.id}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-action-subtle px-2.5 py-1 text-xs font-medium text-action">
+                        <span className="flex h-4 w-4 items-center justify-center rounded-full bg-action text-[9px] font-bold text-white">{m.full_name.charAt(0)}</span>
+                        {m.full_name}
+                        <button type="button" onClick={() => setEditAssigneeIds((prev) => prev.filter((id) => id !== m.id))}
+                          className="text-action/60 transition-colors hover:text-danger" aria-label="حذف">
+                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="relative">
+                  <input value={memberSearch} onChange={(e) => { setMemberSearch(e.target.value); setMemberDropdownOpen(true) }}
+                    onFocus={() => setMemberDropdownOpen(true)}
+                    placeholder="جستجوی اعضا برای افزودن مسئول..."
+                    className="block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors placeholder:text-muted focus:border-action/50 focus:bg-surface focus:outline-none" />
+                  {memberDropdownOpen && (
+                    <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border bg-surface-2 shadow-lg">
+                      {allMembers.filter((m) => !editAssigneeIds.includes(m.id) && m.full_name.toLowerCase().includes(memberSearch.toLowerCase())).length === 0 ? (
+                        <p className="px-3 py-2 text-xs text-muted">عضوی یافت نشد.</p>
+                      ) : (
+                        allMembers.filter((m) => !editAssigneeIds.includes(m.id) && m.full_name.toLowerCase().includes(memberSearch.toLowerCase())).map((m) => (
+                          <button key={m.id} type="button" onClick={() => setEditAssigneeIds((prev) => [...prev, m.id])}
+                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-default transition-colors hover:bg-surface">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-action text-[10px] font-bold text-white">{m.full_name.charAt(0)}</span>
+                            {m.full_name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 border-t border-border pt-3">
+                <button onClick={handleSave} disabled={saving}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-action px-4 py-2 text-xs font-medium text-white shadow-sm transition-all hover:bg-action-hover disabled:opacity-50">
+                  {saving ? 'در حال ذخیره...' : 'ذخیره تغییرات'}
+                </button>
+                <button onClick={() => setIsEditing(false)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-surface-2 px-4 py-2 text-xs font-medium text-muted transition-colors hover:text-default">
+                  انصراف
+                </button>
+                {error && <span className="text-xs text-danger">{error}</span>}
+              </div>
+            </div>
+          )}
+
+          {!isEditing && task.description && (
             <div>
               <h4 className="mb-1.5 text-xs font-semibold text-muted">توضیحات</h4>
               <p className="text-sm text-default whitespace-pre-wrap leading-relaxed">{task.description}</p>

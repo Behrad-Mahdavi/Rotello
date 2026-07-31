@@ -163,7 +163,8 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
       </div>
 
       {selectedTask && <TaskDetailModal taskId={selectedTask.id} onClose={() => setSelectedTask(null)} profile={profile}
-        onTaskDeleted={(id) => setTasks((prev) => prev.filter((t) => t.id !== id))} />}
+        onTaskDeleted={(id) => setTasks((prev) => prev.filter((t) => t.id !== id))}
+        onTaskUpdated={(updated) => setTasks((prev) => prev.map((t) => t.id === updated.id ? updated : t))} />}
       {showCreateModal && (
         <CreateTaskModal projectId={projectId} onClose={() => setShowCreateModal(false)}
           onTaskCreated={(task) => { setTasks((prev) => [...prev, task]); setShowCreateModal(false) }} />
