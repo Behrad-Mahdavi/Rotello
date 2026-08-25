@@ -325,3 +325,14 @@ begin
 
 end;
 $$ language plpgsql security definer;
+
+-- INDEXES FOR MAXIMUM QUERY SPEED --
+create index if not exists idx_tasks_project_id on public.tasks(project_id);
+create index if not exists idx_tasks_status on public.tasks(status);
+create index if not exists idx_tasks_created_by on public.tasks(created_by);
+create index if not exists idx_task_assignees_user_id on public.task_assignees(user_id);
+create index if not exists idx_task_assignees_task_id on public.task_assignees(task_id);
+create index if not exists idx_checklists_task_id on public.checklists(task_id);
+create index if not exists idx_checklist_items_checklist_id on public.checklist_items(checklist_id);
+create index if not exists idx_task_reports_task_id on public.task_reports(task_id);
+

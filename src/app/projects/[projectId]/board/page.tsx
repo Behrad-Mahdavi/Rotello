@@ -44,7 +44,8 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
   useEffect(() => {
     if (!projectId) return
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       if (!user) { router.push('/login'); return }
       const [profRes, projRes, tasksRes, assigneeRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),

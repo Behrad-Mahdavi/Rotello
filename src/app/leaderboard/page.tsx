@@ -23,12 +23,17 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       if (!user) { router.push('/login'); return }
-      const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      setProfile(prof)
-      const { data } = await supabase.from('profiles').select('*').neq('role', 'admin').order('xp_total', { ascending: false })
-      if (data) setMembers(data)
+
+      const [profRes, membersRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('profiles').select('*').neq('role', 'admin').order('xp_total', { ascending: false }),
+      ])
+
+      if (profRes.data) setProfile(profRes.data)
+      if (membersRes.data) setMembers(membersRes.data)
       setLoading(false)
     }
     load()

@@ -45,7 +45,7 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
         supabase.from('tasks').select('*').eq('id', taskId).single(),
         supabase.from('checklists').select('*, items:checklist_items(*)').eq('task_id', taskId).order('sort_order'),
         supabase.from('task_reports').select('*, author:profiles(full_name)').eq('task_id', taskId).order('created_at', { ascending: true }),
-        supabase.from('task_assignees').select('user_id').eq('task_id', taskId),
+        supabase.from('task_assignees').select('user_id, profile:profiles(*)').eq('task_id', taskId),
         profile.role === 'admin' ? supabase.from('profiles').select('*').order('full_name') : null,
       ])
       const t = tRes.data
@@ -57,12 +57,12 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
       if (rpts) setReports(rpts as unknown as WithAuthor[])
       if (aa) {
         const userIds = aa.map((a: { user_id: string }) => a.user_id)
+        const profsList = (aa as unknown as { profile: Profile | null }[])
+          .map((a) => a.profile)
+          .filter(Boolean) as Profile[]
         setIsAssignee(userIds.includes(profile.id))
         setEditAssigneeIds(userIds)
-        if (userIds.length > 0) {
-          const { data: profs } = await supabase.from('profiles').select('*').in('id', userIds)
-          if (profs) setAssignees(profs as unknown as Profile[])
-        }
+        setAssignees(profsList)
       }
       if (memRes) setAllMembers(memRes.data as unknown as Profile[])
       setLoading(false)

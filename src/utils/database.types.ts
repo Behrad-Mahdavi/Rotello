@@ -71,3 +71,44 @@ export type TaskWithRelations = Task & {
   assignees: (TaskAssignee & { profile: Pick<Profile, 'id' | 'full_name'> })[]
   checklists: (Checklist & { items: ChecklistItem[] })[]
 }
+
+export type EventStatus = 'planning' | 'ready' | 'in_progress' | 'completed' | 'cancelled'
+
+export interface Event {
+  id: string
+  title: string
+  description: string | null
+  event_date: string | null
+  location: string | null
+  target_audience: string | null
+  lead_id: string
+  status: EventStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface EventChecklistItem {
+  id: string
+  event_id: string
+  category_key: string
+  category_title: string
+  title: string
+  is_done: boolean
+  notes: string | null
+  assignee_id: string | null
+  done_by: string | null
+  done_at: string | null
+  sort_order: number
+  created_at: string
+}
+
+export interface EventChecklistItemWithRelations extends EventChecklistItem {
+  assignee?: Pick<Profile, 'id' | 'full_name'> | null
+  done_by_user?: Pick<Profile, 'id' | 'full_name'> | null
+}
+
+export interface EventWithRelations extends Event {
+  lead?: Pick<Profile, 'id' | 'full_name'> | null
+  items?: EventChecklistItemWithRelations[]
+}
+

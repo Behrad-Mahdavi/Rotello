@@ -40,7 +40,7 @@ export async function proxy(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    const role = profile?.role
+    const role = profile?.role || (user.user_metadata?.role as string | undefined)
 
     if (path === '/login') {
       return NextResponse.redirect(

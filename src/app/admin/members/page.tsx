@@ -6,10 +6,15 @@ import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
 import type { Profile } from '@/utils/database.types'
 
+interface MemberAssignment {
+  user_id: string
+  tasks: { id: string; title: string; status: string; deadline: string | null } | null
+}
+
 export default function AdminMembersPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [members, setMembers] = useState<Profile[]>([])
-  const [assignments, setAssignments] = useState<any[]>([])
+  const [assignments, setAssignments] = useState<MemberAssignment[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
@@ -22,15 +27,19 @@ export default function AdminMembersPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       if (!user) { router.push('/login'); return }
-      const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      if (prof?.role !== 'admin') { router.push('/projects'); return }
-      setProfile(prof)
-      const [membersRes, assignRes] = await Promise.all([
+
+      const [profRes, membersRes, assignRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('task_assignees').select('user_id, tasks(id, title, status, deadline)'),
       ])
+
+      const prof = profRes.data
+      if (prof?.role !== 'admin') { router.push('/projects'); return }
+      setProfile(prof)
       if (membersRes.data) setMembers(membersRes.data)
       if (assignRes.data) setAssignments(assignRes.data)
       setLoading(false)
@@ -205,6 +214,7 @@ export default function AdminMembersPage() {
                       {userAssignments.length > 0 ? (
                         userAssignments.map((a) => {
                           const t = a.tasks
+                          if (!t) return null
                           const statusLabels: Record<string, string> = {
                             backlog: 'بک‌لاگ',
                             todo: 'صف',

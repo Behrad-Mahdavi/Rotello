@@ -52,17 +52,20 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       if (!user) { router.push('/login'); return }
 
-      const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      if (!prof || prof.role !== 'admin') { router.push('/projects'); return }
-
-      const [projectsRes, tasksRes, membersRes] = await Promise.all([
+      const [profRes, projectsRes, tasksRes, membersRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('projects').select('*'),
         supabase.from('tasks').select('*'),
         supabase.from('profiles').select('*'),
       ])
+
+      const prof = profRes.data
+      if (!prof || prof.role !== 'admin') { router.push('/projects'); return }
+
       const projects: Project[] = projectsRes.data || []
       const tasks: Task[] = tasksRes.data || []
       const members: Profile[] = membersRes.data || []
