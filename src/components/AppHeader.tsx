@@ -44,7 +44,7 @@ export default function AppHeader({ profile }: AppHeaderProps) {
             <h1 className="text-xs sm:text-sm md:text-base font-bold tracking-tight text-default group-hover:text-action transition-colors">
               باشگاه کسب و کار رکاد
             </h1>
-            <p className="hidden text-[11px] text-muted sm:block">مدیریت پروژه و کارها</p>
+            <p className="hidden text-[11px] text-muted sm:block">سیستم مدیریت پروژه و کارها</p>
           </div>
         </div>
 
