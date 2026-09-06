@@ -34,7 +34,7 @@ export default function AppHeader({ profile }: AppHeaderProps) {
           <div className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl shadow-sm border border-white/10 group-hover:scale-105 transition-transform shrink-0">
             <Image 
               src="/logo-main.jpg" 
-              alt="باشگاه کسب و کار رکاد" 
+              alt="باشگاه کسب و کار رکاد " 
               width={36} 
               height={36} 
               className="h-full w-full object-cover" 
