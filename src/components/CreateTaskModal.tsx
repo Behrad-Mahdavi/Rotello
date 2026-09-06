@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import PersianDatePicker from './PersianDatePicker'
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import type { Task, Profile, TaskPriority } from '@/utils/database.types'
 
 
@@ -15,6 +16,7 @@ interface CreateTaskModalProps {
 interface CL { title: string; items: string[] }
 
 export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: CreateTaskModalProps) {
+  useBodyScrollLock(true)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [xpValue, setXpValue] = useState(0)
@@ -85,7 +87,7 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: C
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full overflow-y-auto rounded-t-2xl border border-border bg-surface shadow-lg sm:max-h-[85vh] sm:max-w-lg sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[90vh] w-full overflow-y-auto overscroll-contain rounded-t-2xl border border-border bg-surface shadow-lg sm:max-h-[85vh] sm:max-w-lg sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 z-10 border-b border-border bg-surface px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-default">تسک جدید</h2>

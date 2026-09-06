@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
 import PersianDatePicker from '@/components/PersianDatePicker'
 import { formatToPersianDate } from '@/utils/jalaali'
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import type { Project, Profile } from '@/utils/database.types'
 
 export default function AdminProjectsPage() {
@@ -19,6 +20,7 @@ export default function AdminProjectsPage() {
   const [error, setError] = useState('')
   const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  useBodyScrollLock(!!projectToDelete)
   const router = useRouter()
   const supabase = createClient()
 

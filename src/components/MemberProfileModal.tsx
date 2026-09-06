@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import type { Profile, XpAdjustment } from '@/utils/database.types'
 import MemberXpModal from './MemberXpModal'
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 
 interface CompletedTaskItem {
   id: string
@@ -32,6 +33,7 @@ export default function MemberProfileModal({
   currentProfile,
   onXpChanged,
 }: MemberProfileModalProps) {
+  useBodyScrollLock(isOpen)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [completedTasks, setCompletedTasks] = useState<CompletedTaskItem[]>([])
   const [adjustments, setAdjustments] = useState<XpAdjustment[]>([])
@@ -166,7 +168,7 @@ export default function MemberProfileModal({
           </div>
 
           {/* Modal Body */}
-          <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-6">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-16 text-sm text-muted">
                 <div className="h-7 w-7 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent mb-3" />

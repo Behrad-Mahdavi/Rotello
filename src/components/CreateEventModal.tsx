@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { generateDefaultChecklistItems } from '@/constants/eventChecklistTemplate'
 import PersianDatePicker from './PersianDatePicker'
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import type { Profile, Event } from '@/utils/database.types'
 
 interface CreateEventModalProps {
@@ -17,6 +18,7 @@ export default function CreateEventModal({
   onClose,
   onEventCreated,
 }: CreateEventModalProps) {
+  useBodyScrollLock(true)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [eventDate, setEventDate] = useState('')
@@ -98,7 +100,7 @@ export default function CreateEventModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto" dir="rtl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto overscroll-contain" dir="rtl">
       <div className="relative w-full max-w-lg rounded-2xl border border-border bg-surface shadow-2xl p-6 transition-all">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border pb-4">

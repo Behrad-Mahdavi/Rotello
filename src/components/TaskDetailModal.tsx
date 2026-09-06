@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client'
 import MemberProfileModal from './MemberProfileModal'
 import PersianDatePicker from './PersianDatePicker'
 import { formatToPersianDate } from '@/utils/jalaali'
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import type { Task, Profile, Checklist, ChecklistItem, TaskReport } from '@/utils/database.types'
 
 
@@ -21,6 +22,7 @@ type WithItems = Checklist & { items: ChecklistItem[] }
 type WithAuthor = TaskReport & { author: { full_name: string } }
 
 export default function TaskDetailModal({ taskId, onClose, profile, onTaskDeleted, onTaskUpdated }: TaskDetailModalProps) {
+  useBodyScrollLock(true)
   const [task, setTask] = useState<Task | null>(null)
   const [assignees, setAssignees] = useState<Profile[]>([])
   const [checklists, setChecklists] = useState<WithItems[]>([])
@@ -229,7 +231,7 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full overflow-y-auto rounded-t-2xl border border-border bg-surface shadow-lg sm:max-h-[85vh] sm:max-w-xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[90vh] w-full overflow-y-auto overscroll-contain rounded-t-2xl border border-border bg-surface shadow-lg sm:max-h-[85vh] sm:max-w-xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 z-10 border-b border-border bg-surface px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">

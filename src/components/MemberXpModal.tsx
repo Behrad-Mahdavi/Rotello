@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import type { Profile, XpAdjustment } from '@/utils/database.types'
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 
 interface MemberXpModalProps {
   isOpen: boolean
@@ -19,6 +20,7 @@ export default function MemberXpModal({
   initialType = 'reward',
   onSuccess,
 }: MemberXpModalProps) {
+  useBodyScrollLock(isOpen)
   const [activeTab, setActiveTab] = useState<'reward' | 'penalty'>(initialType)
   const [amount, setAmount] = useState<number | ''>(50)
   const [reason, setReason] = useState('')
@@ -115,7 +117,7 @@ export default function MemberXpModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-surface p-5 shadow-2xl sm:p-6"
+        className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl border border-border bg-surface p-5 shadow-2xl sm:p-6"
         onClick={(e) => e.stopPropagation()}
         dir="rtl"
       >

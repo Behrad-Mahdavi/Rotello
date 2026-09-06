@@ -8,6 +8,7 @@ import AppHeader from '@/components/AppHeader'
 import MemberXpModal from '@/components/MemberXpModal'
 import MemberProfileModal from '@/components/MemberProfileModal'
 import { formatToPersianDate } from '@/utils/jalaali'
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import type { Profile } from '@/utils/database.types'
 
 interface MemberAssignment {
@@ -32,6 +33,7 @@ export default function AdminMembersPage() {
   const [error, setError] = useState('')
   const [memberToDelete, setMemberToDelete] = useState<{ id: string; name: string } | null>(null)
   const [isDeletingMember, setIsDeletingMember] = useState(false)
+  useBodyScrollLock(showDetailsModal || !!memberToDelete)
   const router = useRouter()
   const supabase = createClient()
 
@@ -252,7 +254,7 @@ export default function AdminMembersPage() {
 
       {showDetailsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setShowDetailsModal(false)}>
-          <div className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-border bg-surface p-5 shadow-xl sm:p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-2xl border border-border bg-surface p-5 shadow-xl sm:p-6" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 z-10 -mx-5 -mt-5 mb-5 flex items-center justify-between border-b border-border bg-surface px-5 py-3.5 sm:-mx-6 sm:-mt-6 sm:px-6">
               <h3 className="text-base font-bold text-default">جزئیات تسک‌های اعضا</h3>
               <button onClick={() => setShowDetailsModal(false)} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-default">✕</button>
