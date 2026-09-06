@@ -121,25 +121,25 @@ export default function AdminProjectsPage() {
             ]
             const g = gradients[i % gradients.length]
             return (
-              <div key={project.id} className="group relative overflow-hidden rounded-xl border border-border bg-surface pt-0 shadow-sm transition-all hover:shadow-md">
-                <div className={`h-1.5 w-full bg-gradient-to-r ${g}`} />
+              <div key={project.id} className="group relative overflow-hidden rounded-2xl border border-border bg-surface pt-0 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg hover:border-border-subtle">
+                <div className={`h-2 w-full bg-gradient-to-r ${g}`} />
                 <div className="p-5">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${g} text-white text-base font-bold`}>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${g} text-white text-base font-bold shadow-sm`}>
                         {project.name.charAt(0)}
                       </span>
                       <div className="min-w-0">
-                        <h3 className="truncate font-semibold text-default">{project.name}</h3>
+                        <h3 className="truncate font-semibold text-default text-sm sm:text-base">{project.name}</h3>
                       </div>
                     </div>
                   </div>
-                  <p className="mt-3 line-clamp-2 min-h-[2.5rem] text-xs text-muted sm:text-sm">
+                  <p className="mt-3 line-clamp-2 min-h-[2.5rem] text-xs text-muted sm:text-sm leading-relaxed">
                     {project.description || 'بدون توضیحات'}
                   </p>
                   {project.deadline && (
-                    <div className="mt-2 flex items-center gap-1 text-[11px] text-muted">
-                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted">
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <span>{new Date(project.deadline).toLocaleDateString('fa-IR')}</span>
@@ -147,16 +147,17 @@ export default function AdminProjectsPage() {
                   )}
                   <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
                     <button onClick={() => router.push(`/projects/${project.id}/board`)}
-                      className="rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-400 transition-colors hover:bg-emerald-600 hover:text-white">
-                      بورد
+                      className="rounded-xl bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-600 hover:text-white cursor-pointer active:scale-95 shadow-sm">
+                      مشاهده بورد ←
                     </button>
                     <button onClick={() => handleDeleteProject(project.id)}
-                      className="rounded-lg bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-400 transition-colors hover:bg-rose-600 hover:text-white">
-                      حذف
+                      className="rounded-xl bg-rose-500/10 px-3.5 py-1.5 text-xs font-semibold text-rose-400 transition-colors hover:bg-rose-600 hover:text-white cursor-pointer active:scale-95">
+                      حذف پروژه
                     </button>
                   </div>
                 </div>
               </div>
+
             )
           })}
           {projects.length === 0 && (
