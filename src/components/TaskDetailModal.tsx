@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
+
+import MemberProfileModal from './MemberProfileModal'
 import type { Task, Profile, Checklist, ChecklistItem, TaskReport } from '@/utils/database.types'
+
 
 interface TaskDetailModalProps {
   taskId: string
@@ -24,6 +27,8 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
   const [isAssignee, setIsAssignee] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [selectedMemberProfileId, setSelectedMemberProfileId] = useState<string | null>(null)
+
 
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
@@ -385,20 +390,26 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
 
           {assignees.length > 0 && (
             <div>
-              <h4 className="mb-2 text-xs font-semibold text-muted">مسئولین</h4>
+              <h4 className="mb-2 text-xs font-semibold text-muted">مسئولین (برای مشاهده کارنامه کلیک کنید)</h4>
               <div className="flex flex-wrap gap-1.5">
                 {assignees.map((a) => (
-                  <span key={a.id}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-action-subtle px-2.5 py-1 text-xs font-medium text-action">
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => setSelectedMemberProfileId(a.id)}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-action-subtle px-2.5 py-1 text-xs font-medium text-action transition-all hover:bg-action/20 active:scale-95 cursor-pointer"
+                    title={`مشاهده کارنامه و تسک‌های انجام‌شده ${a.full_name}`}
+                  >
                     <span className="flex h-4 w-4 items-center justify-center rounded-full bg-action text-[9px] font-bold text-white">
                       {a.full_name.charAt(0)}
                     </span>
-                    {a.full_name}
-                  </span>
+                    <span>{a.full_name}</span>
+                  </button>
                 ))}
               </div>
             </div>
           )}
+
 
           {checklists.length > 0 && (
             <div>
@@ -455,6 +466,15 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
           </div>
         </div>
       </div>
+
+      {/* Member Profile Modal */}
+      <MemberProfileModal
+        userId={selectedMemberProfileId}
+        isOpen={!!selectedMemberProfileId}
+        onClose={() => setSelectedMemberProfileId(null)}
+        currentProfile={profile}
+      />
     </div>
   )
 }
+

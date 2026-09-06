@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
+
 import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
+import MemberProfileModal from '@/components/MemberProfileModal'
 import type { Profile, Task, Project } from '@/utils/database.types'
 
 interface DashData {
@@ -17,8 +19,9 @@ interface DashData {
   tasksByStatus: { label: string; value: number; color: string }[]
   projectsProgress: { name: string; color: string; total: number; done: number }[]
   recentTasks: Task[]
-  topUsers: { name: string; xp: number; initial: string }[]
+  topUsers: { id: string; name: string; xp: number; initial: string }[]
 }
+
 
 const STATUS_LABELS: Record<string, string> = {
   backlog: 'بک‌لاگ',
@@ -45,10 +48,12 @@ const PROJECT_GRADIENTS = [
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashData | null>(null)
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const router = useRouter()
   const supabase = createClient()
+
 
   useEffect(() => {
     async function load() {
@@ -98,7 +103,8 @@ export default function DashboardPage() {
         .filter((m) => m.role !== 'admin')
         .sort((a, b) => b.xp_total - a.xp_total)
         .slice(0, 5)
-        .map((m) => ({ name: m.full_name, xp: m.xp_total, initial: m.full_name.charAt(0) }))
+        .map((m) => ({ id: m.id, name: m.full_name, xp: m.xp_total, initial: m.full_name.charAt(0) }))
+
 
       setData({
         profile: prof,
@@ -300,19 +306,27 @@ export default function DashboardPage() {
                 برترین اعضا
               </h3>
               <p className="mt-1 text-xs text-muted">بر اساس امتیاز XP</p>
-              <div className="mt-4 space-y-3">
+              <div className="mt-4 space-y-2">
                 {data.topUsers.map((u, i) => (
-                  <div key={u.name} className="flex items-center gap-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-xs font-bold text-white shadow-sm">
+                  <div
+                    key={u.id}
+                    onClick={() => setSelectedMemberId(u.id)}
+                    className="flex items-center gap-3 p-1.5 rounded-xl cursor-pointer hover:bg-surface-2/70 transition-colors group"
+                    title="کلیک برای مشاهده کارنامه و تسک‌های انجام‌شده"
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-xs font-bold text-white shadow-sm transition-transform group-hover:scale-105">
                       {u.initial}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-default sm:text-sm truncate">{u.name}</p>
+                      <p className="text-xs font-semibold text-default sm:text-sm truncate group-hover:text-emerald-400 transition-colors">{u.name}</p>
                       <p className="text-[11px] text-muted">{i + 1}ام در بین اعضا</p>
                     </div>
                     <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-xp">
                       {u.xp} XP
                     </span>
+                    <svg className="h-3.5 w-3.5 text-muted opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
                   </div>
                 ))}
                 {data.topUsers.length === 0 && (
@@ -323,6 +337,15 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      {/* Member Profile Modal */}
+      <MemberProfileModal
+        userId={selectedMemberId}
+        isOpen={!!selectedMemberId}
+        onClose={() => setSelectedMemberId(null)}
+        currentProfile={data.profile}
+      />
     </div>
   )
 }
+

@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
 import MemberXpModal from '@/components/MemberXpModal'
+import MemberProfileModal from '@/components/MemberProfileModal'
 import type { Profile } from '@/utils/database.types'
 
 interface MemberAssignment {
@@ -22,7 +23,9 @@ export default function AdminMembersPage() {
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedMemberForXp, setSelectedMemberForXp] = useState<Profile | null>(null)
   const [xpModalTab, setXpModalTab] = useState<'reward' | 'penalty'>('reward')
+  const [profileModalUserId, setProfileModalUserId] = useState<string | null>(null)
   const [email, setEmail] = useState('')
+
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [error, setError] = useState('')
@@ -176,14 +179,23 @@ export default function AdminMembersPage() {
                     </button>
                   )}
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white bg-gradient-to-br ${
+                    <div
+                      onClick={() => setProfileModalUserId(m.id)}
+                      className="flex items-center gap-3 min-w-0 cursor-pointer group/title"
+                      title="کلیک برای مشاهده تسک‌های انجام‌شده و ریز امتیازات"
+                    >
+                      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm transition-transform group-hover/title:scale-105 bg-gradient-to-br ${
                         m.role === 'admin' ? 'from-violet-500 to-purple-600' : 'from-emerald-500 to-teal-600'
                       }`}>
                         {m.full_name.charAt(0)}
                       </div>
                       <div className="min-w-0">
-                        <h3 className="truncate font-semibold text-default">{m.full_name}</h3>
+                        <h3 className="truncate font-semibold text-default group-hover/title:text-emerald-400 transition-colors flex items-center gap-1">
+                          <span>{m.full_name}</span>
+                          <svg className="h-3.5 w-3.5 opacity-0 group-hover/title:opacity-100 text-muted transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </h3>
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium mt-0.5 ${
                           m.role === 'admin' ? 'bg-violet-500/10 text-violet-400' : 'bg-amber-500/10 text-amber-400'
                         }`}>
@@ -192,10 +204,18 @@ export default function AdminMembersPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="mt-4 flex items-center justify-between rounded-lg bg-surface-2/60 px-3 py-2 text-xs">
+                  <div
+                    onClick={() => setProfileModalUserId(m.id)}
+                    className="mt-4 flex items-center justify-between rounded-lg bg-surface-2/60 px-3 py-2 text-xs cursor-pointer hover:bg-surface-2 transition-colors group/xp"
+                    title="مشاهده تسک‌های انجام‌شده و سوابق امتیاز"
+                  >
                     <span className="text-muted font-medium">امتیاز کل:</span>
-                    <span className="font-bold text-amber-400">{m.xp_total} XP</span>
+                    <span className="font-bold text-amber-400 flex items-center gap-1">
+                      <span>{m.xp_total} XP</span>
+                      <span className="text-[10px] text-muted opacity-0 group-hover/xp:opacity-100 transition-opacity">کارنامه ←</span>
+                    </span>
                   </div>
+
 
                   {profile.role === 'admin' && (
                     <div className="mt-3 grid grid-cols-2 gap-2">
@@ -238,11 +258,18 @@ export default function AdminMembersPage() {
                 return (
                   <div key={m.id} className="rounded-xl border border-border bg-surface-2/40 p-4">
                     <div className="flex items-center justify-between border-b border-border/40 pb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-xs font-bold text-white">
+                      <div
+                        onClick={() => { setShowDetailsModal(false); setProfileModalUserId(m.id); }}
+                        className="flex items-center gap-2 cursor-pointer group hover:text-emerald-400 transition-colors"
+                        title="مشاهده کارنامه و تسک‌های انجام‌شده"
+                      >
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-xs font-bold text-white shadow-sm transition-transform group-hover:scale-105">
                           {m.full_name.charAt(0)}
                         </span>
-                        <h4 className="text-sm font-bold text-default">{m.full_name}</h4>
+                        <h4 className="text-sm font-bold text-default group-hover:text-emerald-400 transition-colors flex items-center gap-1">
+                          <span>{m.full_name}</span>
+                          <span className="text-[10px] text-muted font-normal">← مشاهده کارنامه</span>
+                        </h4>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-medium text-amber-400">{m.xp_total} XP</span>
@@ -266,6 +293,7 @@ export default function AdminMembersPage() {
                         )}
                       </div>
                     </div>
+
 
                     <div className="mt-3 space-y-2">
                       {userAssignments.length > 0 ? (
@@ -330,7 +358,17 @@ export default function AdminMembersPage() {
         onClose={() => setSelectedMemberForXp(null)}
         onSuccess={handleXpUpdated}
       />
+
+      {/* Member Profile Modal (Tasks + XP history) */}
+      <MemberProfileModal
+        userId={profileModalUserId}
+        isOpen={!!profileModalUserId}
+        onClose={() => setProfileModalUserId(null)}
+        currentProfile={profile}
+        onXpChanged={handleXpUpdated}
+      />
     </div>
   )
 }
+
 

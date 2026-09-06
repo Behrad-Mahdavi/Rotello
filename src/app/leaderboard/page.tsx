@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
+
 import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
+import MemberProfileModal from '@/components/MemberProfileModal'
 import type { Profile } from '@/utils/database.types'
 
 const MEDAL_STYLES: Record<number, { bg: string; border: string; text: string; glow: string }> = {
@@ -17,7 +19,9 @@ const MEDAL_LABELS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
 export default function LeaderboardPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [members, setMembers] = useState<Profile[]>([])
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+
   const router = useRouter()
   const supabase = createClient()
 
@@ -65,12 +69,17 @@ export default function LeaderboardPage() {
               const rank = i + 1
               const medal = MEDAL_STYLES[rank]
               return (
-                <div key={m.id} className={`relative rounded-2xl border ${medal.border} bg-surface p-6 text-center shadow-lg ${medal.glow} transition-all hover:shadow-xl`}>
+                <div
+                  key={m.id}
+                  onClick={() => setSelectedMemberId(m.id)}
+                  className={`relative cursor-pointer rounded-2xl border ${medal.border} bg-surface p-6 text-center shadow-lg ${medal.glow} transition-all hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] group`}
+                  title="کلیک برای مشاهده کارنامه و تسک‌های انجام‌شده"
+                >
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-2xl">{MEDAL_LABELS[rank]}</div>
-                  <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${medal.bg} text-xl font-bold text-white shadow-lg`}>
+                  <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${medal.bg} text-xl font-bold text-white shadow-lg transition-transform group-hover:scale-105`}>
                     {m.full_name.charAt(0)}
                   </div>
-                  <h3 className="mt-3 text-sm font-bold text-default">{m.full_name}</h3>
+                  <h3 className="mt-3 text-sm font-bold text-default group-hover:text-emerald-400 transition-colors">{m.full_name}</h3>
                   <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium mt-1 ${
                     m.role === 'admin' ? 'bg-violet-500/10 text-violet-400' : 'bg-amber-500/10 text-amber-400'
                   }`}>
@@ -80,6 +89,9 @@ export default function LeaderboardPage() {
                     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                     {m.xp_total} XP
                   </div>
+                  <div className="mt-2 text-[11px] font-medium text-muted opacity-0 group-hover:opacity-100 transition-opacity">
+                    مشاهده پروفایل و تسک‌ها ←
+                  </div>
                 </div>
               )
             })}
@@ -87,20 +99,25 @@ export default function LeaderboardPage() {
         )}
 
         {rest.length > 0 && (
-          <div className="rounded-2xl border border-border bg-surface shadow-sm">
+          <div className="rounded-2xl border border-border bg-surface shadow-sm overflow-hidden">
             <div className="divide-y divide-border">
               {rest.map((m, i) => {
                 const rank = i + 4
                 return (
-                  <div key={m.id} className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-surface-2/50 sm:px-6 sm:py-4">
+                  <div
+                    key={m.id}
+                    onClick={() => setSelectedMemberId(m.id)}
+                    className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-surface-2/70 sm:px-6 sm:py-4 cursor-pointer group"
+                    title="کلیک برای مشاهده کارنامه و تسک‌های انجام‌شده"
+                  >
                     <span className="w-8 text-center text-sm font-bold text-muted">#{rank}</span>
-                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm ${
                       m.role === 'admin' ? 'bg-gradient-to-br from-violet-500 to-purple-600' : 'bg-gradient-to-br from-emerald-500 to-teal-600'
                     }`}>
                       {m.full_name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="truncate text-sm font-semibold text-default">{m.full_name}</h4>
+                      <h4 className="truncate text-sm font-semibold text-default group-hover:text-emerald-400 transition-colors">{m.full_name}</h4>
                       <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                         m.role === 'admin' ? 'bg-violet-500/10 text-violet-400' : 'bg-amber-500/10 text-amber-400'
                       }`}>
@@ -111,6 +128,9 @@ export default function LeaderboardPage() {
                       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                       {m.xp_total}
                     </div>
+                    <svg className="h-4 w-4 text-muted opacity-0 group-hover:opacity-100 transition-opacity -mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
                   </div>
                 )
               })}
@@ -124,6 +144,20 @@ export default function LeaderboardPage() {
           </div>
         )}
       </main>
+
+      {/* Member Profile Modal */}
+      <MemberProfileModal
+        userId={selectedMemberId}
+        isOpen={!!selectedMemberId}
+        onClose={() => setSelectedMemberId(null)}
+        currentProfile={profile}
+        onXpChanged={(id, newXp) => {
+          setMembers((prev) =>
+            prev.map((m) => (m.id === id ? { ...m, xp_total: newXp } : m)).sort((a, b) => b.xp_total - a.xp_total)
+          )
+        }}
+      />
     </div>
   )
 }
+

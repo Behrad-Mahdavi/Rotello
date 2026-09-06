@@ -373,9 +373,12 @@ create table if not exists public.xp_adjustments (
 
 alter table public.xp_adjustments enable row level security;
 
-create policy "Authenticated users can read their own xp adjustments"
+drop policy if exists "Authenticated users can read their own xp adjustments" on public.xp_adjustments;
+drop policy if exists "Authenticated users can read xp adjustments" on public.xp_adjustments;
+create policy "Authenticated users can read xp adjustments"
   on public.xp_adjustments for select
-  using (auth.uid() = user_id or public.is_admin());
+  using (auth.uid() is not null);
+
 
 create policy "Admins can insert xp adjustments"
   on public.xp_adjustments for insert
