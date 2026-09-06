@@ -204,12 +204,16 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
   }
 
   async function handleDeleteTask() {
-    if (!confirm('آیا از حذف این تسک اطمینان دارید؟')) return
+    const confirmMsg = task?.xp_awarded && (task?.xp_value ?? 0) > 0
+      ? `آیا از حذف این تسک اطمینان دارید؟ با حذف این تسک تکمیل‌شده، ${task.xp_value} امتیاز از اعضای منتسب به آن کسر خواهد شد.`
+      : 'آیا از حذف این تسک اطمینان دارید؟'
+    if (!confirm(confirmMsg)) return
     const { error: err } = await supabase.from('tasks').delete().eq('id', taskId)
     if (err) { setError(err.message); return }
     onTaskDeleted?.(taskId)
     onClose()
   }
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>

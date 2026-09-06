@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
+
 import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
+import MemberXpModal from '@/components/MemberXpModal'
 import type { Profile } from '@/utils/database.types'
 
 interface MemberAssignment {
@@ -18,12 +20,15 @@ export default function AdminMembersPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedMemberForXp, setSelectedMemberForXp] = useState<Profile | null>(null)
+  const [xpModalTab, setXpModalTab] = useState<'reward' | 'penalty'>('reward')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [error, setError] = useState('')
   const router = useRouter()
   const supabase = createClient()
+
 
   useEffect(() => {
     async function load() {
@@ -54,7 +59,19 @@ export default function AdminMembersPage() {
     if (assignData) setAssignments(assignData)
   }
 
+  function handleOpenXpModal(m: Profile, type: 'reward' | 'penalty') {
+    setSelectedMemberForXp(m)
+    setXpModalTab(type)
+  }
+
+  function handleXpUpdated(userId: string, newXp: number) {
+    setMembers((prev) =>
+      prev.map((m) => (m.id === userId ? { ...m, xp_total: newXp } : m))
+    )
+  }
+
   async function handleDeleteMember(id: string, name: string) {
+
     if (!confirm(`آیا از حذف "${name}" اطمینان دارید؟ تمام اطلاعات این کاربر حذف خواهد شد.`)) return
     const { error } = await supabase.from('profiles').delete().eq('id', id)
     if (error) { setError(error.message); return }
@@ -175,9 +192,29 @@ export default function AdminMembersPage() {
                       </div>
                     </div>
                   </div>
-                  {m.xp_total > 0 && (
-                    <div className="mt-4 flex items-center justify-center gap-1.5 rounded-lg bg-amber-500/10 py-2 text-xs text-amber-400">
-                      <span className="font-bold">{m.xp_total}</span> XP
+                  <div className="mt-4 flex items-center justify-between rounded-lg bg-surface-2/60 px-3 py-2 text-xs">
+                    <span className="text-muted font-medium">امتیاز کل:</span>
+                    <span className="font-bold text-amber-400">{m.xp_total} XP</span>
+                  </div>
+
+                  {profile.role === 'admin' && (
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenXpModal(m, 'reward')}
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 py-1.5 text-xs font-semibold text-emerald-400 transition-all hover:bg-emerald-500/20 active:scale-95"
+                      >
+                        <span>🎁</span>
+                        <span>تشویقی</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenXpModal(m, 'penalty')}
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-rose-500/20 bg-rose-500/10 py-1.5 text-xs font-semibold text-rose-400 transition-all hover:bg-rose-500/20 active:scale-95"
+                      >
+                        <span>⚠️</span>
+                        <span>پنالتی</span>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -207,7 +244,27 @@ export default function AdminMembersPage() {
                         </span>
                         <h4 className="text-sm font-bold text-default">{m.full_name}</h4>
                       </div>
-                      <span className="text-xs font-medium text-amber-400">{m.xp_total} XP</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-amber-400">{m.xp_total} XP</span>
+                        {profile.role === 'admin' && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenXpModal(m, 'reward')}
+                              className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400 hover:bg-emerald-500/20"
+                            >
+                              🎁 تشویقی
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenXpModal(m, 'penalty')}
+                              className="rounded-md border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-[11px] font-medium text-rose-400 hover:bg-rose-500/20"
+                            >
+                              ⚠️ پنالتی
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="mt-3 space-y-2">
@@ -264,6 +321,16 @@ export default function AdminMembersPage() {
           </div>
         </div>
       )}
+
+      {/* Member XP Management Modal (Reward / Penalty) */}
+      <MemberXpModal
+        isOpen={!!selectedMemberForXp}
+        member={selectedMemberForXp}
+        initialType={xpModalTab}
+        onClose={() => setSelectedMemberForXp(null)}
+        onSuccess={handleXpUpdated}
+      />
     </div>
   )
 }
+

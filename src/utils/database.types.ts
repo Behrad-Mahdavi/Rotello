@@ -112,3 +112,17 @@ export interface EventWithRelations extends Event {
   items?: EventChecklistItemWithRelations[]
 }
 
+export type XpAdjustmentType = 'penalty' | 'reward' | 'task_completion' | 'task_reversal'
+
+export interface XpAdjustment {
+  id: string
+  user_id: string
+  amount: number
+  reason: string
+  type: XpAdjustmentType
+  created_by: string | null
+  created_at: string
+  creator?: Pick<Profile, 'id' | 'full_name'> | null
+}
+
+

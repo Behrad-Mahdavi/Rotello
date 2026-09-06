@@ -314,15 +314,156 @@ begin
 
   update public.tasks set status = p_new_status where id = p_task_id;
 
+  -- Case A: Moved to done and not previously awarded -> Award XP
   if p_new_status = 'done' and not v_xp_awarded then
     update public.tasks set xp_awarded = true where id = p_task_id;
-    update public.profiles
-    set xp_total = xp_total + v_xp_value
-    where id in (
-      select user_id from public.task_assignees where task_id = p_task_id
-    );
+    if v_xp_value > 0 then
+      update public.profiles
+      set xp_total = xp_total + v_xp_value
+      where id in (
+        select user_id from public.task_assignees where task_id = p_task_id
+      );
+
+      insert into public.xp_adjustments (user_id, amount, reason, type, created_by)
+      select 
+        user_id, 
+        v_xp_value, 
+        'تکمیل تسک: ' || (select coalesce(title, 'بدون عنوان') from public.tasks where id = p_task_id), 
+        'task_completion', 
+        v_user_id
+      from public.task_assignees 
+      where task_id = p_task_id;
+    end if;
+
+  -- Case B: Moved OUT of done and was previously awarded -> Reverse XP
+  elsif v_current_status = 'done' and p_new_status <> 'done' and v_xp_awarded then
+    update public.tasks set xp_awarded = false where id = p_task_id;
+    if v_xp_value > 0 then
+      update public.profiles
+      set xp_total = greatest(0, xp_total - v_xp_value)
+      where id in (
+        select user_id from public.task_assignees where task_id = p_task_id
+      );
+
+      insert into public.xp_adjustments (user_id, amount, reason, type, created_by)
+      select 
+        user_id, 
+        -v_xp_value, 
+        'خروج تسک از تکمیل‌شده: ' || (select coalesce(title, 'بدون عنوان') from public.tasks where id = p_task_id), 
+        'task_reversal', 
+        v_user_id
+      from public.task_assignees 
+      where task_id = p_task_id;
+    end if;
   end if;
 
+end;
+$$ language plpgsql security definer;
+
+-- 8. xp_adjustments table
+create table if not exists public.xp_adjustments (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  amount integer not null,
+  reason text not null,
+  type text not null check (type in ('penalty', 'reward', 'task_completion', 'task_reversal')),
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.xp_adjustments enable row level security;
+
+create policy "Authenticated users can read their own xp adjustments"
+  on public.xp_adjustments for select
+  using (auth.uid() = user_id or public.is_admin());
+
+create policy "Admins can insert xp adjustments"
+  on public.xp_adjustments for insert
+  with check (public.is_admin());
+
+create policy "Admins can delete xp adjustments"
+  on public.xp_adjustments for delete
+  using (public.is_admin());
+
+-- Trigger function: Automatically reverse XP when a completed task is deleted
+create or replace function public.handle_task_deletion_xp()
+returns trigger as $$
+begin
+  if old.xp_awarded and old.xp_value > 0 then
+    update public.profiles
+    set xp_total = greatest(0, xp_total - old.xp_value)
+    where id in (
+      select user_id from public.task_assignees where task_id = old.id
+    );
+
+    insert into public.xp_adjustments (user_id, amount, reason, type, created_by)
+    select 
+      user_id, 
+      -old.xp_value, 
+      'حذف تسک تکمیل‌شده: ' || coalesce(old.title, 'بدون عنوان'), 
+      'task_reversal', 
+      auth.uid()
+    from public.task_assignees 
+    where task_id = old.id;
+  end if;
+  return old;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists trigger_handle_task_deletion_xp on public.tasks;
+create trigger trigger_handle_task_deletion_xp
+  before delete on public.tasks
+  for each row execute procedure public.handle_task_deletion_xp();
+
+-- Admin RPC function to give Rewards or Penalties
+create or replace function public.admin_adjust_member_xp(
+  p_user_id uuid,
+  p_amount integer,
+  p_reason text,
+  p_type text
+)
+returns integer as $$
+declare
+  v_admin_id uuid;
+  v_delta integer;
+  v_new_xp integer;
+begin
+  v_admin_id := auth.uid();
+  if v_admin_id is null or not public.is_admin() then
+    raise exception 'فقط مدیران سیستم مجاز به تغییر امتیاز هستند.';
+  end if;
+
+  if p_type not in ('penalty', 'reward') then
+    raise exception 'نوع عملیات باید penalty یا reward باشد.';
+  end if;
+
+  if trim(p_reason) = '' or p_reason is null then
+    raise exception 'ثبت دلیل الزامی است.';
+  end if;
+
+  if p_amount <= 0 then
+    raise exception 'مقدار امتیاز باید بزرگتر از صفر باشد.';
+  end if;
+
+  if p_type = 'penalty' then
+    v_delta := -abs(p_amount);
+  else
+    v_delta := abs(p_amount);
+  end if;
+
+  update public.profiles
+  set xp_total = greatest(0, xp_total + v_delta)
+  where id = p_user_id
+  returning xp_total into v_new_xp;
+
+  if not found then
+    raise exception 'عضو مورد نظر یافت نشد.';
+  end if;
+
+  insert into public.xp_adjustments (user_id, amount, reason, type, created_by)
+  values (p_user_id, v_delta, trim(p_reason), p_type, v_admin_id);
+
+  return v_new_xp;
 end;
 $$ language plpgsql security definer;
 
@@ -335,4 +476,7 @@ create index if not exists idx_task_assignees_task_id on public.task_assignees(t
 create index if not exists idx_checklists_task_id on public.checklists(task_id);
 create index if not exists idx_checklist_items_checklist_id on public.checklist_items(checklist_id);
 create index if not exists idx_task_reports_task_id on public.task_reports(task_id);
+create index if not exists idx_xp_adjustments_user_id on public.xp_adjustments(user_id);
+create index if not exists idx_xp_adjustments_created_at on public.xp_adjustments(created_at desc);
+
 
