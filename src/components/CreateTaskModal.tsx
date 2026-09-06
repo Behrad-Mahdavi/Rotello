@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/utils/supabase/client'
+import PersianDatePicker from './PersianDatePicker'
 import type { Task, Profile, TaskPriority } from '@/utils/database.types'
+
 
 interface CreateTaskModalProps {
   projectId: string
@@ -108,11 +110,12 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: C
               className="mt-1.5 block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors focus:border-action/50 focus:bg-surface focus:outline-none" />
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-muted">ددلاین</label>
-            <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)}
-              className="mt-1.5 block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors focus:border-action/50 focus:bg-surface focus:outline-none [color-scheme:dark]" />
-          </div>
+          <PersianDatePicker
+            label="ددلاین (تقویم شمسی)"
+            value={deadline}
+            onChange={setDeadline}
+            placeholder="انتخاب موعد تحویل..."
+          />
 
           <div>
             <label className="block text-xs font-medium text-muted mb-2">اولویت</label>

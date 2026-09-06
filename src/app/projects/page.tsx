@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
+import { formatToPersianDate, toPersianDigits } from '@/utils/jalaali'
 import type { Project, Profile } from '@/utils/database.types'
 
 interface TaskSummary {
@@ -74,16 +75,16 @@ export default function ProjectsListPage() {
     deadline.setHours(0, 0, 0, 0)
     
     const diffDays = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    const formatted = deadline.toLocaleDateString('fa-IR')
+    const formatted = formatToPersianDate(deadlineStr)
 
     if (diffDays < 0) {
       return { label: 'مهلت تمام شده', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20', formatted }
     } else if (diffDays === 0) {
       return { label: 'امروز آخرین مهلت', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20', formatted }
     } else if (diffDays <= 3) {
-      return { label: `${diffDays} روز تا موعد`, color: 'bg-amber-500/10 text-amber-400 border-amber-500/20', formatted }
+      return { label: `${toPersianDigits(diffDays)} روز تا موعد`, color: 'bg-amber-500/10 text-amber-400 border-amber-500/20', formatted }
     }
-    return { label: `${diffDays} روز باقی‌مانده`, color: 'bg-surface-2 text-muted border-border', formatted }
+    return { label: `${toPersianDigits(diffDays)} روز باقی‌مانده`, color: 'bg-surface-2 text-muted border-border', formatted }
   }
 
   const gradients = [

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
 import MemberXpModal from '@/components/MemberXpModal'
 import MemberProfileModal from '@/components/MemberProfileModal'
+import { formatToPersianDate } from '@/utils/jalaali'
 import type { Profile } from '@/utils/database.types'
 
 interface MemberAssignment {
@@ -29,6 +30,8 @@ export default function AdminMembersPage() {
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
   const [error, setError] = useState('')
+  const [memberToDelete, setMemberToDelete] = useState<{ id: string; name: string } | null>(null)
+  const [isDeletingMember, setIsDeletingMember] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -73,11 +76,13 @@ export default function AdminMembersPage() {
     )
   }
 
-  async function handleDeleteMember(id: string, name: string) {
-
-    if (!confirm(`آیا از حذف "${name}" اطمینان دارید؟ تمام اطلاعات این کاربر حذف خواهد شد.`)) return
-    const { error } = await supabase.from('profiles').delete().eq('id', id)
+  async function confirmDeleteMember() {
+    if (!memberToDelete) return
+    setIsDeletingMember(true)
+    const { error } = await supabase.from('profiles').delete().eq('id', memberToDelete.id)
+    setIsDeletingMember(false)
     if (error) { setError(error.message); return }
+    setMemberToDelete(null)
     await reload()
   }
 
@@ -170,9 +175,10 @@ export default function AdminMembersPage() {
               const stats = { total: 0, done: 0, active: 0 }
               return (
                 <div key={m.id} className="group relative overflow-hidden rounded-xl border border-border bg-surface p-5 shadow-sm transition-all hover:shadow-md">
-                  {m.role !== 'admin' && m.id !== profile.id && (
-                    <button onClick={() => handleDeleteMember(m.id, m.full_name)}
-                      className="absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/10 text-rose-400 opacity-0 transition-all group-hover:opacity-100 hover:bg-rose-500/20">
+                    {m.role !== 'admin' && m.id !== profile.id && (
+                      <button onClick={() => setMemberToDelete({ id: m.id, name: m.full_name })}
+                        className="absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/10 text-rose-400 opacity-0 transition-all group-hover:opacity-100 hover:bg-rose-500/20"
+                        title="حذف عضو">
                       <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                       </svg>
@@ -326,7 +332,7 @@ export default function AdminMembersPage() {
                                     <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                    {new Date(t.deadline).toLocaleDateString('fa-IR')}
+                                    {formatToPersianDate(t.deadline)}
                                   </span>
                                 ) : (
                                   <span className="text-[10px] text-muted">بدون ددلاین</span>
@@ -367,6 +373,40 @@ export default function AdminMembersPage() {
         currentProfile={profile}
         onXpChanged={handleXpUpdated}
       />
+
+      {/* Delete Member Confirmation Modal */}
+      {memberToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setMemberToDelete(null)}>
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 shadow-2xl text-right" dir="rtl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-500/10 text-rose-500 mb-3 mx-auto">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+              </svg>
+            </div>
+            <h3 className="text-sm font-bold text-default text-center mb-2">حذف عضو</h3>
+            <p className="text-xs text-muted text-center mb-5 leading-relaxed">
+              آیا از حذف <span className="font-semibold text-default">«{memberToDelete.name}»</span> اطمینان دارید؟ تمام اطلاعات، انتساب تسک‌ها و امتیازات این کاربر حذف خواهد شد.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={isDeletingMember}
+                onClick={confirmDeleteMember}
+                className="flex-1 rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 transition-colors"
+              >
+                {isDeletingMember ? 'در حال حذف...' : 'بله، حذف کن'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMemberToDelete(null)}
+                className="flex-1 rounded-xl border border-border bg-surface-2 px-3 py-2 text-xs font-semibold text-default hover:bg-surface transition-colors"
+              >
+                انصراف
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

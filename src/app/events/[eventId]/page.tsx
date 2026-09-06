@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
 import { EVENT_CATEGORIES } from '@/constants/eventChecklistTemplate'
+import { formatToPersianDate } from '@/utils/jalaali'
 import type { Profile, Event, EventStatus, EventChecklistItemWithRelations } from '@/utils/database.types'
 
 const STATUS_MAP: Record<EventStatus, { label: string; style: string }> = {
@@ -315,7 +316,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                     <svg className="h-3.5 w-3.5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <span>{new Date(event.event_date).toLocaleDateString('fa-IR')}</span>
+                    <span>{formatToPersianDate(event.event_date)}</span>
                   </div>
                 )}
 
@@ -481,7 +482,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                                 {item.is_done && item.done_by_user && (
                                   <div className="mt-1 text-[10px] text-emerald-400">
                                     تایید شده توسط {item.done_by_user.full_name}
-                                    {item.done_at && ` در ${new Date(item.done_at).toLocaleDateString('fa-IR')}`}
+                                    {item.done_at && ` در ${formatToPersianDate(item.done_at)}`}
                                   </div>
                                 )}
                               </div>

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
+import { formatToPersianDate } from '@/utils/jalaali'
 import type { Profile, Task, EventChecklistItem } from '@/utils/database.types'
 
 interface TaskWithProject extends Task {
@@ -323,7 +324,7 @@ export default function MyTasksPage() {
                               <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
-                              {new Date(t.deadline).toLocaleDateString('fa-IR')}
+                              {formatToPersianDate(t.deadline)}
                             </span>
                           )}
                           {t.xp_value > 0 && (

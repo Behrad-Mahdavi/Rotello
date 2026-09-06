@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
+import PersianDatePicker from '@/components/PersianDatePicker'
+import { formatToPersianDate } from '@/utils/jalaali'
 import type { Project, Profile } from '@/utils/database.types'
 
 export default function AdminProjectsPage() {
@@ -15,6 +17,8 @@ export default function AdminProjectsPage() {
   const [description, setDescription] = useState('')
   const [deadline, setDeadline] = useState('')
   const [error, setError] = useState('')
+  const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -46,9 +50,12 @@ export default function AdminProjectsPage() {
     await reload()
   }
 
-  async function handleDeleteProject(id: string) {
-    if (!confirm('آیا از حذف این پروژه اطمینان دارید؟')) return
-    await supabase.from('projects').delete().eq('id', id)
+  async function confirmDeleteProject() {
+    if (!projectToDelete) return
+    setIsDeleting(true)
+    await supabase.from('projects').delete().eq('id', projectToDelete.id)
+    setIsDeleting(false)
+    setProjectToDelete(null)
     await reload()
   }
 
@@ -94,11 +101,12 @@ export default function AdminProjectsPage() {
                   <input type="text" value={description} onChange={(e) => setDescription(e.target.value)}
                     className="mt-1 block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-all focus:border-emerald-500/50 focus:bg-surface focus:outline-none" />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted">ددلاین</label>
-                  <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)}
-                    className="mt-1 block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-all focus:border-emerald-500/50 focus:bg-surface focus:outline-none [color-scheme:dark]" />
-                </div>
+                <PersianDatePicker
+                  label="ددلاین (تقویم شمسی)"
+                  value={deadline}
+                  onChange={setDeadline}
+                  placeholder="انتخاب تاریخ موعد تحویل..."
+                />
               </div>
               {error && <div className="rounded-lg bg-danger-subtle px-3 py-2 text-sm text-danger">{error}</div>}
               <button type="submit" disabled={loading}
@@ -142,7 +150,7 @@ export default function AdminProjectsPage() {
                       <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <span>{new Date(project.deadline).toLocaleDateString('fa-IR')}</span>
+                      <span>{formatToPersianDate(project.deadline)}</span>
                     </div>
                   )}
                   <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
@@ -150,7 +158,7 @@ export default function AdminProjectsPage() {
                       className="rounded-xl bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-600 hover:text-white cursor-pointer active:scale-95 shadow-sm">
                       مشاهده بورد ←
                     </button>
-                    <button onClick={() => handleDeleteProject(project.id)}
+                    <button onClick={() => setProjectToDelete({ id: project.id, name: project.name })}
                       className="rounded-xl bg-rose-500/10 px-3.5 py-1.5 text-xs font-semibold text-rose-400 transition-colors hover:bg-rose-600 hover:text-white cursor-pointer active:scale-95">
                       حذف پروژه
                     </button>
@@ -165,6 +173,40 @@ export default function AdminProjectsPage() {
           )}
         </div>
       </main>
+
+      {/* Delete Project Confirmation Modal */}
+      {projectToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setProjectToDelete(null)}>
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 shadow-2xl text-right" dir="rtl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-500/10 text-rose-500 mb-3 mx-auto">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+              </svg>
+            </div>
+            <h3 className="text-sm font-bold text-default text-center mb-2">حذف پروژه</h3>
+            <p className="text-xs text-muted text-center mb-5 leading-relaxed">
+              آیا از حذف پروژه <span className="font-semibold text-default">«{projectToDelete.name}»</span> اطمینان دارید؟ تمام تسک‌ها و اطلاعات مربوط به این پروژه حذف خواهند شد.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={confirmDeleteProject}
+                className="flex-1 rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 transition-colors"
+              >
+                {isDeleting ? 'در حال حذف...' : 'بله، حذف کن'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setProjectToDelete(null)}
+                className="flex-1 rounded-xl border border-border bg-surface-2 px-3 py-2 text-xs font-semibold text-default hover:bg-surface transition-colors"
+              >
+                انصراف
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

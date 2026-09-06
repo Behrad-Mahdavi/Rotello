@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 
 import MemberProfileModal from './MemberProfileModal'
+import PersianDatePicker from './PersianDatePicker'
+import { formatToPersianDate } from '@/utils/jalaali'
 import type { Task, Profile, Checklist, ChecklistItem, TaskReport } from '@/utils/database.types'
 
 
@@ -41,6 +43,8 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
   const [memberSearch, setMemberSearch] = useState('')
   const [memberDropdownOpen, setMemberDropdownOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const memberDropdownRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
@@ -208,13 +212,16 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
     setError('')
   }
 
-  async function handleDeleteTask() {
-    const confirmMsg = task?.xp_awarded && (task?.xp_value ?? 0) > 0
-      ? `آیا از حذف این تسک اطمینان دارید؟ با حذف این تسک تکمیل‌شده، ${task.xp_value} امتیاز از اعضای منتسب به آن کسر خواهد شد.`
-      : 'آیا از حذف این تسک اطمینان دارید؟'
-    if (!confirm(confirmMsg)) return
+  function handleDeleteTask() {
+    setShowDeleteConfirm(true)
+  }
+
+  async function confirmDeleteTask() {
+    setIsDeleting(true)
     const { error: err } = await supabase.from('tasks').delete().eq('id', taskId)
+    setIsDeleting(false)
     if (err) { setError(err.message); return }
+    setShowDeleteConfirm(false)
     onTaskDeleted?.(taskId)
     onClose()
   }
@@ -246,7 +253,7 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
                     <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    {new Date(task.deadline).toLocaleDateString('fa-IR')}
+                    {formatToPersianDate(task.deadline)}
                   </span>
                 )}
                 {task.xp_value > 0 && (
@@ -309,11 +316,12 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
                   className="block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors focus:border-action/50 focus:bg-surface focus:outline-none" />
               </div>
 
-              <div>
-                <h4 className="mb-1.5 text-xs font-semibold text-muted">ددلاین</h4>
-                <input type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)}
-                  className="block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors [color-scheme:dark] focus:border-action/50 focus:bg-surface focus:outline-none" />
-              </div>
+              <PersianDatePicker
+                label="ددلاین (تقویم شمسی)"
+                value={editDeadline}
+                onChange={setEditDeadline}
+                placeholder="انتخاب موعد تحویل..."
+              />
 
               <div>
                 <h4 className="mb-1.5 text-xs font-semibold text-muted">سطح فوریت</h4>
@@ -466,6 +474,42 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 shadow-2xl text-right" dir="rtl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-500/10 text-rose-500 mb-3 mx-auto">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+              </svg>
+            </div>
+            <h3 className="text-sm font-bold text-default text-center mb-2">حذف تسک</h3>
+            <p className="text-xs text-muted text-center mb-5 leading-relaxed">
+              {task?.xp_awarded && (task?.xp_value ?? 0) > 0
+                ? `آیا از حذف این تسک اطمینان دارید؟ با حذف این تسک تکمیل‌شده، ${task.xp_value} امتیاز از اعضای منتسب به آن کسر خواهد شد.`
+                : 'آیا از حذف این تسک اطمینان دارید؟ این عملیات قابل بازگشت نیست.'}
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={confirmDeleteTask}
+                className="flex-1 rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 transition-colors"
+              >
+                {isDeleting ? 'در حال حذف...' : 'بله، حذف کن'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 rounded-xl border border-border bg-surface-2 px-3 py-2 text-xs font-semibold text-default hover:bg-surface transition-colors"
+              >
+                انصراف
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Member Profile Modal */}
       <MemberProfileModal

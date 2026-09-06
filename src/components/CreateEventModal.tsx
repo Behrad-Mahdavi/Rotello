@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { generateDefaultChecklistItems } from '@/constants/eventChecklistTemplate'
+import PersianDatePicker from './PersianDatePicker'
 import type { Profile, Event } from '@/utils/database.types'
 
 interface CreateEventModalProps {
@@ -161,17 +162,12 @@ export default function CreateEventModal({
 
           {/* Date & Location */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className="block text-xs font-semibold text-subtle mb-1">
-                تاریخ برگزاری
-              </label>
-              <input
-                type="date"
-                value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
-                className="w-full rounded-xl border border-border bg-surface-2 px-3.5 py-2 text-sm text-default outline-none transition focus:border-action focus:ring-1 focus:ring-action"
-              />
-            </div>
+            <PersianDatePicker
+              label="تاریخ برگزاری (شمسی)"
+              value={eventDate}
+              onChange={setEventDate}
+              placeholder="انتخاب تاریخ رویداد..."
+            />
 
             <div>
               <label className="block text-xs font-semibold text-subtle mb-1">
