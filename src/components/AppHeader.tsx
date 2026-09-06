@@ -27,12 +27,23 @@ export default function AppHeader({ profile }: AppHeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-canvas/80 backdrop-blur-lg">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5 sm:py-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-sm">
-            <Image src="/logog.png" alt="رکاد" width={22} height={22} className="object-contain brightness-0 invert" />
+        <div 
+          onClick={() => router.push('/projects')}
+          className="flex items-center gap-2.5 cursor-pointer select-none group shrink-0"
+        >
+          <div className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl shadow-sm border border-white/10 group-hover:scale-105 transition-transform shrink-0">
+            <Image 
+              src="/logo-main.jpg" 
+              alt="باشگاه کسب و کار رکاد" 
+              width={36} 
+              height={36} 
+              className="h-full w-full object-cover" 
+            />
           </div>
           <div className="leading-tight">
-            <h1 className="text-sm font-bold tracking-tight text-default sm:text-base">رکاد</h1>
+            <h1 className="text-xs sm:text-sm md:text-base font-bold tracking-tight text-default group-hover:text-action transition-colors">
+              باشگاه کسب و کار رکاد
+            </h1>
             <p className="hidden text-[11px] text-muted sm:block">مدیریت پروژه و کارها</p>
           </div>
         </div>
