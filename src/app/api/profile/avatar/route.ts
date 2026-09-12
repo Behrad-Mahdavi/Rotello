@@ -2,6 +2,54 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
 
+// Helper to upload base64 data to Supabase Storage bucket 'avatars'
+async function uploadBase64ToStorage(
+  adminClient: ReturnType<typeof createAdminClient>,
+  userId: string,
+  base64String: string
+): Promise<string | null> {
+  try {
+    const matches = base64String.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/)
+    if (!matches || matches.length !== 3) {
+      return null
+    }
+
+    const mimeType = matches[1]
+    const base64Data = matches[2]
+    const buffer = Buffer.from(base64Data, 'base64')
+    const ext = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg'
+    const filePath = `${userId}.${ext}`
+
+    // Ensure bucket exists
+    try {
+      await adminClient.storage.createBucket('avatars', { public: true })
+    } catch {
+      // Ignore if bucket already exists
+    }
+
+    const { error: uploadErr } = await adminClient.storage
+      .from('avatars')
+      .upload(filePath, buffer, {
+        contentType: mimeType,
+        upsert: true,
+      })
+
+    if (uploadErr) {
+      console.error('Error uploading avatar to storage:', uploadErr)
+      return null
+    }
+
+    const { data: { publicUrl } } = adminClient.storage
+      .from('avatars')
+      .getPublicUrl(filePath)
+
+    return publicUrl
+  } catch (err) {
+    console.error('Failed to process base64 avatar:', err)
+    return null
+  }
+}
+
 // POST /api/profile/avatar - Upload or update avatar for current user or by admin
 export async function POST(request: Request) {
   try {
@@ -29,7 +77,7 @@ export async function POST(request: Request) {
 
     const body = await request.json()
     const targetUserId = body.userId || user.id
-    const avatarUrl = body.avatarUrl || null
+    const inputAvatarUrl = body.avatarUrl || null
 
     // Check permissions: user can update own avatar, admin can update anyone's
     const isAdmin = user.user_metadata?.role === 'admin'
@@ -42,15 +90,30 @@ export async function POST(request: Request) {
     }
 
     const adminClient = createAdminClient()
+    let finalAvatarUrl: string | null = inputAvatarUrl
 
-    // 1. Update user_metadata in Supabase Auth (preserving existing metadata)
+    // If avatarUrl is a base64 string, upload to Supabase Storage and get short public URL!
+    // NEVER store base64 in user_metadata because it blows up JWT size > 14KB causing Vercel 494!
+    if (inputAvatarUrl && typeof inputAvatarUrl === 'string' && inputAvatarUrl.startsWith('data:image')) {
+      const storageUrl = await uploadBase64ToStorage(adminClient, targetUserId, inputAvatarUrl)
+      if (storageUrl) {
+        finalAvatarUrl = storageUrl
+      } else {
+        return NextResponse.json(
+          { error: 'خطا در بارگذاری تصویر به سرور ذخیره‌سازی' },
+          { status: 500 }
+        )
+      }
+    }
+
+    // 1. Update user_metadata in Supabase Auth with the short URL
     const { data: existingUser } = await adminClient.auth.admin.getUserById(targetUserId)
     const existingMeta = existingUser?.user?.user_metadata || {}
 
     const { error: authErr } = await adminClient.auth.admin.updateUserById(targetUserId, {
       user_metadata: {
         ...existingMeta,
-        avatar_url: avatarUrl,
+        avatar_url: finalAvatarUrl,
       },
     })
 
@@ -63,7 +126,7 @@ export async function POST(request: Request) {
     try {
       const { error: profileErr } = await adminClient
         .from('profiles')
-        .update({ avatar_url: avatarUrl })
+        .update({ avatar_url: finalAvatarUrl })
         .eq('id', targetUserId)
 
       if (!profileErr) {
@@ -82,7 +145,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      avatar_url: avatarUrl,
+      avatar_url: finalAvatarUrl,
       profileUpdated,
     })
   } catch (err: unknown) {

@@ -8,7 +8,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next({ request })
   }
 
-  const supabaseResponse = NextResponse.next({ request })
+  let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,6 +19,8 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({ request })
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )
@@ -29,8 +31,17 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  function createRedirect(url: URL) {
+    const redirectRes = NextResponse.redirect(url)
+    // Copy cookies to the redirect response so tokens are not lost
+    supabaseResponse.cookies.getAll().forEach((c) => {
+      redirectRes.cookies.set(c.name, c.value)
+    })
+    return redirectRes
+  }
+
   if (!user && path !== '/login' && path !== '/signup') {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return createRedirect(new URL('/login', request.url))
   }
 
   if (user) {
@@ -43,17 +54,17 @@ export async function proxy(request: NextRequest) {
     const role = profile?.role || (user.user_metadata?.role as string | undefined)
 
     if (path === '/login') {
-      return NextResponse.redirect(
+      return createRedirect(
         new URL(role === 'admin' ? '/admin/members' : '/projects', request.url)
       )
     }
 
     if (path.startsWith('/admin') && role !== 'admin') {
-      return NextResponse.redirect(new URL('/projects', request.url))
+      return createRedirect(new URL('/projects', request.url))
     }
 
     if (path === '/') {
-      return NextResponse.redirect(
+      return createRedirect(
         new URL(role === 'admin' ? '/admin/members' : '/projects', request.url)
       )
     }
