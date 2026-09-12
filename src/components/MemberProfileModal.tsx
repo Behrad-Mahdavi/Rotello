@@ -61,8 +61,8 @@ export default function MemberProfileModal({
     async function loadMemberData() {
       setLoading(true)
       try {
-        const [profRes, assigneesRes, adjRes] = await Promise.all([
-          supabase.from('profiles').select('*').eq('id', userId).single(),
+        const [memberRes, assigneesRes, adjRes] = await Promise.all([
+          fetch(`/api/members?id=${userId}`).then((r) => (r.ok ? r.json() : null)),
           supabase
             .from('task_assignees')
             .select('task_id, tasks(id, title, status, xp_value, priority, deadline, updated_at, created_at, project_id, projects(name))')
@@ -75,8 +75,12 @@ export default function MemberProfileModal({
             .limit(50),
         ])
 
-        if (profRes.data) {
-          setProfile(profRes.data as Profile)
+        if (memberRes?.member) {
+          setProfile(memberRes.member as Profile)
+        } else {
+          // Fallback to direct supabase query
+          const { data: fallbackProf } = await supabase.from('profiles').select('*').eq('id', userId).single()
+          if (fallbackProf) setProfile(fallbackProf as Profile)
         }
 
         if (assigneesRes.data) {

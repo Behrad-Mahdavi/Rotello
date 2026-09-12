@@ -56,6 +56,8 @@ export default function AppHeader({ profile: propProfile }: AppHeaderProps) {
             if (profData) {
               const p = {
                 ...profData,
+                role: session.user.user_metadata?.role || profData.role,
+                departments: session.user.user_metadata?.departments || profData.departments || [],
                 avatar_url: profData.avatar_url || session.user.user_metadata?.avatar_url || null,
               } as Profile
               setCurrentProfile(p)

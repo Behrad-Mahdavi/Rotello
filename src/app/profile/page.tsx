@@ -44,9 +44,9 @@ function ProfileContent() {
 
       const effectiveUserId = targetUserId || user.id
 
-      const [currentProfRes, targetProfRes, assigneesRes, adjRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
-        supabase.from('profiles').select('*').eq('id', effectiveUserId).single(),
+      const [currentMemberRes, targetMemberRes, assigneesRes, adjRes] = await Promise.all([
+        fetch(`/api/members?id=${user.id}`).then((r) => (r.ok ? r.json() : null)),
+        fetch(`/api/members?id=${effectiveUserId}`).then((r) => (r.ok ? r.json() : null)),
         supabase
           .from('task_assignees')
           .select('task_id, tasks(id, title, status, xp_value, priority, deadline, updated_at, created_at, project_id, projects(name))')
@@ -59,19 +59,32 @@ function ProfileContent() {
           .limit(50),
       ])
 
-      if (currentProfRes.data) {
-        const p = {
-          ...currentProfRes.data,
-          avatar_url: currentProfRes.data.avatar_url || user.user_metadata?.avatar_url || null,
+      if (currentMemberRes?.member) {
+        setCurrentUserProfile(currentMemberRes.member)
+      } else {
+        const { data: cProf } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+        if (cProf) {
+          setCurrentUserProfile({
+            ...cProf,
+            role: (user.user_metadata?.role || cProf.role),
+            departments: user.user_metadata?.departments || [],
+            avatar_url: cProf.avatar_url || user.user_metadata?.avatar_url || null,
+          })
         }
-        setCurrentUserProfile(p)
       }
-      if (targetProfRes.data) {
-        const p = {
-          ...targetProfRes.data,
-          avatar_url: targetProfRes.data.avatar_url || (effectiveUserId === user.id ? user.user_metadata?.avatar_url : null),
+
+      if (targetMemberRes?.member) {
+        setTargetProfile(targetMemberRes.member)
+      } else {
+        const { data: tProf } = await supabase.from('profiles').select('*').eq('id', effectiveUserId).single()
+        if (tProf) {
+          setTargetProfile({
+            ...tProf,
+            role: (effectiveUserId === user.id ? user.user_metadata?.role || tProf.role : tProf.role),
+            departments: effectiveUserId === user.id ? user.user_metadata?.departments || [] : [],
+            avatar_url: tProf.avatar_url || (effectiveUserId === user.id ? user.user_metadata?.avatar_url : null),
+          })
         }
-        setTargetProfile(p)
       }
 
       if (assigneesRes.data) {

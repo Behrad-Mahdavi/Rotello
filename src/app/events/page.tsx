@@ -8,7 +8,7 @@ import CreateEventModal from '@/components/CreateEventModal'
 import EditEventModal from '@/components/EditEventModal'
 import DeleteEventModal from '@/components/DeleteEventModal'
 import { formatToPersianDate } from '@/utils/jalaali'
-import type { Profile, EventWithRelations, EventStatus, Event } from '@/utils/database.types'
+import type { Profile, EventWithRelations, EventStatus, Event, Role } from '@/utils/database.types'
 
 const STATUS_MAP: Record<EventStatus, { label: string; style: string }> = {
   planning: { label: 'در حال برنامه‌ریزی', style: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
@@ -49,7 +49,12 @@ export default function EventsListPage() {
         `).order('created_at', { ascending: false }),
       ])
 
-      if (profRes.data) setProfile(profRes.data)
+      if (profRes.data) {
+        setProfile({
+          ...profRes.data,
+          role: (user.user_metadata?.role || profRes.data.role) as Role,
+        })
+      }
       if (eventsRes.data) setEvents(eventsRes.data as EventWithRelations[])
       if (eventsRes.error) console.error('Error fetching events:', eventsRes.error)
 

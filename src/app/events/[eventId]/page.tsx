@@ -8,7 +8,7 @@ import EditEventModal from '@/components/EditEventModal'
 import DeleteEventModal from '@/components/DeleteEventModal'
 import { EVENT_CATEGORIES } from '@/constants/eventChecklistTemplate'
 import { formatToPersianDate } from '@/utils/jalaali'
-import type { Profile, Event, EventStatus, EventChecklistItemWithRelations } from '@/utils/database.types'
+import type { Profile, Event, EventStatus, EventChecklistItemWithRelations, Role } from '@/utils/database.types'
 import { Star } from 'lucide-react'
 
 const STATUS_MAP: Record<EventStatus, { label: string; style: string }> = {
@@ -75,7 +75,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
         supabase.from('profiles').select('*').order('full_name', { ascending: true }),
       ])
 
-      if (profRes.data) setProfile(profRes.data)
+      if (profRes.data) {
+        setProfile({
+          ...profRes.data,
+          role: (user.user_metadata?.role || profRes.data.role) as Role,
+        })
+      }
       if (membersRes.data) setMembers(membersRes.data)
 
       if (eventRes.data) {

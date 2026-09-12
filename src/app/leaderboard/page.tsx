@@ -39,14 +39,28 @@ export default function LeaderboardPage() {
       const user = session?.user
       if (!user) { router.push('/login'); return }
 
-      const [profRes, membersRes] = await Promise.all([
+      const [profRes, membersFetch] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         // Rule: Leaderboard is strictly for 'member' role (no mentors or admins)
-        supabase.from('profiles').select('*').eq('role', 'member').order('xp_total', { ascending: false }),
+        fetch('/api/members?role=member').then((r) => (r.ok ? r.json() : { members: [] })),
       ])
 
-      if (profRes.data) setProfile(profRes.data)
-      if (membersRes.data) setMembers(membersRes.data)
+      const userRole = (user.user_metadata?.role || profRes.data?.role || 'member')
+      const userDeps = profRes.data?.departments || (user.user_metadata?.departments || [])
+
+      if (profRes.data) {
+        setProfile({
+          ...profRes.data,
+          role: userRole,
+          departments: userDeps,
+          avatar_url: profRes.data.avatar_url || user.user_metadata?.avatar_url || null,
+        })
+      }
+      if (membersFetch?.members) {
+        // Strictly filter out any non-member just in case
+        const regularMembers = (membersFetch.members as Profile[]).filter((m) => m.role === 'member')
+        setMembers(regularMembers)
+      }
       setLoading(false)
     }
     load()

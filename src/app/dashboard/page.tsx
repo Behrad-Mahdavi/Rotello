@@ -79,14 +79,25 @@ export default function DashboardPage() {
       const user = session?.user
       if (!user) { router.push('/login'); return }
 
-      const [profRes, projectsRes, tasksRes, membersRes] = await Promise.all([
+      const [profRes, projectsRes, tasksRes, membersFetch] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('projects').select('*').order('created_at', { ascending: false }),
         supabase.from('tasks').select('*').order('created_at', { ascending: false }),
-        supabase.from('profiles').select('*').order('xp_total', { ascending: false }),
+        fetch('/api/members').then((r) => (r.ok ? r.json() : { members: [] })),
       ])
 
+      const userRole = (user.user_metadata?.role || profRes.data?.role || 'member')
+      const userDeps = profRes.data?.departments || (user.user_metadata?.departments || [])
+
       const prof = profRes.data
+        ? {
+            ...profRes.data,
+            role: userRole,
+            departments: userDeps,
+            avatar_url: profRes.data.avatar_url || user.user_metadata?.avatar_url || null,
+          }
+        : null
+
       if (!prof || prof.role !== 'admin') {
         router.push('/projects')
         return
@@ -96,7 +107,7 @@ export default function DashboardPage() {
         profile: prof,
         projects: projectsRes.data || [],
         tasks: tasksRes.data || [],
-        members: membersRes.data || [],
+        members: membersFetch.members || [],
       })
       setLoading(false)
     }

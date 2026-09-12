@@ -51,6 +51,13 @@ export async function POST(request: Request) {
       // Ignore schema column error
     }
 
+    try {
+      const { invalidateMembersCache } = await import('@/utils/membersCache')
+      invalidateMembersCache()
+    } catch {
+      // Ignore
+    }
+
     return NextResponse.json({
       success: true,
       avatar_url: avatarUrl,

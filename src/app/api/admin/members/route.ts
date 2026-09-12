@@ -147,6 +147,13 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: profileError.message }, { status: 500 })
     }
 
+    try {
+      const { invalidateMembersCache } = await import('@/utils/membersCache')
+      invalidateMembersCache()
+    } catch {
+      // Ignore
+    }
+
     return NextResponse.json({
       success: true,
       member: {
