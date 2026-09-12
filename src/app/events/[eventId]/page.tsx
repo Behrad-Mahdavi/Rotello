@@ -4,9 +4,12 @@ import { useEffect, useState, use, useMemo } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
+import EditEventModal from '@/components/EditEventModal'
+import DeleteEventModal from '@/components/DeleteEventModal'
 import { EVENT_CATEGORIES } from '@/constants/eventChecklistTemplate'
 import { formatToPersianDate } from '@/utils/jalaali'
 import type { Profile, Event, EventStatus, EventChecklistItemWithRelations } from '@/utils/database.types'
+import { Star } from 'lucide-react'
 
 const STATUS_MAP: Record<EventStatus, { label: string; style: string }> = {
   planning: { label: 'در حال برنامه‌ریزی', style: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
@@ -27,6 +30,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
   const [items, setItems] = useState<EventChecklistItemWithRelations[]>([])
   const [members, setMembers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     strategy: true,
     content: true,
@@ -284,18 +289,42 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                 </span>
 
                 {isLeadOrAdmin && (
-                  <select
-                    disabled={savingStatus}
-                    value={event.status}
-                    onChange={(e) => handleUpdateStatus(e.target.value as EventStatus)}
-                    className="rounded-lg border border-border bg-surface-2 px-2.5 py-0.5 text-xs text-subtle outline-none transition focus:border-action"
-                  >
-                    <option value="planning">تغییر به: در حال برنامه‌ریزی</option>
-                    <option value="ready">تغییر به: آماده برگزاری</option>
-                    <option value="in_progress">تغییر به: در حال برگزاری</option>
-                    <option value="completed">تغییر به: برگزار شده</option>
-                    <option value="cancelled">تغییر به: لغوشده</option>
-                  </select>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      disabled={savingStatus}
+                      value={event.status}
+                      onChange={(e) => handleUpdateStatus(e.target.value as EventStatus)}
+                      className="rounded-lg border border-border bg-surface-2 px-2.5 py-1 text-xs text-subtle outline-none transition focus:border-action"
+                    >
+                      <option value="planning">تغییر به: در حال برنامه‌ریزی</option>
+                      <option value="ready">تغییر به: آماده برگزاری</option>
+                      <option value="in_progress">تغییر به: در حال برگزاری</option>
+                      <option value="completed">تغییر به: برگزار شده</option>
+                      <option value="cancelled">تغییر به: لغوشده</option>
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowEditModal(true)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-2 px-2.5 py-1 text-xs font-medium text-subtle transition hover:border-action/40 hover:bg-action/10 hover:text-action"
+                    >
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      ویرایش رویداد
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteModal(true)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-2 px-2.5 py-1 text-xs font-medium text-muted transition hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-500"
+                    >
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      حذف رویداد
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -354,8 +383,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
 
         {/* Golden Rule Callout (from Event.md) */}
         <div className="mb-6 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-4 text-amber-200 shadow-sm flex items-start gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 font-bold text-sm">
-            ⭐
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
+            <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
           </div>
           <div>
             <h4 className="text-xs font-bold text-amber-400 sm:text-sm">قانون طلایی برگزاری رویداد</h4>
@@ -576,7 +605,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
                             />
                             <button
                               onClick={() => handleAddCustomItem(cat.key, cat.title)}
-                              className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+                              className="rounded-lg bg-action px-3 py-1 text-xs font-semibold text-white hover:bg-action-hover"
                             >
                               افزودن
                             </button>
@@ -613,6 +642,37 @@ export default function EventDetailPage({ params }: { params: Promise<{ eventId:
           })}
         </div>
       </main>
+
+      {/* Edit Modal */}
+      {showEditModal && profile && event && (
+        <EditEventModal
+          isOpen={showEditModal}
+          event={event}
+          currentProfile={profile}
+          onClose={() => setShowEditModal(false)}
+          onEventUpdated={(updated) => {
+            setEvent(updated)
+            if (updated.lead_id !== event.lead_id) {
+              const newLead = members.find((m) => m.id === updated.lead_id) || null
+              setLead(newLead)
+            }
+            setShowEditModal(false)
+          }}
+        />
+      )}
+
+      {/* Delete Modal */}
+      {showDeleteModal && event && (
+        <DeleteEventModal
+          isOpen={showDeleteModal}
+          eventId={event.id}
+          eventTitle={event.title}
+          onClose={() => setShowDeleteModal(false)}
+          onEventDeleted={() => {
+            router.push('/events')
+          }}
+        />
+      )}
     </div>
   )
 }

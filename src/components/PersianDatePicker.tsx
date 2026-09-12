@@ -11,6 +11,7 @@ import {
   parseGregorianToJalaali,
   formatJalaaliToGregorianString,
 } from '@/utils/jalaali'
+import { X } from 'lucide-react'
 
 interface PersianDatePickerProps {
   value: string // Expects YYYY-MM-DD or empty
@@ -189,10 +190,10 @@ export default function PersianDatePicker({
               e.stopPropagation()
               handleClear()
             }}
-            className="flex h-5 w-5 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-default"
+            className="flex h-5 w-5 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-default cursor-pointer"
             title="پاک کردن تاریخ"
           >
-            ✕
+            <X className="w-3.5 h-3.5" />
           </button>
         ) : (
           <svg className="h-4 w-4 text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -297,11 +298,11 @@ export default function PersianDatePicker({
                   onClick={() => handleSelectDay(day)}
                   className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-emerald-600 text-white font-bold shadow-md scale-105'
+                      ? 'bg-action text-white font-bold shadow-md scale-105'
                       : isToday
-                      ? 'border border-amber-400 text-amber-400 font-bold hover:bg-surface-2'
+                      ? 'border border-amber-400 text-amber-500 dark:text-amber-400 font-bold hover:bg-surface-2'
                       : isFriday
-                      ? 'text-rose-400 hover:bg-surface-2 hover:text-rose-300'
+                      ? 'text-rose-500 dark:text-rose-400 hover:bg-surface-2'
                       : 'text-default hover:bg-surface-2'
                   }`}
                 >
@@ -316,7 +317,7 @@ export default function PersianDatePicker({
             <button
               type="button"
               onClick={handleSelectToday}
-              className="rounded-lg px-2.5 py-1 font-semibold text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+              className="rounded-lg px-2.5 py-1 font-semibold text-action hover:bg-action/10 transition-colors"
             >
               امروز ({toPersianDigits(todayJalali.jd)} {PERSIAN_MONTHS[todayJalali.jm - 1]})
             </button>

@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "رکاد | مدیریت تسک",
-  description: "سیستم مدیریت تسک باشگاه کسب‌وکار رکاد",
+  title: "روتلو | باشگاه رکاد",
+  description: "سیستم مدیریت پروژه و تسک‌های باشگاه کسب‌وکار رکاد",
+  icons: {
+    icon: "/logo-main.jpg",
+  },
 };
 
 export default function RootLayout({
@@ -12,8 +16,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fa" dir="rtl">
-      <body className="min-h-full">{children}</body>
+    <html lang="fa" dir="rtl" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const storedTheme = localStorage.getItem('rotello-theme');
+                if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
+      </head>
+      <body className="min-h-full">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

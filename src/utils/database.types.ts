@@ -1,4 +1,12 @@
-export type Role = 'admin' | 'member'
+export type Role = 'admin' | 'mentor' | 'member'
+
+export type DepartmentKey = 'engineers' | 'artists' | 'generalists'
+export type DepartmentLevel = 'A' | 'B'
+
+export interface MemberDepartment {
+  department: DepartmentKey
+  level: DepartmentLevel
+}
 
 export type TaskStatus = 'backlog' | 'todo' | 'in_progress' | 'review' | 'done'
 
@@ -10,6 +18,9 @@ export interface Profile {
   role: Role
   xp_total: number
   created_at: string
+  departments?: MemberDepartment[]
+  email?: string
+  avatar_url?: string | null
 }
 
 export interface Project {
@@ -17,6 +28,7 @@ export interface Project {
   name: string
   description: string | null
   deadline: string | null
+  department?: DepartmentKey | null
   created_by: string
   created_at: string
 }

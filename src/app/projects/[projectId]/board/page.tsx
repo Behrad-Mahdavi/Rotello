@@ -12,7 +12,8 @@ import {
   DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors,
   type DragStartEvent, type DragEndEvent,
 } from '@dnd-kit/core'
-import type { Task, TaskStatus, Profile, Project } from '@/utils/database.types'
+import type { Task, TaskStatus, Profile, Project, Role } from '@/utils/database.types'
+import { Lock, Zap } from 'lucide-react'
 
 const COLUMNS: { id: TaskStatus; title: string }[] = [
   { id: 'backlog', title: 'بک‌لاگ' },
@@ -36,6 +37,10 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
   const router = useRouter()
   const supabase = createClient()
 
+  const totalProjectXp = useMemo(() => {
+    return tasks.reduce((sum, t) => sum + (Number(t.xp_value) || 0), 0)
+  }, [tasks])
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
@@ -53,14 +58,45 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
         supabase.from('tasks').select('*').eq('project_id', projectId).order('created_at', { ascending: true }),
         supabase.from('task_assignees').select('task_id').eq('user_id', user.id),
       ])
-      if (profRes.data) setProfile(profRes.data)
+      const userRole = (user.user_metadata?.role || profRes.data?.role || 'member') as Role
+      const userDeps = profRes.data?.departments || (user.user_metadata?.departments || [])
+
+      const fullProfile: Profile = {
+        ...(profRes.data || { id: user.id, full_name: user.user_metadata?.full_name || 'کاربر', xp_total: 0, created_at: '' }),
+        role: userRole,
+        departments: userDeps,
+      }
+
+      if (profRes.data) setProfile(fullProfile)
       if (projRes.data) setProject(projRes.data)
       if (tasksRes.data) setTasks(tasksRes.data)
-      if (assigneeRes.data) setMyAssigneeTaskIds(assigneeRes.data.map((a: { task_id: string }) => a.task_id))
+      const myTaskIds = (assigneeRes.data || []).map((a: { task_id: string }) => a.task_id)
+      setMyAssigneeTaskIds(myTaskIds)
       setLoading(false)
     }
     load()
   }, [projectId])
+
+  // Check access permission:
+  // - Admin: always allowed
+  // - Mentor: allowed if project belongs to mentor's department OR mentor has tasks in project
+  // - Member: allowed if member has tasks in project
+  const hasAccess = useMemo(() => {
+    if (!profile || !project) return true
+    if (profile.role === 'admin') return true
+
+    const projectTaskIds = new Set(tasks.map((t) => t.id))
+    const isAssignedInProject = myAssigneeTaskIds.some((id) => projectTaskIds.has(id))
+
+    if (profile.role === 'mentor') {
+      const mentorDeps = (profile.departments || []).map((d) => d.department)
+      if (project.department && mentorDeps.includes(project.department)) return true
+      return isAssignedInProject
+    }
+
+    // Member: must have assigned tasks in this project
+    return isAssignedInProject
+  }, [profile, project, tasks, myAssigneeTaskIds])
 
   const tasksByStatus = useMemo(() => {
     const grouped: Record<TaskStatus, Task[]> = { backlog: [], todo: [], in_progress: [], review: [], done: [] }
@@ -71,8 +107,12 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
   const canDragTask = useCallback((task: Task) => {
     if (!profile) return false
     if (profile.role === 'admin') return true
+    if (profile.role === 'mentor') {
+      const mentorDeps = (profile.departments || []).map((d) => d.department)
+      if (project?.department && mentorDeps.includes(project.department)) return true
+    }
     return myAssigneeTaskIds.includes(task.id)
-  }, [profile, myAssigneeTaskIds])
+  }, [profile, project, myAssigneeTaskIds])
 
   async function handleDragEnd(event: DragEndEvent) {
     setActiveTask(null)
@@ -103,36 +143,64 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
   )
   if (!profile) return null
 
+  if (!hasAccess) {
+    return (
+      <div className="flex min-h-screen flex-col bg-canvas" dir="rtl">
+        <AppHeader profile={profile} />
+        <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center px-4 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-amber-500/10 text-amber-500 mb-4 border border-amber-500/20 shadow-sm">
+            <Lock className="w-8 h-8 text-amber-500" />
+          </div>
+          <h2 className="text-lg font-bold text-default mb-2">عدم دسترسی به این پروژه</h2>
+          <p className="text-xs text-muted leading-relaxed mb-6">
+            {profile.role === 'member'
+              ? 'شما عضو این پروژه نیستید و تسکی برای شما در آن ثبت نشده است.'
+              : 'این پروژه مربوط به دپارتمان‌های شما نیست و عضویتی در آن ندارید.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push('/projects')}
+            className="rounded-xl bg-action px-5 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm hover:bg-action-hover transition-all active:scale-95"
+          >
+            مشاهده پروژه‌های من
+          </button>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-screen flex-col bg-canvas overflow-hidden" dir="rtl">
       <AppHeader profile={profile} />
 
       <div className="flex items-center justify-between border-b border-border bg-surface-2/40 px-3 py-2 sm:px-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
           <button onClick={() => router.push('/projects')}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-surface-2 hover:text-default">
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-surface-2 hover:text-default shrink-0">
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
             <span className="hidden sm:inline">پروژه‌ها</span>
           </button>
-          <span className="text-muted/40">/</span>
-          <span className="text-xs font-medium text-default sm:text-sm">{project?.name || 'بورد'}</span>
+          <span className="text-muted/40 shrink-0">/</span>
+          <span className="text-xs font-bold text-default sm:text-sm truncate max-w-[110px] sm:max-w-xs">{project?.name || 'بورد'}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          <div className="inline-flex items-center gap-1 sm:gap-1.5 rounded-xl border border-[#F8A41D]/30 bg-[#FEF6E8] dark:bg-[#57390A]/40 px-2 sm:px-2.5 py-1 sm:py-1.5 text-xs font-black text-[#BA7B16] dark:text-[#fde047] shadow-xs" title="مجموع امتیازات کل تسک‌های این پروژه">
+            <Zap className="h-3.5 w-3.5 text-[#F8A41D]" />
+            <span className="text-muted font-medium hidden sm:inline">مجموع امتیازات پروژه:</span>
+            <span>{totalProjectXp.toLocaleString('fa-IR')} XP</span>
+          </div>
+
           {isAdmin && (
             <button onClick={() => setShowCreateModal(true)}
-              className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm transition-all hover:bg-emerald-700 sm:gap-1.5 sm:px-3">
+              className="inline-flex items-center gap-1 rounded-xl bg-action px-2 sm:px-2.5 py-1 sm:py-1.5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-action-hover active:scale-95 sm:gap-1.5 sm:px-3">
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
               <span className="hidden sm:inline">تسک جدید</span>
             </button>
           )}
-          <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-400 sm:gap-1.5 sm:px-3">
-            <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-            {profile?.xp_total}
-          </span>
         </div>
       </div>
 
@@ -142,7 +210,7 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
         </div>
       )}
 
-      <main className="flex-1 overflow-x-auto overflow-y-hidden p-2 sm:p-4">
+      <main className="flex-1 overflow-x-auto overflow-y-hidden p-2 sm:p-4" style={{ WebkitOverflowScrolling: 'touch' }}>
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <div className="flex h-full gap-2 sm:gap-3" style={{ minWidth: COLUMNS.length * 252 + (COLUMNS.length - 1) * 8 }}>
             {COLUMNS.map((col) => (

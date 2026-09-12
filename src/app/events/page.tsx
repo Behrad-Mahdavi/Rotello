@@ -5,8 +5,10 @@ import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
 import CreateEventModal from '@/components/CreateEventModal'
+import EditEventModal from '@/components/EditEventModal'
+import DeleteEventModal from '@/components/DeleteEventModal'
 import { formatToPersianDate } from '@/utils/jalaali'
-import type { Profile, EventWithRelations, EventStatus } from '@/utils/database.types'
+import type { Profile, EventWithRelations, EventStatus, Event } from '@/utils/database.types'
 
 const STATUS_MAP: Record<EventStatus, { label: string; style: string }> = {
   planning: { label: 'در حال برنامه‌ریزی', style: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
@@ -21,6 +23,8 @@ export default function EventsListPage() {
   const [events, setEvents] = useState<EventWithRelations[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [eventToEdit, setEventToEdit] = useState<Event | null>(null)
+  const [eventToDelete, setEventToDelete] = useState<{ id: string; title: string } | null>(null)
   const [activeFilter, setActiveFilter] = useState<'all' | 'mine' | 'assigned'>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
@@ -74,9 +78,17 @@ export default function EventsListPage() {
     return (
       <div className="flex min-h-screen flex-col bg-canvas" dir="rtl">
         <AppHeader />
-        <div className="flex flex-1 items-center justify-center text-sm text-muted">
-          در حال بارگذاری رویدادها...
-        </div>
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 space-y-6 animate-pulse">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="h-10 w-48 rounded-2xl bg-surface-2/70" />
+            <div className="h-10 w-36 rounded-2xl bg-surface-2/70" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-44 rounded-2xl bg-surface-2/70 border border-border/80" />
+            ))}
+          </div>
+        </main>
       </div>
     )
   }
@@ -95,14 +107,11 @@ export default function EventsListPage() {
                 {events.length} رویداد
               </span>
             </div>
-            <p className="mt-1 text-xs text-muted sm:text-sm">
-              چک‌لیست ۸ بخشی آماده‌سازی، تفکیک نقش‌ها و پایش کامل روند برگزاری ایونت‌ها
-            </p>
           </div>
 
           <button
             onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 sm:text-sm"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-action px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-action-hover active:scale-95 sm:text-sm"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -113,10 +122,10 @@ export default function EventsListPage() {
 
         {/* Filters */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-border/80 pb-4">
-          <div className="flex items-center gap-1.5 rounded-xl bg-surface-2/80 p-1">
+          <div className="flex items-center gap-1.5 rounded-xl bg-surface-2/80 p-1 overflow-x-auto max-w-full scrollbar-none" style={{ WebkitOverflowScrolling: 'touch' }}>
             <button
               onClick={() => setActiveFilter('all')}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                 activeFilter === 'all'
                   ? 'bg-surface text-default shadow-sm'
                   : 'text-muted hover:text-default'
@@ -126,7 +135,7 @@ export default function EventsListPage() {
             </button>
             <button
               onClick={() => setActiveFilter('mine')}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                 activeFilter === 'mine'
                   ? 'bg-surface text-default shadow-sm'
                   : 'text-muted hover:text-default'
@@ -136,7 +145,7 @@ export default function EventsListPage() {
             </button>
             <button
               onClick={() => setActiveFilter('assigned')}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                 activeFilter === 'assigned'
                   ? 'bg-surface text-default shadow-sm'
                   : 'text-muted hover:text-default'
@@ -193,64 +202,102 @@ export default function EventsListPage() {
               ]
               const g = gradients[i % gradients.length]
 
+              const canManage = profile?.role === 'admin' || ev.lead_id === profile?.id
+
               return (
                 <div
                   key={ev.id}
                   onClick={() => router.push(`/events/${ev.id}`)}
-                  className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-border bg-surface shadow-sm transition-all hover:border-border-strong hover:shadow-md cursor-pointer"
+                  className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border-[1.5px] border-border bg-surface shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2.5px_2.5px_0_#59BBAF] transition-all duration-200 hover:-translate-y-1 hover:shadow-[3.5px_3.5px_0_#202A5A] dark:hover:shadow-[3.5px_3.5px_0_#59BBAF] hover:border-action/50 active:scale-[0.99] cursor-pointer"
                 >
-                  {/* Gradient strip */}
+                  {/* Top Accent Gradient Bar */}
                   <div className={`h-1.5 w-full bg-gradient-to-r ${g}`} />
 
-                  <div className="p-5">
-                    {/* Header: Status badge & Date */}
+                  <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
+                    {/* Top: Status & Date & Management actions */}
                     <div className="flex items-center justify-between gap-2">
-                      <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${st.style}`}>
-                        {st.label}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`rounded-full border px-3 py-0.5 text-xs font-black ${st.style}`}>
+                          {st.label}
+                        </span>
+
+                        {canManage && (
+                          <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEventToEdit(ev)
+                              }}
+                              className="rounded-lg p-1 text-muted transition hover:bg-surface-2 hover:text-action"
+                              title="ویرایش رویداد"
+                            >
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEventToDelete({ id: ev.id, title: ev.title })
+                              }}
+                              className="rounded-lg p-1 text-muted transition hover:bg-rose-500/10 hover:text-rose-500"
+                              title="حذف رویداد"
+                            >
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
                       {ev.event_date && (
-                        <span className="text-[11px] text-muted flex items-center gap-1">
-                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <span className="text-xs font-bold text-muted flex items-center gap-1.5 bg-surface-2 px-2.5 py-0.5 rounded-lg border border-border/60">
+                          <svg className="h-3.5 w-3.5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                          {formatToPersianDate(ev.event_date)}
+                          <span>{formatToPersianDate(ev.event_date)}</span>
                         </span>
                       )}
                     </div>
 
-                    {/* Title & Description */}
-                    <h3 className="mt-3 text-base font-bold text-default group-hover:text-action transition-colors line-clamp-1">
-                      {ev.title}
-                    </h3>
-                    {ev.description && (
-                      <p className="mt-1 text-xs text-muted line-clamp-2">
-                        {ev.description}
-                      </p>
-                    )}
+                    {/* Middle: Title & Description */}
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-default group-hover:text-action transition-colors leading-snug line-clamp-1">
+                        {ev.title}
+                      </h3>
+                      {ev.description && (
+                        <p className="mt-1.5 text-xs sm:text-sm text-muted leading-relaxed line-clamp-2">
+                          {ev.description}
+                        </p>
+                      )}
+                    </div>
 
-                    {/* Lead & Location info */}
-                    <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
-                      <div className="flex items-center gap-1.5 rounded-lg bg-surface-2 px-2 py-1 text-subtle">
-                        <span className="text-muted">مسئول رویداد:</span>
-                        <span className="font-semibold text-default">{ev.lead?.full_name || 'نامشخص'}</span>
+                    {/* Meta info: Lead & Location */}
+                    <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                      <div className="flex items-center gap-1.5 rounded-xl bg-surface-2 px-2.5 py-1 text-subtle border border-border/70">
+                        <span className="text-muted font-medium">مسئول:</span>
+                        <span className="font-bold text-default">{ev.lead?.full_name || 'نامشخص'}</span>
                       </div>
                       {ev.location && (
-                        <div className="flex items-center gap-1 text-[11px] text-muted">
-                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <div className="flex items-center gap-1 rounded-xl bg-surface-2 px-2.5 py-1 text-muted border border-border/70">
+                          <svg className="h-3.5 w-3.5 text-muted shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                           </svg>
-                          <span className="line-clamp-1">{ev.location}</span>
+                          <span className="font-medium line-clamp-1">{ev.location}</span>
                         </div>
                       )}
                     </div>
 
-                    {/* Progress Bar & Checklist Summary */}
-                    <div className="mt-5 border-t border-border/60 pt-3">
-                      <div className="flex items-center justify-between text-xs mb-1.5">
-                        <span className="text-muted font-medium">میزان آمادگی رویداد</span>
-                        <span className="font-bold text-default">{pct}% ({doneItems}/{totalItems})</span>
+                    {/* Bottom: Progress Bar & Checklist Readiness */}
+                    <div className="pt-3 border-t border-border/70">
+                      <div className="flex items-center justify-between text-xs mb-1.5 font-bold">
+                        <span className="text-muted font-bold">میزان آمادگی رویداد</span>
+                        <span className="font-black text-default">{pct}٪ ({doneItems}/{totalItems})</span>
                       </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-surface-2">
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-surface-2 border border-border/40">
                         <div
                           className={`h-full rounded-full transition-all duration-500 ${
                             pct >= 80 ? 'bg-emerald-500' : pct >= 40 ? 'bg-amber-500' : 'bg-rose-500'
@@ -275,6 +322,43 @@ export default function EventsListPage() {
           onEventCreated={(newEvent) => {
             setShowCreateModal(false)
             router.push(`/events/${newEvent.id}`)
+          }}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {eventToEdit && profile && (
+        <EditEventModal
+          isOpen={!!eventToEdit}
+          event={eventToEdit}
+          currentProfile={profile}
+          onClose={() => setEventToEdit(null)}
+          onEventUpdated={(updated) => {
+            setEvents((prev) =>
+              prev.map((e) =>
+                e.id === updated.id
+                  ? {
+                      ...e,
+                      ...updated,
+                    }
+                  : e
+              )
+            )
+            setEventToEdit(null)
+          }}
+        />
+      )}
+
+      {/* Delete Modal */}
+      {eventToDelete && (
+        <DeleteEventModal
+          isOpen={!!eventToDelete}
+          eventId={eventToDelete.id}
+          eventTitle={eventToDelete.title}
+          onClose={() => setEventToDelete(null)}
+          onEventDeleted={(deletedId) => {
+            setEvents((prev) => prev.filter((e) => e.id !== deletedId))
+            setEventToDelete(null)
           }}
         />
       )}

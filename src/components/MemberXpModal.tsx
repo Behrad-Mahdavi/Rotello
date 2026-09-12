@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import type { Profile, XpAdjustment } from '@/utils/database.types'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
+import { X, Gift, AlertTriangle } from 'lucide-react'
 
 interface MemberXpModalProps {
   isOpen: boolean
@@ -65,6 +66,32 @@ export default function MemberXpModal({
 
   if (!isOpen || !member) return null
 
+  if (member.role && member.role !== 'member') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
+        <div
+          className="relative w-full max-w-sm rounded-2xl border border-border bg-surface p-5 text-center shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+          dir="rtl"
+        >
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-2xl text-amber-500">
+            ℹ️
+          </div>
+          <h3 className="font-bold text-default mb-2">عدم امکان تخصیص امتیاز</h3>
+          <p className="text-xs text-muted mb-4">
+            سیستم امتیازدهی (XP) و لیدربورد منحصراً برای «اعضا» تعریف شده است. منتورها و راهبرها امتیاز دریافت نمی‌کنند.
+          </p>
+          <button
+            onClick={onClose}
+            className="w-full rounded-xl bg-surface-2 py-2 text-xs font-semibold text-default hover:bg-surface-3 transition-colors"
+          >
+            بستن
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!member) return
@@ -73,7 +100,7 @@ export default function MemberXpModal({
       return
     }
     if (!reason.trim()) {
-      setError('لطفاً دلیل ثبت تشویقی یا پنالتی را بنویسید.')
+      setError('لطفاً دلیل ثبت تشویقی یا جریمه را بنویسید.')
       return
     }
 
@@ -136,9 +163,9 @@ export default function MemberXpModal({
           </div>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-default"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-default cursor-pointer"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -147,26 +174,26 @@ export default function MemberXpModal({
           <button
             type="button"
             onClick={() => { setActiveTab('reward'); setError('') }}
-            className={`flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold transition-all ${
+            className={`cursor-pointer flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold transition-all ${
               activeTab === 'reward'
-                ? 'bg-emerald-600 text-white shadow-sm'
+                ? 'bg-action text-white shadow-xs'
                 : 'text-muted hover:text-default'
             }`}
           >
-            <span className="text-sm">🎁</span>
+            <Gift className="w-4 h-4" />
             <span>اعطای تشویقی (+XP)</span>
           </button>
           <button
             type="button"
             onClick={() => { setActiveTab('penalty'); setError('') }}
-            className={`flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold transition-all ${
+            className={`cursor-pointer flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold transition-all ${
               activeTab === 'penalty'
                 ? 'bg-rose-600 text-white shadow-sm'
                 : 'text-muted hover:text-default'
             }`}
           >
-            <span className="text-sm">⚠️</span>
-            <span>ثبت پنالتی (-XP)</span>
+            <AlertTriangle className="w-4 h-4" />
+            <span>ثبت جریمه (-XP)</span>
           </button>
         </div>
 
@@ -175,7 +202,7 @@ export default function MemberXpModal({
           {/* Quick amount chips */}
           <div>
             <label className="block text-xs font-medium text-muted mb-1.5">
-              مقدار امتیاز {activeTab === 'reward' ? 'تشویقی' : 'پنالتی'}
+              مقدار امتیاز {activeTab === 'reward' ? 'تشویقی' : 'جریمه'}
             </label>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {(activeTab === 'reward' ? quickRewardAmounts : quickPenaltyAmounts).map((q) => (
@@ -213,7 +240,7 @@ export default function MemberXpModal({
           {/* Reason */}
           <div>
             <label className="block text-xs font-medium text-muted mb-1.5">
-              دلیل {activeTab === 'reward' ? 'تشویقی' : 'پنالتی'} <span className="text-rose-500">*</span>
+              دلیل {activeTab === 'reward' ? 'تشویقی' : 'جریمه'} <span className="text-rose-500">*</span>
             </label>
             <textarea
               rows={2}
@@ -239,13 +266,13 @@ export default function MemberXpModal({
           <button
             type="submit"
             disabled={loading}
-            className={`w-full rounded-xl py-2.5 text-sm font-semibold text-white shadow-sm transition-all disabled:opacity-50 ${
+            className={`w-full rounded-xl py-2.5 text-sm font-semibold text-white shadow-xs transition-all active:scale-[0.98] disabled:opacity-50 ${
               activeTab === 'reward'
-                ? 'bg-emerald-600 hover:bg-emerald-700'
-                : 'bg-rose-600 hover:bg-rose-700'
+                ? 'bg-action hover:bg-action-hover'
+                : 'bg-danger hover:bg-danger-hover'
             }`}
           >
-            {loading ? 'در حال ثبت...' : activeTab === 'reward' ? 'ثبت و اعطای تشویقی' : 'ثبت و اعمال پنالتی'}
+            {loading ? 'در حال ثبت...' : activeTab === 'reward' ? 'ثبت و اعطای تشویقی' : 'ثبت و اعمال جریمه'}
           </button>
         </form>
 
@@ -264,7 +291,7 @@ export default function MemberXpModal({
                 const isPositive = h.amount > 0
                 const typeLabels: Record<string, { title: string; color: string }> = {
                   reward: { title: 'تشویقی', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-                  penalty: { title: 'پنالتی', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
+                  penalty: { title: 'جریمه', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
                   task_completion: { title: 'تکمیل تسک', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
                   task_reversal: { title: 'کسر تسک', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
                 }

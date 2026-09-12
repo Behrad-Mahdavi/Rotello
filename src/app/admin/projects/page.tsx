@@ -7,20 +7,25 @@ import AppHeader from '@/components/AppHeader'
 import PersianDatePicker from '@/components/PersianDatePicker'
 import { formatToPersianDate } from '@/utils/jalaali'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
+import { DEPARTMENTS, type DepartmentKey } from '@/constants/departments'
 import type { Project, Profile } from '@/utils/database.types'
+import EditProjectModal from '@/components/EditProjectModal'
+import DeleteProjectModal from '@/components/DeleteProjectModal'
+import { Zap } from 'lucide-react'
 
 export default function AdminProjectsPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
+  const [projectXps, setProjectXps] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [deadline, setDeadline] = useState('')
+  const [department, setDepartment] = useState<string>('')
   const [error, setError] = useState('')
+  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null)
   const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  useBodyScrollLock(!!projectToDelete)
   const router = useRouter()
   const supabase = createClient()
 
@@ -31,35 +36,67 @@ export default function AdminProjectsPage() {
       const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (prof?.role !== 'admin') { router.push('/projects'); return }
       setProfile(prof)
-      const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false })
-      if (data) setProjects(data); setLoading(false)
+      const [projRes, tasksRes] = await Promise.all([
+        supabase.from('projects').select('*').order('created_at', { ascending: false }),
+        supabase.from('tasks').select('project_id, xp_value'),
+      ])
+      if (projRes.data) setProjects(projRes.data)
+      if (tasksRes.data) {
+        const xps: Record<string, number> = {}
+        for (const t of tasksRes.data) {
+          if (t.project_id) {
+            xps[t.project_id] = (xps[t.project_id] || 0) + (Number(t.xp_value) || 0)
+          }
+        }
+        setProjectXps(xps)
+      }
+      setLoading(false)
     }
     load()
   }, [])
 
   async function reload() {
-    const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false })
-    if (data) setProjects(data)
+    const [projRes, tasksRes] = await Promise.all([
+      supabase.from('projects').select('*').order('created_at', { ascending: false }),
+      supabase.from('tasks').select('project_id, xp_value'),
+    ])
+    if (projRes.data) setProjects(projRes.data)
+    if (tasksRes.data) {
+      const xps: Record<string, number> = {}
+      for (const t of tasksRes.data) {
+        if (t.project_id) {
+          xps[t.project_id] = (xps[t.project_id] || 0) + (Number(t.xp_value) || 0)
+        }
+      }
+      setProjectXps(xps)
+    }
   }
 
   async function handleCreateProject(e: React.FormEvent) {
     e.preventDefault(); setLoading(true); setError('')
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setError('Not authenticated'); setLoading(false); return }
-    const { error: err } = await supabase.from('projects').insert({ name, description: description || null, deadline: deadline || null, created_by: user.id })
+
+    const insertData: Record<string, unknown> = {
+      name,
+      description: description || null,
+      deadline: deadline || null,
+      created_by: user.id,
+      department: department || null,
+    }
+
+    let { error: err } = await supabase.from('projects').insert(insertData)
+    if (err && err.message?.includes('department')) {
+      delete insertData.department
+      const fallback = await supabase.from('projects').insert(insertData)
+      err = fallback.error
+    }
+
     if (err) { setError(err.message); setLoading(false); return }
-    setName(''); setDescription(''); setDeadline(''); setShowForm(false)
+    setName(''); setDescription(''); setDeadline(''); setDepartment(''); setShowForm(false)
     await reload()
   }
 
-  async function confirmDeleteProject() {
-    if (!projectToDelete) return
-    setIsDeleting(true)
-    await supabase.from('projects').delete().eq('id', projectToDelete.id)
-    setIsDeleting(false)
-    setProjectToDelete(null)
-    await reload()
-  }
 
   if (loading) return (
     <div className="flex min-h-screen flex-col bg-canvas" dir="rtl">
@@ -80,7 +117,7 @@ export default function AdminProjectsPage() {
             <p className="text-sm text-muted">{projects.length} پروژه</p>
           </div>
           <button onClick={() => setShowForm(!showForm)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-medium text-white transition-all hover:bg-emerald-700 shadow-sm">
+            className="inline-flex items-center gap-1.5 rounded-xl bg-action px-3.5 py-2 text-sm font-semibold text-white transition-all hover:bg-action-hover active:scale-95 shadow-xs">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
@@ -89,34 +126,45 @@ export default function AdminProjectsPage() {
         </div>
 
         {showForm && (
-          <div className="mb-6 rounded-xl border border-border bg-surface p-5 shadow-sm">
-            <h3 className="mb-4 text-sm font-semibold text-default">پروژه جدید</h3>
-            <form onSubmit={handleCreateProject} className="space-y-3" dir="rtl">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-muted">نام پروژه</label>
-                  <input type="text" value={name} onChange={(e) => setName(e.target.value)} required
-                    className="mt-1 block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-all focus:border-emerald-500/50 focus:bg-surface focus:outline-none" />
+          <form onSubmit={handleCreateProject} className="mb-6 rounded-2xl border border-border bg-surface p-5 shadow-xs" dir="rtl">
+            <h3 className="mb-3 text-sm font-bold text-default">ایجاد پروژه جدید</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-subtle">نام پروژه</label>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} required
+                  className="mt-1 block w-full rounded-xl border border-border bg-surface-2/60 px-3.5 py-2 text-sm text-default placeholder:text-muted transition-all focus:border-action focus:bg-surface focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-subtle">توضیحات</label>
+                <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
+                  className="mt-1 block w-full rounded-xl border border-border bg-surface-2/60 px-3.5 py-2 text-sm text-default placeholder:text-muted transition-all focus:border-action focus:bg-surface focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-subtle">مهلت پایان پروژه</label>
+                <div className="mt-1">
+                  <PersianDatePicker value={deadline} onChange={setDeadline} />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted">توضیحات</label>
-                  <input type="text" value={description} onChange={(e) => setDescription(e.target.value)}
-                    className="mt-1 block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-all focus:border-emerald-500/50 focus:bg-surface focus:outline-none" />
-                </div>
-                <PersianDatePicker
-                  label="ددلاین (تقویم شمسی)"
-                  value={deadline}
-                  onChange={setDeadline}
-                  placeholder="انتخاب تاریخ موعد تحویل..."
-                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-subtle">دپارتمان مربوطه (اختیاری)</label>
+                <select
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  className="mt-1 block w-full rounded-xl border border-border bg-surface-2/60 px-3.5 py-2 text-sm text-default transition-all focus:border-action focus:bg-surface focus:outline-none"
+                >
+                  <option value="">عمومی / بدون دپارتمان خاص (برای همه)</option>
+                  <option value="engineers">مهندسا</option>
+                  <option value="artists">آرتیستا</option>
+                  <option value="generalists">آچارفرانسه‌ها</option>
+                </select>
               </div>
               {error && <div className="rounded-lg bg-danger-subtle px-3 py-2 text-sm text-danger">{error}</div>}
               <button type="submit" disabled={loading}
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-emerald-700 disabled:opacity-50 shadow-sm">
+                className="rounded-xl bg-action px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-action-hover active:scale-95 disabled:opacity-50 shadow-xs">
                 {loading ? 'در حال ساخت...' : 'ساخت پروژه'}
               </button>
-            </form>
-          </div>
+            </div>
+          </form>
         )}
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -130,6 +178,10 @@ export default function AdminProjectsPage() {
               'from-orange-500 to-red-600',
             ]
             const g = gradients[i % gradients.length]
+            const depConfig = project.department && (project.department in DEPARTMENTS)
+              ? DEPARTMENTS[project.department as DepartmentKey]
+              : null
+
             return (
               <div key={project.id} className="group relative overflow-hidden rounded-2xl border border-border bg-surface pt-0 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg hover:border-border-subtle">
                 <div className={`h-2 w-full bg-gradient-to-r ${g}`} />
@@ -143,6 +195,16 @@ export default function AdminProjectsPage() {
                         <h3 className="truncate font-semibold text-default text-sm sm:text-base">{project.name}</h3>
                       </div>
                     </div>
+
+                    {depConfig ? (
+                      <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-bold ${depConfig.badgeClass}`}>
+                        {depConfig.label}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-lg bg-surface-2 px-2 py-0.5 text-[10px] font-medium text-muted">
+                        عمومی
+                      </span>
+                    )}
                   </div>
                   <p className="mt-3 line-clamp-2 min-h-[2.5rem] text-xs text-muted sm:text-sm leading-relaxed">
                     {project.description || 'بدون توضیحات'}
@@ -155,15 +217,33 @@ export default function AdminProjectsPage() {
                       <span>{formatToPersianDate(project.deadline)}</span>
                     </div>
                   )}
-                  <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-                    <button onClick={() => router.push(`/projects/${project.id}/board`)}
-                      className="rounded-xl bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-600 hover:text-white cursor-pointer active:scale-95 shadow-sm">
-                      مشاهده بورد ←
-                    </button>
-                    <button onClick={() => setProjectToDelete({ id: project.id, name: project.name })}
-                      className="rounded-xl bg-rose-500/10 px-3.5 py-1.5 text-xs font-semibold text-rose-400 transition-colors hover:bg-rose-600 hover:text-white cursor-pointer active:scale-95">
-                      حذف پروژه
-                    </button>
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => router.push(`/projects/${project.id}/board`)}
+                        className="rounded-xl bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-600 hover:text-white cursor-pointer active:scale-95 shadow-sm">
+                        مشاهده بورد ←
+                      </button>
+                      <span className="inline-flex items-center gap-1 rounded-lg border border-[#F8A41D]/30 bg-[#FEF6E8] dark:bg-[#57390A]/40 px-2 py-1 text-[11px] font-black text-[#BA7B16] dark:text-[#fde047]">
+                        <Zap className="h-3 w-3 text-[#F8A41D]" />
+                        <span>{(projectXps[project.id] || 0).toLocaleString('fa-IR')} XP</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setProjectToEdit(project)}
+                        className="rounded-xl bg-surface-2 hover:bg-accent/15 hover:text-accent border border-border px-2.5 py-1.5 text-xs font-medium text-default transition-colors cursor-pointer active:scale-95"
+                        title="ویرایش پروژه"
+                      >
+                        ویرایش
+                      </button>
+                      <button
+                        onClick={() => setProjectToDelete({ id: project.id, name: project.name })}
+                        className="rounded-xl bg-rose-500/10 px-2.5 py-1.5 text-xs font-medium text-rose-400 transition-colors hover:bg-rose-600 hover:text-white cursor-pointer active:scale-95"
+                        title="حذف پروژه"
+                      >
+                        حذف
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -176,39 +256,22 @@ export default function AdminProjectsPage() {
         </div>
       </main>
 
-      {/* Delete Project Confirmation Modal */}
-      {projectToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setProjectToDelete(null)}>
-          <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 shadow-2xl text-right" dir="rtl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-500/10 text-rose-500 mb-3 mx-auto">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-              </svg>
-            </div>
-            <h3 className="text-sm font-bold text-default text-center mb-2">حذف پروژه</h3>
-            <p className="text-xs text-muted text-center mb-5 leading-relaxed">
-              آیا از حذف پروژه <span className="font-semibold text-default">«{projectToDelete.name}»</span> اطمینان دارید؟ تمام تسک‌ها و اطلاعات مربوط به این پروژه حذف خواهند شد.
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={confirmDeleteProject}
-                className="flex-1 rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 transition-colors"
-              >
-                {isDeleting ? 'در حال حذف...' : 'بله، حذف کن'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setProjectToDelete(null)}
-                className="flex-1 rounded-xl border border-border bg-surface-2 px-3 py-2 text-xs font-semibold text-default hover:bg-surface transition-colors"
-              >
-                انصراف
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Edit Project Modal */}
+      <EditProjectModal
+        isOpen={!!projectToEdit}
+        project={projectToEdit}
+        onClose={() => setProjectToEdit(null)}
+        onProjectUpdated={reload}
+      />
+
+      {/* Delete Project Modal */}
+      <DeleteProjectModal
+        isOpen={!!projectToDelete}
+        projectId={projectToDelete?.id || null}
+        projectName={projectToDelete?.name || ''}
+        onClose={() => setProjectToDelete(null)}
+        onProjectDeleted={reload}
+      />
     </div>
   )
 }

@@ -21,11 +21,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Only admins can create users' }, { status: 403 })
     }
 
-    const { email, password, full_name } = await request.json()
+    const { email, password, full_name, role = 'member', departments = [] } = await request.json()
 
     if (!email || !password || !full_name) {
       return NextResponse.json({ error: 'Email, password, and full_name are required' }, { status: 400 })
     }
+
+    const validRoles = ['admin', 'mentor', 'member']
+    const finalRole = validRoles.includes(role) ? role : 'member'
+
+    const validDeps = ['engineers', 'artists', 'generalists']
+    const finalDepartments = Array.isArray(departments)
+      ? departments
+          .filter((d) => d && validDeps.includes(d.department) && (d.level === 'A' || d.level === 'B'))
+          .map((d) => ({ department: d.department, level: d.level }))
+      : []
 
     // Use admin client (service role) to create user
     const adminClient = createAdminClient()
@@ -34,22 +44,30 @@ export async function POST(request: Request) {
       email,
       password,
       email_confirm: true,
-      user_metadata: { full_name, role: 'member' },
+      user_metadata: { full_name, role: finalRole, departments: finalDepartments },
     })
 
     if (createError) {
       return NextResponse.json({ error: createError.message }, { status: 400 })
     }
 
-    // Profile is created automatically by the handle_new_user trigger on auth.users
-    // But we need to update the full_name since the trigger uses raw_user_meta_data
+    // Update profile with full_name, role, and departments
     const { error: profileError } = await adminClient
       .from('profiles')
-      .update({ full_name, role: 'member' })
+      .update({
+        full_name,
+        role: finalRole,
+        departments: finalDepartments,
+      })
       .eq('id', authUser.user!.id)
 
     if (profileError) {
-      return NextResponse.json({ error: profileError.message }, { status: 500 })
+      // Fallback if role constraint or departments column not yet migrated
+      const fallbackRole = finalRole === 'mentor' ? 'member' : finalRole
+      await adminClient
+        .from('profiles')
+        .update({ full_name, role: fallbackRole })
+        .eq('id', authUser.user!.id)
     }
 
     return NextResponse.json({ success: true, user_id: authUser.user!.id })

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
 import { formatToPersianDate } from '@/utils/jalaali'
 import type { Profile, Task, EventChecklistItem } from '@/utils/database.types'
+import { Calendar, ClipboardList, CheckCircle2 } from 'lucide-react'
 
 interface TaskWithProject extends Task {
   project_name: string
@@ -124,9 +125,15 @@ export default function MyTasksPage() {
     return (
       <div className="flex min-h-screen flex-col bg-canvas" dir="rtl">
         <AppHeader />
-        <div className="flex flex-1 items-center justify-center text-sm text-muted">
-          در حال بارگذاری تسک‌ها...
-        </div>
+        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-5 space-y-4 animate-pulse">
+          <div className="h-10 w-56 rounded-2xl bg-surface-2/70" />
+          <div className="h-12 w-full rounded-2xl bg-surface-2/70" />
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-20 rounded-2xl bg-surface-2/70 border border-border/80" />
+            ))}
+          </div>
+        </main>
       </div>
     )
   }
@@ -138,18 +145,18 @@ export default function MyTasksPage() {
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-5">
         {/* Header Title & Summary */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-default">تسک‌ها و مسئولیت‌های من</h2>
-            <p className="text-xs text-muted sm:text-sm">
-              {totalCount} مورد محول‌شده ({tasks.length} تسک پروژه، {eventItems.length} مسئولیت در رویدادها)
-            </p>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-default">تسک‌ها و مسئولیت‌های من</h2>
+            <span className="rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-semibold text-muted">
+              {totalCount} مورد
+            </span>
           </div>
 
           {/* Section Tabs */}
-          <div className="flex items-center gap-1.5 rounded-xl bg-surface-2/80 p-1 self-start sm:self-auto">
+          <div className="flex items-center gap-1.5 rounded-xl bg-surface-2/80 p-1 self-start sm:self-auto overflow-x-auto max-w-full scrollbar-none" style={{ WebkitOverflowScrolling: 'touch' }}>
             <button
               onClick={() => setActiveTab('all')}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                 activeTab === 'all' ? 'bg-surface text-default shadow-sm' : 'text-muted hover:text-default'
               }`}
             >
@@ -157,7 +164,7 @@ export default function MyTasksPage() {
             </button>
             <button
               onClick={() => setActiveTab('projects')}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                 activeTab === 'projects' ? 'bg-surface text-default shadow-sm' : 'text-muted hover:text-default'
               }`}
             >
@@ -165,7 +172,7 @@ export default function MyTasksPage() {
             </button>
             <button
               onClick={() => setActiveTab('events')}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                 activeTab === 'events' ? 'bg-surface text-default shadow-sm' : 'text-muted hover:text-default'
               }`}
             >
@@ -184,23 +191,23 @@ export default function MyTasksPage() {
             {(activeTab === 'all' || activeTab === 'events') && eventItems.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-500/20 text-emerald-400 text-xs">
-                    📅
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-500 border border-emerald-500/30">
+                    <Calendar className="w-3.5 h-3.5" />
                   </div>
-                  <h3 className="text-sm font-bold text-default">مسئولیت‌های من در برگزاری رویدادها</h3>
-                  <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted font-semibold">
+                  <h3 className="text-sm font-black text-default">مسئولیت‌های من در برگزاری رویدادها</h3>
+                  <span className="rounded-full bg-surface-2 px-2.5 py-0.5 text-xs text-muted font-bold border border-border">
                     {eventItems.filter((it) => it.is_done).length} از {eventItems.length} انجام شده
                   </span>
                 </div>
 
-                <div className="space-y-2.5">
+                <div className="space-y-3">
                   {eventItems.map((item) => (
                     <div
                       key={item.id}
-                      className={`rounded-xl border p-4 shadow-sm transition-all ${
+                      className={`rounded-2xl border-[1.5px] p-4 sm:p-5 shadow-[2px_2px_0_#202A5A] dark:shadow-[2px_2px_0_#59BBAF] transition-all hover:-translate-y-0.5 ${
                         item.is_done
-                          ? 'border-emerald-500/20 bg-emerald-500/[0.02]'
-                          : 'border-border bg-surface hover:border-border-strong'
+                          ? 'border-[#59BBAF]/40 bg-[#59BBAF]/5'
+                          : 'border-border bg-surface hover:border-action/50'
                       }`}
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -209,9 +216,9 @@ export default function MyTasksPage() {
                           <button
                             type="button"
                             onClick={() => handleToggleEventItem(item)}
-                            className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border transition-all ${
+                            className={`mt-0.5 cursor-pointer select-none active:scale-95 flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border-[1.5px] transition-all ${
                               item.is_done
-                                ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm'
+                                ? 'border-action bg-action text-white shadow-xs'
                                 : 'border-border-strong hover:border-action bg-surface'
                             }`}
                           >
@@ -228,7 +235,7 @@ export default function MyTasksPage() {
 
                           <div className="flex-1 min-w-0">
                             <p
-                              className={`text-xs font-semibold leading-relaxed sm:text-sm ${
+                              className={`text-xs font-bold leading-relaxed sm:text-sm ${
                                 item.is_done ? 'text-muted line-through' : 'text-default'
                               }`}
                             >
@@ -239,7 +246,7 @@ export default function MyTasksPage() {
                               {item.event && (
                                 <button
                                   onClick={() => router.push(`/events/${item.event_id}`)}
-                                  className="inline-flex items-center gap-1 rounded-md bg-surface-2 px-2 py-0.5 text-[11px] font-semibold text-action hover:underline"
+                                  className="inline-flex items-center gap-1 rounded-lg bg-surface-2 px-2.5 py-0.5 text-[11px] font-bold text-action hover:underline border border-border/70"
                                 >
                                   <span>رویداد: {item.event.title}</span>
                                   <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -248,20 +255,21 @@ export default function MyTasksPage() {
                                 </button>
                               )}
 
-                              <span className="rounded-md bg-surface-2 px-2 py-0.5 text-[11px] text-muted">
+                              <span className="rounded-lg bg-surface-2 px-2 py-0.5 text-[11px] text-muted border border-border/70 font-medium">
                                 بخش: {item.category_title}
                               </span>
 
                               {item.is_done && (
-                                <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-400">
-                                  انجام شده ✓
+                                <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-bold text-emerald-500">
+                                  <span>انجام شده</span>
+                                  <CheckCircle2 className="w-3 h-3" />
                                 </span>
                               )}
                             </div>
 
                             {item.notes && (
-                              <div className="mt-2 rounded-lg bg-surface-2 p-2 text-xs text-subtle border border-border/40">
-                                <span className="font-semibold text-action ml-1">یادداشت ثبت‌شده:</span>
+                              <div className="mt-2 rounded-xl bg-surface-2 p-2.5 text-xs text-subtle border border-border/60">
+                                <span className="font-bold text-action ml-1">یادداشت ثبت‌شده:</span>
                                 {item.notes}
                               </div>
                             )}
@@ -271,7 +279,7 @@ export default function MyTasksPage() {
                         {/* Event Link button */}
                         <button
                           onClick={() => router.push(`/events/${item.event_id}`)}
-                          className="shrink-0 rounded-lg bg-surface-2 px-2.5 py-1.5 text-xs text-muted hover:text-default transition self-end sm:self-start"
+                          className="shrink-0 rounded-xl bg-surface-2 border border-border px-3 py-1.5 text-xs font-bold text-muted hover:text-default hover:border-action/40 transition self-end sm:self-start"
                         >
                           مشاهده در رویداد
                         </button>
@@ -286,27 +294,27 @@ export default function MyTasksPage() {
             {(activeTab === 'all' || activeTab === 'projects') && tasks.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="flex h-5 w-5 items-center justify-center rounded-md bg-sky-500/20 text-sky-400 text-xs">
-                    📋
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-500/20 text-sky-500 border border-sky-500/30">
+                    <ClipboardList className="w-3.5 h-3.5" />
                   </div>
-                  <h3 className="text-sm font-bold text-default">تسک‌های پروژه‌ها (بورد کانبان)</h3>
+                  <h3 className="text-sm font-black text-default">تسک‌های پروژه‌ها (بورد کانبان)</h3>
                 </div>
 
-                <div className="space-y-2.5">
+                <div className="space-y-3">
                   {tasks.map((t) => (
                     <button
                       key={t.id}
                       onClick={() => router.push(`/projects/${t.project_id}/board`)}
-                      className="group w-full rounded-xl border border-border bg-surface p-4 text-right shadow-sm transition-all hover:border-border-strong hover:shadow-md sm:p-5"
+                      className="group w-full rounded-2xl border-[1.5px] border-border bg-surface p-4 sm:p-5 text-right shadow-[2px_2px_0_#202A5A] dark:shadow-[2px_2px_0_#59BBAF] transition-all hover:-translate-y-0.5 hover:border-action/50 cursor-pointer"
                     >
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0 flex-1">
-                          <h4 className="text-sm font-semibold text-default group-hover:text-action transition-colors line-clamp-1">
+                          <h4 className="text-xs sm:text-sm font-bold text-default group-hover:text-action transition-colors line-clamp-1">
                             {t.title}
                           </h4>
-                          <div className="mt-1.5 flex items-center gap-1.5">
+                          <div className="mt-1.5 flex items-center gap-2">
                             <span className="text-[11px] text-muted">پروژه:</span>
-                            <span className="rounded-md bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-action">
+                            <span className="rounded-lg bg-surface-2 px-2 py-0.5 text-[11px] font-bold text-action border border-border/60">
                               {t.project_name}
                             </span>
                           </div>

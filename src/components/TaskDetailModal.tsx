@@ -8,6 +8,7 @@ import PersianDatePicker from './PersianDatePicker'
 import { formatToPersianDate } from '@/utils/jalaali'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import type { Task, Profile, Checklist, ChecklistItem, TaskReport } from '@/utils/database.types'
+import { X } from 'lucide-react'
 
 
 interface TaskDetailModalProps {
@@ -296,7 +297,9 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
                   </svg>
                 </button>
               )}
-              <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-default">✕</button>
+              <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-default cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>

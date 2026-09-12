@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import PersianDatePicker from './PersianDatePicker'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import type { Task, Profile, TaskPriority } from '@/utils/database.types'
+import { X, Check } from 'lucide-react'
 
 
 interface CreateTaskModalProps {
@@ -91,7 +92,9 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: C
         <div className="sticky top-0 z-10 border-b border-border bg-surface px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-default">تسک جدید</h2>
-            <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-default">✕</button>
+            <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-default cursor-pointer">
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
@@ -147,7 +150,9 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: C
                   return (
                     <span key={uid} className="inline-flex items-center gap-1 rounded-full bg-action/15 px-2.5 py-1 text-xs font-medium text-action">
                       {m.full_name}
-                      <button type="button" onClick={() => toggle(uid)} className="mr-0.5 text-action/60 hover:text-action">✕</button>
+                      <button type="button" onClick={() => toggle(uid)} className="mr-0.5 text-action/60 hover:text-action cursor-pointer">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
                     </span>
                   )
                 })}
@@ -171,7 +176,7 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: C
                         {m.full_name.charAt(0)}
                       </span>
                       <span className="flex-1">{m.full_name}</span>
-                      {isSelected && <span className="text-action">✓</span>}
+                      {isSelected && <Check className="w-4 h-4 text-action" />}
                     </button>
                   )
                 })}
@@ -195,7 +200,9 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: C
                   <div key={ii} className="mt-1.5 flex items-center gap-2">
                     <input type="text" value={item} onChange={(e) => updItem(ci, ii, e.target.value)} placeholder="آیتم"
                       className="flex-1 rounded border border-border bg-surface px-2 py-1.5 text-xs focus:border-action/50 focus:outline-none" />
-                    <button type="button" onClick={() => rmItem(ci, ii)} className="text-muted hover:text-danger text-xs">✕</button>
+                    <button type="button" onClick={() => rmItem(ci, ii)} className="text-muted hover:text-danger cursor-pointer">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 ))}
                 <button type="button" onClick={() => addItem(ci)} className="mt-1.5 text-xs text-action hover:text-action-hover">+ آیتم</button>

@@ -246,7 +246,7 @@ export default function CreateEventModal({
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-action px-5 py-2.5 text-xs font-semibold text-white shadow-xs transition hover:bg-action-hover active:scale-95 disabled:opacity-50"
             >
               {loading ? 'در حال ثبت...' : 'ایجاد و شروع چک‌لیست'}
             </button>

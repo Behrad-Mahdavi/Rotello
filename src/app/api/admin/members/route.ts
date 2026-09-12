@@ -1,0 +1,162 @@
+import { NextResponse } from 'next/server'
+import { createAdminClient } from '@/utils/supabase/admin'
+import { createClient } from '@/utils/supabase/server'
+import type { Role, MemberDepartment } from '@/utils/database.types'
+
+// GET /api/admin/members - fetch all members with enriched user_metadata and email
+export async function GET() {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.role !== 'admin' && user.user_metadata?.role !== 'admin') {
+      return NextResponse.json({ error: 'Only admins can access this resource' }, { status: 403 })
+    }
+
+    const adminClient = createAdminClient()
+
+    // Fetch both profiles from DB and auth users from Supabase Auth
+    const [profilesRes, usersRes] = await Promise.all([
+      adminClient.from('profiles').select('*').order('created_at', { ascending: false }),
+      adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+    ])
+
+    if (profilesRes.error) {
+      return NextResponse.json({ error: profilesRes.error.message }, { status: 500 })
+    }
+
+    const authUsersMap = new Map<string, { email?: string; role?: Role; departments?: MemberDepartment[] }>()
+    if (usersRes.data?.users) {
+      for (const u of usersRes.data.users) {
+        authUsersMap.set(u.id, {
+          email: u.email,
+          role: (u.user_metadata?.role as Role) || undefined,
+          departments: (u.user_metadata?.departments as MemberDepartment[]) || undefined,
+        })
+      }
+    }
+
+    const enrichedMembers = (profilesRes.data || []).map((p) => {
+      const authInfo = authUsersMap.get(p.id)
+      // Prioritize auth metadata for role if DB check constraint hasn't been updated yet
+      const role: Role = (authInfo?.role || p.role || 'member') as Role
+      const departments: MemberDepartment[] = p.departments || authInfo?.departments || []
+      const email = authInfo?.email || ''
+
+      return {
+        ...p,
+        role,
+        departments,
+        email,
+      }
+    })
+
+    return NextResponse.json({ members: enrichedMembers })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Unknown error' }, { status: 500 })
+  }
+}
+
+// PATCH /api/admin/members - update an existing member's role, departments, and name
+export async function PATCH(request: Request) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.role !== 'admin' && user.user_metadata?.role !== 'admin') {
+      return NextResponse.json({ error: 'Only admins can modify members' }, { status: 403 })
+    }
+
+    const { user_id, full_name, role, departments } = await request.json()
+
+    if (!user_id) {
+      return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
+    }
+
+    const validRoles: Role[] = ['admin', 'mentor', 'member']
+    const finalRole: Role = validRoles.includes(role) ? role : 'member'
+
+    // Clean departments array
+    const validDeps = ['engineers', 'artists', 'generalists']
+    const finalDepartments: MemberDepartment[] = Array.isArray(departments)
+      ? departments
+          .filter((d) => d && validDeps.includes(d.department) && (d.level === 'A' || d.level === 'B'))
+          .map((d) => ({ department: d.department, level: d.level }))
+      : []
+
+    const adminClient = createAdminClient()
+
+    // 1. Update auth.users user_metadata
+    const updateAuthRes = await adminClient.auth.admin.updateUserById(user_id, {
+      user_metadata: {
+        ...(full_name ? { full_name } : {}),
+        role: finalRole,
+        departments: finalDepartments,
+      },
+    })
+
+    if (updateAuthRes.error) {
+      return NextResponse.json({ error: updateAuthRes.error.message }, { status: 400 })
+    }
+
+    // 2. Update profiles table (try with all fields; if role constraint or column is missing, fallback gracefully)
+    const profileUpdateData: Record<string, unknown> = {}
+    if (full_name) profileUpdateData.full_name = full_name
+    profileUpdateData.role = finalRole
+    profileUpdateData.departments = finalDepartments
+
+    let profileError = null
+    const { error: fullErr } = await adminClient
+      .from('profiles')
+      .update(profileUpdateData)
+      .eq('id', user_id)
+
+    if (fullErr) {
+      // If error was due to role constraint or departments column not yet added in SQL
+      // retry updating only full_name and safe role
+      const fallbackRole = finalRole === 'mentor' ? 'member' : finalRole
+      const { error: fallbackErr } = await adminClient
+        .from('profiles')
+        .update({
+          ...(full_name ? { full_name } : {}),
+          role: fallbackRole,
+        })
+        .eq('id', user_id)
+      profileError = fallbackErr
+    }
+
+    if (profileError) {
+      return NextResponse.json({ error: profileError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      success: true,
+      member: {
+        id: user_id,
+        full_name,
+        role: finalRole,
+        departments: finalDepartments,
+      },
+    })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Unknown error' }, { status: 500 })
+  }
+}

@@ -1,79 +1,577 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-RegularD4.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-MediumD4.ttf') format('truetype'); font-weight: 500; font-style: normal; font-display: swap; }
 @font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-DemiBoldD4.ttf') format('truetype'); font-weight: 600; font-style: normal; font-display: swap; }
 @font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-BoldD4.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
 @font-face { font-family: 'IRANSansX'; src: url('/fonts/IRANSansXFaNum-ExtraBoldD4.ttf') format('truetype'); font-weight: 800; font-style: normal; font-display: swap; }
 
+:root {
+  /* Rokad Design System Core Brand Colors */
+  --color-primary: #59BBAF;
+  --color-girl: #E0195B;
+  --color-third: #F8A41D;
+  --color-sec: #202A5A;
+  --color-club: #652D90;
+
+  /* Ecosystem Spectrum */
+  --ecosystem-light: #EEF8F7;
+  --ecosystem-normal: #59BBAF;
+  --ecosystem-dark: #438C83;
+  --ecosystem-darker: #1F413D;
+
+  /* Male Spectrum */
+  --male-light: #E9EAEF;
+  --male-normal: #202A5A;
+  --male-dark: #182044;
+  --male-darker: #0B0F1F;
+
+  /* Female Spectrum */
+  --female-light: #FCE8EF;
+  --female-normal: #E0195B;
+  --female-dark: #A81344;
+  --female-darker: #4E0920;
+
+  /* College Spectrum */
+  --college-light: #FEF6E8;
+  --college-normal: #F8A41D;
+  --college-dark: #BA7B16;
+  --college-darker: #57390A;
+
+  /* Club Spectrum */
+  --club-light: #F0EAF4;
+  --club-normal: #652D90;
+  --club-dark: #4C226C;
+  --club-darker: #231032;
+
+  /* Accents */
+  --accent-green: #009966;
+  --accent-red: #C60036;
+  --accent-purple: #8A38F5;
+
+  /* LIGHT MODE (Default) */
+  --bg-canvas: #F8F9FA;
+  --bg-surface: #FFFFFF;
+  --bg-surface-2: #FAFAFA;
+  --border-color: #EAEAEA;
+  --border-color-strong: #DFDFDF;
+
+  --text-default: #292827;
+  --text-subtle: #71717A;
+  --text-muted: #A1A1AA;
+  --text-on-brand: #FFFFFF;
+  --text-on-dark: #FFFFFF;
+
+  /* Action & Semantic mapping */
+  --action-color: #59BBAF;
+  --action-hover: #50A89E;
+  --action-active: #47968C;
+  --action-subtle: #EEF8F7;
+
+  --admin-color: #652D90;
+  --admin-hover: #5B2982;
+  --admin-subtle: #F0EAF4;
+
+  --success-color: #009966;
+  --success-subtle: #EEF8F7;
+  --warning-color: #F8A41D;
+  --warning-subtle: #FEF6E8;
+  --danger-color: #E0195B;
+  --danger-hover: #CA1752;
+  --danger-subtle: #FCE8EF;
+  --info-color: #202A5A;
+  --info-subtle: #E9EAEF;
+
+  --xp-color: #F8A41D;
+
+  --stage-backlog: #94A3B8;
+  --stage-todo: #64748B;
+  --stage-in-progress: #59BBAF;
+  --stage-done: #652D90;
+
+  --focus-ring: #59BBAF;
+  --scrollbar-thumb: #CBD5E1;
+  --scrollbar-thumb-hover: #94A3B8;
+
+  /* Hard Shadow Default Variables (Light) */
+  --shadow-color-primary: #59BBAF;
+  --shadow-color-sec: #202A5A;
+}
+
+.dark {
+  /* DARK MODE */
+  --bg-canvas: #0B0F17;
+  --bg-surface: #151C28;
+  --bg-surface-2: #1C2536;
+  --border-color: #242F42;
+  --border-color-strong: #2D3A50;
+
+  --text-default: #F1F5F9;
+  --text-subtle: #CBD5E1;
+  --text-muted: #94A3B8;
+  --text-on-brand: #0B0F17;
+  --text-on-dark: #FFFFFF;
+
+  /* Ecosystem Green in Dark */
+  --action-color: #59BBAF;
+  --action-hover: #50A89E;
+  --action-active: #47968C;
+  --action-subtle: rgba(89, 187, 175, 0.15);
+
+  /* Club / Accent Purple in Dark */
+  --admin-color: #8A38F5;
+  --admin-hover: #7C3AED;
+  --admin-subtle: rgba(138, 56, 245, 0.15);
+
+  --success-color: #59BBAF;
+  --success-subtle: rgba(89, 187, 175, 0.15);
+  --warning-color: #F8A41D;
+  --warning-subtle: rgba(248, 164, 29, 0.15);
+  --danger-color: #E0195B;
+  --danger-hover: #F43F5E;
+  --danger-subtle: rgba(224, 25, 91, 0.15);
+  --info-color: #60A5FA;
+  --info-subtle: rgba(96, 165, 250, 0.15);
+
+  --xp-color: #F8A41D;
+
+  --stage-backlog: #94A3B8;
+  --stage-todo: #CBD5E1;
+  --stage-in-progress: #59BBAF;
+  --stage-done: #C084FC;
+
+  --focus-ring: #59BBAF;
+  --scrollbar-thumb: #374151;
+  --scrollbar-thumb-hover: #4B5563;
+
+  /* Hard Shadow Default Variables (Dark) */
+  --shadow-color-primary: #59BBAF;
+  --shadow-color-sec: #3F50A0;
+}
+
 @theme inline {
-  --color-canvas:      #0b0d11;
-  --color-surface:     #15171e;
-  --color-surface-2:   #1d1f27;
-  --color-border:      rgba(255,255,255,0.06);
-  --color-border-strong: rgba(255,255,255,0.12);
+  --color-canvas: var(--bg-canvas);
+  --color-surface: var(--bg-surface);
+  --color-surface-2: var(--bg-surface-2);
+  --color-border: var(--border-color);
+  --color-border-strong: var(--border-color-strong);
 
-  --color-text-default:    #f0f1f5;
-  --color-text-subtle:     #a0a2b0;
-  --color-text-muted:      #6b6e7c;
-  --color-text-on-brand:   #0b0d11;
-  --color-text-on-dark:    #ffffff;
+  --color-text-default: var(--text-default);
+  --color-text-subtle: var(--text-subtle);
+  --color-text-muted: var(--text-muted);
+  --color-text-on-brand: var(--text-on-brand);
+  --color-text-on-dark: var(--text-on-dark);
 
-  --color-action:          #10b981;
-  --color-action-hover:    #059669;
-  --color-action-active:   #047857;
-  --color-action-subtle:   rgba(16,185,129,0.1);
+  --color-action: var(--action-color);
+  --color-action-hover: var(--action-hover);
+  --color-action-active: var(--action-active);
+  --color-action-subtle: var(--action-subtle);
 
-  --color-admin:           #8b5cf6;
-  --color-admin-hover:     #7c3aed;
-  --color-admin-subtle:    rgba(139,92,246,0.1);
+  --color-admin: var(--admin-color);
+  --color-admin-hover: var(--admin-hover);
+  --color-admin-subtle: var(--admin-subtle);
 
-  --color-success:         #14b8a6;
-  --color-success-subtle:  rgba(20,184,166,0.1);
-  --color-warning:         #f59e0b;
-  --color-warning-subtle:  rgba(245,158,11,0.1);
-  --color-danger:          #f43f5e;
-  --color-danger-hover:    #e11d48;
-  --color-danger-subtle:   rgba(244,63,94,0.1);
-  --color-info:            #6366f1;
-  --color-info-subtle:     rgba(99,102,241,0.1);
+  --color-success: var(--success-color);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning-color);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-danger: var(--danger-color);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-info: var(--info-color);
+  --color-info-subtle: var(--info-subtle);
 
-  --color-xp:              #f59e0b;
+  --color-xp: var(--xp-color);
 
-  --color-stage-backlog:     #9ca3af;
-  --color-stage-todo:        #94a3b8;
-  --color-stage-in-progress: #10b981;
-  --color-stage-done:        #14b8a6;
+  --color-stage-backlog: var(--stage-backlog);
+  --color-stage-todo: var(--stage-todo);
+  --color-stage-in-progress: var(--stage-in-progress);
+  --color-stage-done: var(--stage-done);
 
-  --color-focus-ring: #10b981;
+  --color-focus-ring: var(--focus-ring);
 
   --font-sans: 'IRANSansX', system-ui, sans-serif;
   --font-mono: ui-monospace, monospace;
 }
 
-@layer utilities {
-  .scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.15) transparent;
+/* ==============================================================================
+   ROKAD MODERN REFINED NEO-BRUTALISM COMPONENTS & UTILITIES
+   ============================================================================== */
+
+@layer components {
+  /* Rokad Card Component */
+  .rokad-card {
+    background: #FFFFFF;
+    border: 1.5px solid #EAEAEA;
+    border-radius: 16px;
+    box-shadow: 2.75px 2.75px 0 #202A5A;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  .rokad-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 3.5px 3.5px 0 #202A5A;
   }
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
+  .dark .rokad-card {
+    background: #151C28;
+    border-color: #242F42;
+    box-shadow: 2.75px 2.75px 0 #59BBAF;
   }
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: rgba(255,255,255,0.15);
-    border-radius: 9999px;
+  .dark .rokad-card:hover {
+    box-shadow: 3.5px 3.5px 0 #59BBAF;
   }
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(255,255,255,0.25);
+
+  /* Primary Button (Ecosystem) */
+  .rokad-btn-primary {
+    background-color: #59BBAF;
+    color: #FFFFFF;
+    font-weight: 700;
+    border: 1.5px solid #438C83;
+    border-radius: 12px;
+    box-shadow: 2.5px 2.5px 0 #1F413D;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .rokad-btn-primary:hover {
+    background-color: #50A89E;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #1F413D;
+  }
+  .rokad-btn-primary:active {
+    transform: translate(1.5px, 1.5px);
+    box-shadow: 1px 1px 0 #1F413D;
+  }
+  .dark .rokad-btn-primary {
+    border-color: #50A89E;
+    box-shadow: 2.5px 2.5px 0 #1F413D;
+  }
+
+  /* Secondary Button (Male / Navy) */
+  .rokad-btn-sec {
+    background-color: #202A5A;
+    color: #FFFFFF;
+    font-weight: 700;
+    border: 1.5px solid #182044;
+    border-radius: 12px;
+    box-shadow: 2.5px 2.5px 0 #0B0F1F;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .rokad-btn-sec:hover {
+    background-color: #1D2651;
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #0B0F1F;
+  }
+  .rokad-btn-sec:active {
+    transform: translate(1.5px, 1.5px);
+    box-shadow: 1px 1px 0 #0B0F1F;
+  }
+  .dark .rokad-btn-sec {
+    background-color: #2B3875;
+    border-color: #3F50A0;
+    box-shadow: 2.5px 2.5px 0 #59BBAF;
+  }
+  .dark .rokad-btn-sec:hover {
+    background-color: #34448C;
+    box-shadow: 3px 3px 0 #59BBAF;
+  }
+
+  /* Outline Button */
+  .rokad-btn-outline {
+    background-color: #FFFFFF;
+    color: #292827;
+    font-weight: 600;
+    border: 1.5px solid #DFDFDF;
+    border-radius: 12px;
+    box-shadow: 2px 2px 0 #BDBCBC;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .rokad-btn-outline:hover {
+    background-color: #F8F9FA;
+    border-color: #292827;
+    box-shadow: 2.5px 2.5px 0 #292827;
+  }
+  .rokad-btn-outline:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 #292827;
+  }
+  .dark .rokad-btn-outline {
+    background-color: #161D2A;
+    color: #F1F5F9;
+    border-color: #2D3A50;
+    box-shadow: 2px 2px 0 #0F172A;
+  }
+  .dark .rokad-btn-outline:hover {
+    background-color: #1C2536;
+    border-color: #59BBAF;
+    box-shadow: 2.5px 2.5px 0 #59BBAF;
+  }
+
+  /* Standard Rokad Input Form Control */
+  .rokad-input {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border-radius: 12px;
+    border: 1.5px solid #EAEAEA;
+    background-color: #FAFAFA;
+    color: #292827;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+  .rokad-input:focus {
+    border-color: #59BBAF;
+    background-color: #FFFFFF;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(89, 187, 175, 0.15);
+  }
+  .dark .rokad-input {
+    background-color: #1C2536;
+    border-color: #242F42;
+    color: #F1F5F9;
+  }
+  .dark .rokad-input:focus {
+    border-color: #59BBAF;
+    background-color: #1C2536;
+    box-shadow: 0 0 0 3px rgba(89, 187, 175, 0.2);
+  }
+
+  /* Persona Badge Utilities */
+  .badge-ecosystem {
+    background-color: #EEF8F7;
+    color: #1F413D;
+    border: 1px solid rgba(89, 187, 175, 0.4);
+  }
+  .dark .badge-ecosystem {
+    background-color: rgba(31, 65, 61, 0.45);
+    color: #EEF8F7;
+    border-color: rgba(89, 187, 175, 0.4);
+  }
+
+  .badge-female {
+    background-color: #FCE8EF;
+    color: #4E0920;
+    border: 1px solid rgba(224, 25, 91, 0.4);
+  }
+  .dark .badge-female {
+    background-color: rgba(78, 9, 32, 0.45);
+    color: #FCE8EF;
+    border-color: rgba(224, 25, 91, 0.4);
+  }
+
+  .badge-college {
+    background-color: #FEF6E8;
+    color: #57390A;
+    border: 1px solid rgba(248, 164, 29, 0.4);
+  }
+  .dark .badge-college {
+    background-color: rgba(87, 57, 10, 0.45);
+    color: #FEF6E8;
+    border-color: rgba(248, 164, 29, 0.4);
+  }
+
+  .badge-club {
+    background-color: #F0EAF4;
+    color: #231032;
+    border: 1px solid rgba(101, 45, 144, 0.4);
+  }
+  .dark .badge-club {
+    background-color: rgba(35, 16, 50, 0.55);
+    color: #F3E8FF;
+    border-color: rgba(168, 85, 247, 0.5);
+  }
+
+  .badge-male {
+    background-color: #E9EAEF;
+    color: #0B0F1F;
+    border: 1px solid rgba(32, 42, 90, 0.4);
+  }
+  .dark .badge-male {
+    background-color: rgba(11, 15, 31, 0.55);
+    color: #E9EAEF;
+    border-color: rgba(96, 165, 250, 0.4);
   }
 }
 
+@layer utilities {
+  /* Hard Shadows Scale */
+  .shadow-ecosystem {
+    box-shadow: 2.75px 2.75px 0 #59BBAF;
+  }
+  .shadow-male {
+    box-shadow: 2.75px 2.75px 0 #202A5A;
+  }
+  .dark .shadow-male {
+    box-shadow: 2.75px 2.75px 0 #3F50A0;
+  }
+  .shadow-female {
+    box-shadow: 2.75px 2.75px 0 #E0195B;
+  }
+  .shadow-college {
+    box-shadow: 2.75px 2.75px 0 #F8A41D;
+  }
+  .shadow-club {
+    box-shadow: 2.75px 2.75px 0 #652D90;
+  }
+  .dark .shadow-club {
+    box-shadow: 2.75px 2.75px 0 #8A38F5;
+  }
+  .shadow-hard-sm {
+    box-shadow: 2px 2px 0 rgba(41, 40, 39, 0.8);
+  }
+  .dark .shadow-hard-sm {
+    box-shadow: 2px 2px 0 #59BBAF;
+  }
+  .shadow-hard-md {
+    box-shadow: 3px 3px 0 rgba(41, 40, 39, 0.9);
+  }
+  .dark .shadow-hard-md {
+    box-shadow: 3px 3px 0 #59BBAF;
+  }
+  .shadow-hard-lg {
+    box-shadow: 4px 4px 0 #202A5A;
+  }
+  .dark .shadow-hard-lg {
+    box-shadow: 4px 4px 0 #59BBAF;
+  }
+
+  /* Existing utility aliases */
+  .shadow-rokad-green {
+    box-shadow: 2.75px 2.75px 0 #59BBAF;
+  }
+  .shadow-rokad-purple {
+    box-shadow: 2.75px 2.75px 0 #652D90;
+  }
+  .shadow-rokad-navy {
+    box-shadow: 2.75px 2.75px 0 #202A5A;
+  }
+}
+
+/* ==============================================================================
+   SECTION 8: OFFICIAL PRINT STYLESHEET (A4 & PDF EXPORT)
+   ============================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm 12mm 12mm;
+  }
+
+  /* 1. Force Clean Light Office Theme */
+  :root, html, body, .dark, .dark body {
+    color-scheme: light !important;
+    background: #ffffff !important;
+    color: #0F172A !important;
+    font-size: 10.5pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 2. Hide Menus, Navbars and Action Controls */
+  aside, header, nav, .screen-only, .no-print {
+    display: none !important;
+  }
+
+  /* 3. Reveal Dedicated Print Container */
+  .print-only {
+    display: block !important;
+  }
+
+  /* 4. Executive Data Table */
+  .executive-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 9pt !important;
+  }
+  .executive-table tr {
+    page-break-inside: avoid !important;
+  }
+  .executive-table th {
+    background-color: #F1F5F9 !important;
+    color: #1E293B !important;
+    font-weight: 800 !important;
+    border: 1px solid #E2E8F0 !important;
+    border-bottom: 2px solid #CBD5E1 !important;
+    padding: 8px 10px !important;
+    text-align: right !important;
+  }
+  .executive-table td {
+    border: 1px solid #E2E8F0 !important;
+    padding: 7px 10px !important;
+  }
+
+  /* 5. Clear Shadows & Transitions for Crisp Printouts */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ==============================================================================
+   GLOBAL SCROLLBAR & BASE
+   ============================================================================== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F1F1;
+}
+::-webkit-scrollbar-thumb {
+  background: #C4C4C4;
+  border-radius: 4px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: #111827;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #374151;
+}
+
 body {
-  background: var(--color-canvas);
-  color: var(--color-text-default);
+  background-color: var(--bg-canvas);
+  color: var(--text-default);
   font-family: var(--font-sans);
+  direction: rtl;
+  text-align: right;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Ensure all buttons and interactive controls across the entire site have pointer cursor */
+button,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+select,
+summary {
+  cursor: pointer !important;
+  user-select: none;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"],
+input:disabled,
+select:disabled {
+  cursor: not-allowed !important;
 }
