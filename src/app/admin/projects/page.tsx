@@ -41,7 +41,7 @@ export default function AdminProjectsPage() {
       setProfile(prof)
       const [projRes, tasksRes, mapRes] = await Promise.all([
         supabase.from('projects').select('*').order('created_at', { ascending: false }),
-        supabase.from('tasks').select('project_id, xp_value'),
+        supabase.from('tasks').select('project_id, xp_value, title'),
         fetch('/api/projects/members-map').then((r) => r.ok ? r.json() : { map: {} }).catch(() => ({ map: {} })),
       ])
       if (projRes.data) setProjects(projRes.data)
@@ -49,6 +49,7 @@ export default function AdminProjectsPage() {
       if (tasksRes.data) {
         const xps: Record<string, number> = {}
         for (const t of tasksRes.data) {
+          if (t.title === '__PROJECT_ROSTER__') continue
           if (t.project_id) {
             xps[t.project_id] = (xps[t.project_id] || 0) + (Number(t.xp_value) || 0)
           }
@@ -63,7 +64,7 @@ export default function AdminProjectsPage() {
   async function reload() {
     const [projRes, tasksRes, mapRes] = await Promise.all([
       supabase.from('projects').select('*').order('created_at', { ascending: false }),
-      supabase.from('tasks').select('project_id, xp_value'),
+      supabase.from('tasks').select('project_id, xp_value, title'),
       fetch('/api/projects/members-map').then((r) => r.ok ? r.json() : { map: {} }).catch(() => ({ map: {} })),
     ])
     if (projRes.data) setProjects(projRes.data)
@@ -71,6 +72,7 @@ export default function AdminProjectsPage() {
     if (tasksRes.data) {
       const xps: Record<string, number> = {}
       for (const t of tasksRes.data) {
+        if (t.title === '__PROJECT_ROSTER__') continue
         if (t.project_id) {
           xps[t.project_id] = (xps[t.project_id] || 0) + (Number(t.xp_value) || 0)
         }

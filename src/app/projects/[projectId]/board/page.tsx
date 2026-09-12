@@ -40,9 +40,13 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
   const router = useRouter()
   const supabase = createClient()
 
-  const totalProjectXp = useMemo(() => {
-    return tasks.reduce((sum, t) => sum + (Number(t.xp_value) || 0), 0)
+  const visibleTasks = useMemo(() => {
+    return tasks.filter((t) => t.title !== '__PROJECT_ROSTER__')
   }, [tasks])
+
+  const totalProjectXp = useMemo(() => {
+    return visibleTasks.reduce((sum, t) => sum + (Number(t.xp_value) || 0), 0)
+  }, [visibleTasks])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -52,8 +56,7 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
   useEffect(() => {
     if (!projectId) return
     async function load() {
-      const { data: { session } } = await supabase.auth.getSession()
-      const user = session?.user
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       const [profRes, projRes, tasksRes, assigneeRes, membersRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
@@ -106,9 +109,9 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
 
   const tasksByStatus = useMemo(() => {
     const grouped: Record<TaskStatus, Task[]> = { backlog: [], todo: [], in_progress: [], review: [], done: [] }
-    for (const t of tasks) grouped[t.status]?.push(t)
+    for (const t of visibleTasks) grouped[t.status]?.push(t)
     return grouped
-  }, [tasks])
+  }, [visibleTasks])
 
   const canDragTask = useCallback((task: Task) => {
     if (!profile) return false
@@ -195,22 +198,26 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
           {/* Project Members Widget */}
           <button
             onClick={() => setShowMembersModal(true)}
-            className="inline-flex items-center gap-1 sm:gap-1.5 rounded-xl border border-border bg-surface px-1.5 sm:px-2.5 py-1 sm:py-1.5 text-xs font-semibold text-default hover:bg-surface-2 transition-all cursor-pointer active:scale-95 shadow-2xs"
+            className="inline-flex items-center gap-1.5 sm:gap-2 rounded-xl border border-border bg-surface px-2 sm:px-2.5 py-1 sm:py-1.5 text-xs font-semibold text-default hover:bg-surface-2 transition-all cursor-pointer active:scale-95 shadow-2xs"
             title="مشاهده و مدیریت اعضای پروژه"
           >
-            <div className="flex -space-x-1.5 rtl:space-x-reverse overflow-hidden items-center">
-              {projectMembers.slice(0, 3).map((m) => (
-                <div key={m.id} className="h-4.5 w-4.5 sm:h-5 sm:w-5 rounded-full border border-surface bg-action/20 text-[9px] font-bold text-action flex items-center justify-center overflow-hidden">
-                  {m.avatar_url ? (
-                    <img src={m.avatar_url} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    m.full_name?.charAt(0)
-                  )}
-                </div>
-              ))}
-            </div>
+            {projectMembers.length > 0 ? (
+              <div className="flex -space-x-1.5 rtl:space-x-reverse overflow-hidden items-center">
+                {projectMembers.slice(0, 3).map((m) => (
+                  <div key={m.id} className="h-5 w-5 rounded-full border border-surface bg-action/20 text-[9px] font-bold text-action flex items-center justify-center overflow-hidden">
+                    {m.avatar_url ? (
+                      <img src={m.avatar_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      m.full_name?.charAt(0)
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Users className="h-3.5 w-3.5 text-muted" />
+            )}
             <span className="hidden sm:inline">اعضای پروژه</span>
-            <span className="rounded-full bg-surface-2 px-1.5 py-0.2 text-[10px] font-bold text-muted">
+            <span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-bold text-muted">
               {projectMembers.length}
             </span>
           </button>

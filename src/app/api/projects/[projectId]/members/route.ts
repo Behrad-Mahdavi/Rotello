@@ -6,6 +6,8 @@ import {
   removeProjectMember,
 } from '@/utils/projectMembersStore'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ projectId: string }> }
@@ -17,7 +19,14 @@ export async function GET(
     }
 
     const members = await getProjectMembers(projectId)
-    return NextResponse.json({ members })
+    return NextResponse.json(
+      { members },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    )
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'خطای ناشناخته'
     return NextResponse.json({ error: message }, { status: 500 })
@@ -45,7 +54,14 @@ export async function POST(
 
     await addProjectMember(projectId, userId)
     const members = await getProjectMembers(projectId)
-    return NextResponse.json({ success: true, members })
+    return NextResponse.json(
+      { success: true, members },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    )
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'خطای ناشناخته'
     return NextResponse.json({ error: message }, { status: 500 })
@@ -82,7 +98,14 @@ export async function DELETE(
 
     await removeProjectMember(projectId, userId)
     const members = await getProjectMembers(projectId)
-    return NextResponse.json({ success: true, members })
+    return NextResponse.json(
+      { success: true, members },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    )
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'خطای ناشناخته'
     return NextResponse.json({ error: message }, { status: 500 })

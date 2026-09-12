@@ -17,6 +17,7 @@ interface TaskSummary {
   project_id: string
   status: string
   xp_value?: number | null
+  title?: string
 }
 
 export default function ProjectsListPage() {
@@ -35,14 +36,13 @@ export default function ProjectsListPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { session } } = await supabase.auth.getSession()
-      const user = session?.user
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
 
       const [profRes, projRes, tasksRes, assignRes, mapRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('projects').select('*').order('created_at', { ascending: false }),
-        supabase.from('tasks').select('id, project_id, status, xp_value'),
+        supabase.from('tasks').select('id, project_id, status, xp_value, title'),
         supabase.from('task_assignees').select('task_id, tasks(project_id)').eq('user_id', user.id),
         fetch('/api/projects/members-map').then((r) => r.ok ? r.json() : { map: {} }).catch(() => ({ map: {} })),
       ])
@@ -109,6 +109,7 @@ export default function ProjectsListPage() {
   const projectStats = useMemo(() => {
     const map: Record<string, { total: number; done: number; pct: number; totalXp: number }> = {}
     for (const t of tasks) {
+      if (t.title === '__PROJECT_ROSTER__') continue
       if (!map[t.project_id]) map[t.project_id] = { total: 0, done: 0, pct: 0, totalXp: 0 }
       map[t.project_id].total++
       map[t.project_id].totalXp += (Number(t.xp_value) || 0)
