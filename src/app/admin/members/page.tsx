@@ -7,8 +7,8 @@ import AppHeader from '@/components/AppHeader'
 import MemberXpModal from '@/components/MemberXpModal'
 import MemberProfileModal from '@/components/MemberProfileModal'
 import MemberEditModal from '@/components/MemberEditModal'
-import MemberTasksOverviewModal, { type MemberAssignmentItem } from '@/components/MemberTasksOverviewModal'
 import MemberTasksOverviewTab from '@/components/MemberTasksOverviewTab'
+import type { MemberAssignmentItem } from '@/components/MemberTasksOverviewModal'
 import TaskDetailModal from '@/components/TaskDetailModal'
 import { formatToPersianDate, toPersianDigits } from '@/utils/jalaali'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
@@ -27,7 +27,6 @@ export default function AdminMembersPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'members' | 'tasks'>('members')
   const [showForm, setShowForm] = useState(false)
-  const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedTaskIdForDetail, setSelectedTaskIdForDetail] = useState<string | null>(null)
   const [selectedMemberForXp, setSelectedMemberForXp] = useState<Profile | null>(null)
   const [xpModalTab, setXpModalTab] = useState<'reward' | 'penalty'>('reward')
@@ -56,30 +55,28 @@ export default function AdminMembersPage() {
   const [formError, setFormError] = useState('')
   const [isCreating, setIsCreating] = useState(false)
 
-  useBodyScrollLock(showDetailsModal || !!memberToDelete || !!memberToEdit || !!selectedTaskIdForDetail)
+  useBodyScrollLock(!!memberToDelete || !!memberToEdit || !!selectedTaskIdForDetail)
   const router = useRouter()
   const supabase = createClient()
 
   async function loadData() {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const user = session?.user
+      const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
 
-      const [profRes, membersRes, assignRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
-        fetch('/api/admin/members')
-          .then((r) => (r.ok ? r.json() : null))
-          .catch(() => null),
-        supabase.from('task_assignees').select('user_id, tasks(id, title, status, deadline, xp_value, priority, project_id, projects(name))').catch(() => ({ data: [] })),
-      ])
-
-      const prof = profRes.data
+      const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (prof?.role !== 'admin' && user.user_metadata?.role !== 'admin') {
         router.push('/projects')
         return
       }
       setProfile(prof)
+
+      const [membersRes, assignRes] = await Promise.all([
+        fetch('/api/admin/members')
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
+        supabase.from('task_assignees').select('user_id, tasks(id, title, status, deadline, xp_value, priority, project_id, projects(name))'),
+      ])
 
       if (membersRes?.members) {
         setMembers(membersRes.members)
@@ -905,19 +902,6 @@ export default function AdminMembersPage() {
           />
         )}
       </main>
-
-      {/* Member Tasks Overview Modal */}
-      <MemberTasksOverviewModal
-        isOpen={showDetailsModal}
-        onClose={() => setShowDetailsModal(false)}
-        members={members}
-        assignments={assignments}
-        onOpenProfileModal={(uid) => {
-          setShowDetailsModal(false)
-          setProfileModalUserId(uid)
-        }}
-        onOpenTaskDetail={(tid) => setSelectedTaskIdForDetail(tid)}
-      />
 
       {/* Task Detail Modal */}
       {selectedTaskIdForDetail && (
