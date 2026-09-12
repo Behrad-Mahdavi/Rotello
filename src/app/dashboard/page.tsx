@@ -742,21 +742,22 @@ export default function DashboardPage() {
         </div>
 
         {/* 5. Bottom Row: Recent Tasks & Leaderboard Top Performers */}
+        {/* 5. Bottom Row: Recent Tasks & Leaderboard Top Performers */}
         <div className="grid gap-3.5 sm:gap-5 lg:grid-cols-12">
           {/* Recent Tasks Stream (6 cols) */}
-          <div className="lg:col-span-6 rounded-xl sm:rounded-2xl border-[1.5px] border-border bg-surface p-3.5 sm:p-5 shadow-[2px_2px_0_#202A5A] sm:shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2px_2px_0_#59BBAF] sm:dark:shadow-[2.5px_2.5px_0_#59BBAF] space-y-2.5 sm:space-y-3.5 flex flex-col justify-between">
+          <div className="lg:col-span-6 rounded-xl sm:rounded-2xl border-[1.5px] border-border bg-surface p-3 sm:p-5 shadow-[2px_2px_0_#202A5A] sm:shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2px_2px_0_#59BBAF] sm:dark:shadow-[2.5px_2.5px_0_#59BBAF] space-y-2.5 sm:space-y-3.5 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-2.5 sm:mb-3.5">
                 <h3 className="text-xs sm:text-base font-black text-default">
                   آخرین کارهای تعریف‌شده
                 </h3>
                 <Link href="/projects" className="text-[11px] sm:text-xs font-bold text-action hover:underline flex items-center gap-0.5">
-                  <span>مشاهده همه کارها</span>
+                  <span>مشاهده همه</span>
                   <ChevronLeft className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 </Link>
               </div>
 
-              <div className="space-y-1.5 sm:space-y-2">
+              <div className="space-y-2">
                 {data.tasks.slice(0, 5).map((t) => {
                   const proj = data.projects.find((p) => p.id === t.project_id)
                   const conf = STATUS_CONFIG[t.status] || STATUS_CONFIG.backlog
@@ -764,42 +765,42 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={t.id}
-                      className="flex items-center justify-between gap-2 sm:gap-2.5 rounded-lg sm:rounded-xl border border-border/70 bg-surface-2/40 p-2 sm:p-3 transition-colors hover:bg-surface-2"
+                      className="flex items-center justify-between gap-2 rounded-xl border border-border/70 bg-surface-2/40 p-2.5 sm:p-3 transition-colors hover:bg-surface-2"
                     >
                       <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
-                        <span className={`flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-md sm:rounded-lg border text-[11px] sm:text-xs font-black ${conf.bg} ${conf.color}`}>
+                        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-black shadow-2xs ${conf.bg} ${conf.color}`}>
                           {t.status === 'done' ? (
-                            <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <CheckCircle2 className="h-3.5 w-3.5" />
                           ) : t.status === 'in_progress' ? (
-                            <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <Clock className="h-3.5 w-3.5" />
                           ) : t.status === 'todo' ? (
-                            <CircleDot className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <CircleDot className="h-3.5 w-3.5" />
                           ) : (
-                            <Archive className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <Archive className="h-3.5 w-3.5" />
                           )}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <h5 className="truncate text-xs sm:text-sm font-bold text-default">
+                          <h5 className="truncate text-xs sm:text-sm font-bold text-default" title={t.title}>
                             {t.title}
                           </h5>
-                          <div className="mt-0.5 flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-muted font-medium">
-                            <span className="truncate">{proj?.name || 'پروژه عمومی'}</span>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] sm:text-xs text-muted font-medium">
+                            <span className="truncate max-w-[110px] sm:max-w-none">{proj?.name || 'پروژه عمومی'}</span>
                             {t.priority === 'urgent' && (
-                              <span className="shrink-0 rounded bg-rose-500/10 text-rose-500 px-1 sm:px-1.5 py-0 font-black text-[9px] sm:text-[11px]">فوری</span>
+                              <span className="shrink-0 rounded bg-rose-500/10 text-rose-500 px-1.5 py-0.2 font-black text-[9px] sm:text-[10px]">فوری</span>
                             )}
                             {t.priority === 'important' && (
-                              <span className="shrink-0 rounded bg-amber-500/10 text-amber-500 px-1 sm:px-1.5 py-0 font-black text-[9px] sm:text-[11px]">مهم</span>
+                              <span className="shrink-0 rounded bg-amber-500/10 text-amber-500 px-1.5 py-0.2 font-black text-[9px] sm:text-[10px]">مهم</span>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                        <span className="text-[11px] sm:text-sm font-black text-[#F8A41D] flex items-center gap-0.5 sm:gap-1">
-                          <Zap className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#F8A41D]" />
-                          <span>{t.xp_value.toLocaleString('fa-IR')} XP</span>
+                      <div className="flex flex-col sm:flex-row sm:items-center items-end gap-1 sm:gap-2 shrink-0">
+                        <span className="text-[11px] sm:text-xs font-black text-[#F8A41D] flex items-center gap-0.5 whitespace-nowrap">
+                          <Zap className="h-3 w-3 text-[#F8A41D]" />
+                          <span>{(t.xp_value || 0).toLocaleString('fa-IR')} XP</span>
                         </span>
-                        <span className={`rounded-md sm:rounded-lg px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-bold border ${conf.bg} ${conf.color}`}>
+                        <span className={`rounded-md sm:rounded-lg px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-bold border whitespace-nowrap ${conf.bg} ${conf.color}`}>
                           {conf.label}
                         </span>
                       </div>
@@ -811,7 +812,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Top Performers Spotlight (6 cols) */}
-          <div className="lg:col-span-6 rounded-xl sm:rounded-2xl border-[1.5px] border-border bg-surface p-3.5 sm:p-5 shadow-[2px_2px_0_#202A5A] sm:shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2px_2px_0_#59BBAF] sm:dark:shadow-[2.5px_2.5px_0_#59BBAF] space-y-2.5 sm:space-y-3.5 flex flex-col justify-between">
+          <div className="lg:col-span-6 rounded-xl sm:rounded-2xl border-[1.5px] border-border bg-surface p-3 sm:p-5 shadow-[2px_2px_0_#202A5A] sm:shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2px_2px_0_#59BBAF] sm:dark:shadow-[2.5px_2.5px_0_#59BBAF] space-y-2.5 sm:space-y-3.5 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-2.5 sm:mb-3.5">
                 <h3 className="text-xs sm:text-base font-black text-default">
@@ -828,21 +829,21 @@ export default function DashboardPage() {
                   هنوز عضوی ثبت نشده است.
                 </div>
               ) : (
-                <div className="space-y-1.5 sm:space-y-2">
+                <div className="space-y-2">
                   {metrics.topPerformers.map((m, idx) => (
                     <div
                       key={m.id}
                       onClick={() => setSelectedMemberId(m.id)}
-                      className={`group cursor-pointer select-none flex items-center justify-between gap-2 sm:gap-3 rounded-lg sm:rounded-xl border p-2 sm:p-3 transition-all hover:border-action/50 hover:shadow-xs active:scale-[0.99] ${
+                      className={`group cursor-pointer select-none flex items-center justify-between gap-2 sm:gap-3 rounded-xl border p-2.5 sm:p-3 transition-all hover:border-action/50 hover:shadow-xs active:scale-[0.99] ${
                         idx === 0
                           ? 'border-amber-400/50 bg-amber-500/[0.04] hover:bg-amber-500/[0.08]'
                           : 'border-border/70 bg-surface-2/40 hover:bg-surface-2'
                       }`}
                       title="مشاهده کارنامه و عملکرد"
                     >
-                      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
                         {/* Rank Medal */}
-                        <span className={`flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-md sm:rounded-lg text-[10px] sm:text-xs font-black shadow-xs ${
+                        <span className={`flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-lg text-[10px] sm:text-xs font-black shadow-xs ${
                           idx === 0
                             ? 'bg-gradient-to-br from-amber-400 to-amber-500 text-amber-950'
                             : idx === 1
@@ -852,16 +853,16 @@ export default function DashboardPage() {
                             : 'bg-surface-2 text-muted border border-border/80'
                         }`}>
                           {idx === 0 ? (
-                            <Crown className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <Crown className="h-3.5 w-3.5" />
                           ) : idx === 1 || idx === 2 ? (
-                            <Medal className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <Medal className="h-3.5 w-3.5" />
                           ) : (
                             idx + 1
                           )}
                         </span>
 
                         {/* Avatar */}
-                        <div className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-br from-[#59BBAF] to-[#202A5A] text-[10px] sm:text-xs font-black text-white shadow-2xs overflow-hidden">
+                        <div className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#59BBAF] to-[#202A5A] text-[10px] sm:text-xs font-black text-white shadow-2xs overflow-hidden">
                           {m.avatar_url ? (
                             <img src={m.avatar_url} alt={m.full_name} className="h-full w-full object-cover" />
                           ) : (
@@ -870,26 +871,26 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Info */}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1 sm:gap-1.5">
-                            <h5 className="truncate text-xs sm:text-sm font-bold text-default group-hover:text-action transition-colors">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <h5 className="truncate text-xs sm:text-sm font-bold text-default group-hover:text-action transition-colors" title={m.full_name}>
                               {m.full_name}
                             </h5>
                             {idx === 0 && (
-                              <span className="hidden sm:inline-block rounded-md bg-amber-400/20 px-1.5 py-0.2 text-[10px] font-black text-amber-600 dark:text-amber-400">
-                                رتبه ۱
+                              <span className="shrink-0 rounded-md bg-amber-400/20 px-1.5 py-0.2 text-[9px] sm:text-[10px] font-black text-amber-600 dark:text-amber-400">
+                                پیشتاز
                               </span>
                             )}
                           </div>
-                          <div className="flex flex-wrap gap-1 mt-0.5">
-                            {m.departments && m.departments.length > 0 ? (
-                              m.departments.map((d) => (
-                                <span key={d.department} className={`rounded px-1 sm:px-1.5 py-0 text-[9px] sm:text-[10px] font-bold ${DEPARTMENTS[d.department]?.badgeClass}`}>
-                                  {DEPARTMENTS[d.department]?.label} (سطح {d.level})
+                          <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                            {Array.isArray(m.departments) && m.departments.length > 0 ? (
+                              m.departments.slice(0, 2).map((d) => (
+                                <span key={d.department} className={`rounded px-1.5 py-0 text-[9px] sm:text-[10px] font-bold ${DEPARTMENTS[d.department]?.badgeClass || 'bg-surface-2 text-muted'}`}>
+                                  {DEPARTMENTS[d.department]?.shortLabel || DEPARTMENTS[d.department]?.label || d.department} (سطح {d.level})
                                 </span>
                               ))
                             ) : (
-                              <span className="text-[10px] sm:text-xs text-muted font-medium">عضو باشگاه</span>
+                              <span className="text-[9px] sm:text-[10px] text-muted font-medium">عضو باشگاه</span>
                             )}
                           </div>
                         </div>
@@ -897,9 +898,9 @@ export default function DashboardPage() {
 
                       {/* XP Score */}
                       <div className="flex items-center gap-1 shrink-0">
-                        <span className="rounded-lg sm:rounded-xl bg-[#FEF6E8] dark:bg-[#57390A]/40 border border-[#F8A41D]/30 px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[11px] sm:text-xs font-black text-[#BA7B16] dark:text-[#fde047] flex items-center gap-0.5 sm:gap-1 shadow-2xs">
+                        <span className="rounded-xl bg-[#FEF6E8] dark:bg-[#57390A]/40 border border-[#F8A41D]/30 px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-black text-[#BA7B16] dark:text-[#fde047] flex items-center gap-0.5 sm:gap-1 shadow-2xs whitespace-nowrap">
                           <Zap className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#F8A41D]" />
-                          <span>{m.xp_total.toLocaleString('fa-IR')} XP</span>
+                          <span>{(m.xp_total ?? 0).toLocaleString('fa-IR')} XP</span>
                         </span>
                       </div>
                     </div>

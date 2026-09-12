@@ -1,14 +1,72 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, Component, type ErrorInfo, type ReactNode } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import type { Profile, XpAdjustment } from '@/utils/database.types'
 import { getRoleInfo, DEPARTMENTS } from '@/constants/departments'
 import MemberXpModal from './MemberXpModal'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
-import { X, Gift, AlertTriangle, CheckCircle2, Zap, RotateCcw, Camera, Loader2, Trash2 } from 'lucide-react'
+import { X, Gift, AlertTriangle, CheckCircle2, Zap, RotateCcw, Camera, Loader2, Trash2, AlertCircle } from 'lucide-react'
 import { setCachedProfile, getCachedProfile } from '@/utils/userCache'
 import { formatToPersianDate } from '@/utils/jalaali'
+
+interface ErrorBoundaryProps {
+  onClose: () => void
+  children: ReactNode
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean
+  error: Error | null
+}
+
+class MemberProfileErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props)
+    this.state = { hasError: false, error: null }
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('MemberProfileModal caught error:', error, errorInfo)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center p-8 text-center" dir="rtl">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500 mb-3">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-default mb-1">خطا در بارگذاری کارنامه</h3>
+          <p className="text-xs text-muted mb-4 max-w-sm">
+            متأسفانه هنگام پردازش سوابق این عضو خطایی رخ داد.
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => this.setState({ hasError: false, error: null })}
+              className="rounded-xl bg-action px-4 py-2 text-xs font-bold text-white hover:bg-action-hover transition-colors cursor-pointer"
+            >
+              تلاش مجدد
+            </button>
+            <button
+              type="button"
+              onClick={this.props.onClose}
+              className="rounded-xl border border-border bg-surface-2 px-4 py-2 text-xs font-medium text-default hover:bg-surface transition-colors cursor-pointer"
+            >
+              بستن
+            </button>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 interface CompletedTaskItem {
   id: string
@@ -107,7 +165,7 @@ export default function MemberProfileModal({
             }
           }
           // Sort by completion date descending
-          tasks.sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
+          tasks.sort((a, b) => new Date(b.updated_at || b.created_at || 0).getTime() - new Date(a.updated_at || a.created_at || 0).getTime())
           setCompletedTasks(tasks)
         }
 
@@ -167,15 +225,19 @@ export default function MemberProfileModal({
       if (cached.id) setSessionUserId(cached.id)
     }
     async function checkSession() {
-      const { data } = await supabase.auth.getSession()
-      const u = data?.session?.user
-      if (u) {
-        setSessionUserId(u.id)
-        if (u.user_metadata?.role === 'admin') setSessionAdmin(true)
+      try {
+        const { data } = await supabase.auth.getSession()
+        const u = data?.session?.user
+        if (u) {
+          setSessionUserId(u.id)
+          if (u.user_metadata?.role === 'admin') setSessionAdmin(true)
+        }
+      } catch {
+        // silent fallback
       }
     }
     checkSession()
-  }, [supabase])
+  }, [])
 
   const isUserAdmin = Boolean(
     isAdmin ||
@@ -323,382 +385,394 @@ export default function MemberProfileModal({
 
           {/* Modal Body */}
           <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-6">
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-16 text-sm text-muted">
-                <div className="h-7 w-7 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent mb-3" />
-                <span>در حال بارگذاری اطلاعات عضو...</span>
-              </div>
-            ) : !profile ? (
-              <div className="py-12 text-center text-sm text-muted">عضو مورد نظر یافت نشد.</div>
-            ) : (
-              <>
-                {/* Profile Overview Card */}
-                <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-surface-2/60 to-surface-2/20 p-5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      {/* Avatar with image display and upload */}
-                      <div className="relative h-16 w-16 shrink-0">
-                        <div
-                          className={`relative flex h-full w-full items-center justify-center rounded-2xl text-2xl font-bold text-white shadow-md bg-gradient-to-br overflow-hidden border border-border/80 ${
-                            getRoleInfo(profile.role).badgeGradient
-                          }`}
-                        >
-                          {profile.avatar_url ? (
-                            <img
-                              src={profile.avatar_url}
-                              alt={profile.full_name}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            (profile.full_name || '؟').charAt(0)
-                          )}
+            <MemberProfileErrorBoundary onClose={onClose}>
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-16 text-sm text-muted">
+                  <div className="h-7 w-7 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent mb-3" />
+                  <span>در حال بارگذاری اطلاعات عضو...</span>
+                </div>
+              ) : !profile ? (
+                <div className="py-12 text-center text-sm text-muted">عضو مورد نظر یافت نشد.</div>
+              ) : (
+                <>
+                  {/* Profile Overview Card */}
+                  <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-surface-2/60 to-surface-2/20 p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        {/* Avatar with image display and upload */}
+                        <div className="relative h-16 w-16 shrink-0">
+                          <div
+                            className={`relative flex h-full w-full items-center justify-center rounded-2xl text-2xl font-bold text-white shadow-md bg-gradient-to-br overflow-hidden border border-border/80 ${
+                              getRoleInfo(profile.role).badgeGradient
+                            }`}
+                          >
+                            {profile.avatar_url ? (
+                              <img
+                                src={profile.avatar_url}
+                                alt={profile.full_name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              (profile.full_name || '؟').charAt(0)
+                            )}
 
-                          {uploadingAvatar && (
-                            <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center">
-                              <Loader2 className="h-5 w-5 text-white animate-spin" />
+                            {uploadingAvatar && (
+                              <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center">
+                                <Loader2 className="h-5 w-5 text-white animate-spin" />
+                              </div>
+                            )}
+                          </div>
+
+                          {canEditAvatar && (
+                            <div className="absolute -bottom-1 -left-1 flex items-center gap-1 z-10">
+                              <label
+                                htmlFor="modal-avatar-file-input"
+                                className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg bg-action text-white shadow-md transition-all hover:bg-action-hover active:scale-95 border border-surface"
+                                title="تغییر عکس پروفایل"
+                              >
+                                <Camera className="h-3 w-3" />
+                                <input
+                                  id="modal-avatar-file-input"
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0]
+                                    if (file) handleAvatarUpload(file)
+                                    e.target.value = ''
+                                  }}
+                                  disabled={uploadingAvatar}
+                                />
+                              </label>
+
+                              {profile.avatar_url && (
+                                <button
+                                  type="button"
+                                  onClick={handleRemoveAvatar}
+                                  disabled={uploadingAvatar}
+                                  className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg bg-rose-500/90 text-white shadow-md transition-all hover:bg-rose-600 active:scale-95 border border-surface"
+                                  title="حذف عکس پروفایل"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
-
-                        {canEditAvatar && (
-                          <div className="absolute -bottom-1 -left-1 flex items-center gap-1 z-10">
-                            <label
-                              htmlFor="modal-avatar-file-input"
-                              className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg bg-action text-white shadow-md transition-all hover:bg-action-hover active:scale-95 border border-surface"
-                              title="تغییر عکس پروفایل"
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="text-lg font-bold text-default">{profile.full_name || 'کاربر'}</h2>
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                                getRoleInfo(profile.role).colorClass
+                              }`}
                             >
-                              <Camera className="h-3 w-3" />
-                              <input
-                                id="modal-avatar-file-input"
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0]
-                                  if (file) handleAvatarUpload(file)
-                                  e.target.value = ''
-                                }}
-                                disabled={uploadingAvatar}
-                              />
-                            </label>
-
-                            {profile.avatar_url && (
-                              <button
-                                type="button"
-                                onClick={handleRemoveAvatar}
-                                disabled={uploadingAvatar}
-                                className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-lg bg-rose-500/90 text-white shadow-md transition-all hover:bg-rose-600 active:scale-95 border border-surface"
-                                title="حذف عکس پروفایل"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            )}
+                              {getRoleInfo(profile.role).label}
+                            </span>
                           </div>
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="text-lg font-bold text-default">{profile.full_name || 'کاربر'}</h2>
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                              getRoleInfo(profile.role).colorClass
-                            }`}
-                          >
-                            {getRoleInfo(profile.role).label}
-                          </span>
-                        </div>
 
-                        {/* Departments and Levels */}
-                        {profile.role !== 'admin' && profile.departments && profile.departments.length > 0 && (
-                          <div className="mt-1.5 flex flex-wrap gap-1">
-                            {profile.departments.map((d) => {
-                              const depConfig = DEPARTMENTS[d.department]
-                              if (!depConfig) return null
-                              if (profile.role === 'mentor') {
+                          {/* Departments and Levels */}
+                          {profile.role !== 'admin' && Array.isArray(profile.departments) && profile.departments.length > 0 && (
+                            <div className="mt-1.5 flex flex-wrap gap-1">
+                              {profile.departments.map((d) => {
+                                const depConfig = DEPARTMENTS[d.department]
+                                if (!depConfig) return null
+                                if (profile.role === 'mentor') {
+                                  return (
+                                    <span
+                                      key={d.department}
+                                      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${depConfig.badgeClass}`}
+                                    >
+                                      <span>منتور {depConfig.label}</span>
+                                    </span>
+                                  )
+                                }
                                 return (
                                   <span
                                     key={d.department}
                                     className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${depConfig.badgeClass}`}
                                   >
-                                    <span>منتور {depConfig.label}</span>
+                                    <span>{depConfig.label}</span>
+                                    <span className="rounded bg-surface px-1 py-0.2 text-[9px]">سطح {d.level}</span>
                                   </span>
                                 )
-                              }
-                              return (
-                                <span
-                                  key={d.department}
-                                  className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${depConfig.badgeClass}`}
-                                >
-                                  <span>{depConfig.label}</span>
-                                  <span className="rounded bg-surface px-1 py-0.2 text-[9px]">سطح {d.level}</span>
-                                </span>
-                              )
-                            })}
-                          </div>
-                        )}
+                              })}
+                            </div>
+                          )}
 
-                        <p className="mt-1 text-xs text-muted">
-                          عضویت از: {profile.created_at ? formatToPersianDate(profile.created_at) : '---'}
-                        </p>
+                          <p className="mt-1 text-xs text-muted">
+                            عضویت از: {profile.created_at ? formatToPersianDate(profile.created_at) : '---'}
+                          </p>
+                        </div>
                       </div>
+
+                      {/* Admin Action Buttons (Reward / Penalty) - ONLY for members */}
+                      {currentProfile?.role === 'admin' && profile.role === 'member' && (
+                        <div className="flex items-center gap-2 self-end sm:self-center">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenXp('reward')}
+                            className="cursor-pointer select-none flex items-center gap-1.5 rounded-xl border border-action/30 bg-action/10 px-3.5 py-2 text-xs font-bold text-action transition-all hover:bg-action/20 active:scale-95 shadow-xs"
+                          >
+                            <Gift className="w-3.5 h-3.5 text-action" />
+                            <span>اعطای تشویقی</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenXp('penalty')}
+                            className="cursor-pointer select-none flex items-center gap-1.5 rounded-xl border border-danger/30 bg-danger/10 px-3.5 py-2 text-xs font-bold text-danger transition-all hover:bg-danger/20 active:scale-95 shadow-xs"
+                          >
+                            <AlertTriangle className="w-3.5 h-3.5 text-danger" />
+                            <span>ثبت جریمه</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Admin Action Buttons (Reward / Penalty) - ONLY for members */}
-                    {currentProfile?.role === 'admin' && profile.role === 'member' && (
-                      <div className="flex items-center gap-2 self-end sm:self-center">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenXp('reward')}
-                          className="cursor-pointer select-none flex items-center gap-1.5 rounded-xl border border-action/30 bg-action/10 px-3.5 py-2 text-xs font-bold text-action transition-all hover:bg-action/20 active:scale-95 shadow-xs"
-                        >
-                          <Gift className="w-3.5 h-3.5 text-action" />
-                          <span>اعطای تشویقی</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenXp('penalty')}
-                          className="cursor-pointer select-none flex items-center gap-1.5 rounded-xl border border-danger/30 bg-danger/10 px-3.5 py-2 text-xs font-bold text-danger transition-all hover:bg-danger/20 active:scale-95 shadow-xs"
-                        >
-                          <AlertTriangle className="w-3.5 h-3.5 text-danger" />
-                          <span>ثبت جریمه</span>
-                        </button>
+                    {/* Stats Grid */}
+                    {profile.role === 'member' ? (
+                      <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <div className="rounded-xl border border-border/80 bg-surface/80 p-3 text-center">
+                          <p className="text-[11px] font-medium text-muted">مجموع امتیاز</p>
+                          <p className="text-base sm:text-lg font-black text-warning mt-0.5">{(profile.xp_total ?? 0).toLocaleString('fa-IR')} XP</p>
+                        </div>
+                        <div className="rounded-xl border border-border/80 bg-surface/80 p-3 text-center">
+                          <p className="text-[11px] font-medium text-muted">تسک‌های انجام‌شده</p>
+                          <p className="text-base sm:text-lg font-black text-default mt-0.5">{completedTasks.length.toLocaleString('fa-IR')}</p>
+                        </div>
+                        <div className="rounded-xl border border-border/80 bg-surface/80 p-3 text-center">
+                          <p className="text-[11px] font-medium text-muted">تشویقی‌های دریافتی</p>
+                          <p className="text-base sm:text-lg font-black text-action mt-0.5">{rewardsCount.toLocaleString('fa-IR')}</p>
+                        </div>
+                        <div className="rounded-xl border border-border/80 bg-surface/80 p-3 text-center">
+                          <p className="text-[11px] font-medium text-muted">جریمه‌های ثبت‌شده</p>
+                          <p className="text-base sm:text-lg font-black text-danger mt-0.5">{penaltiesCount.toLocaleString('fa-IR')}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div className="rounded-xl border border-border/80 bg-surface/80 p-3 text-center">
+                          <p className="text-[11px] font-medium text-muted">نقش کاربری</p>
+                          <p className="text-base sm:text-lg font-black text-action mt-0.5">
+                            {profile.role === 'admin' ? 'راهبر سیستم' : 'منتور باشگاه'}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-border/80 bg-surface/80 p-3 text-center">
+                          <p className="text-[11px] font-medium text-muted">تسک‌های انجام‌شده</p>
+                          <p className="text-base sm:text-lg font-black text-default mt-0.5">{completedTasks.length.toLocaleString('fa-IR')}</p>
+                        </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Stats Grid */}
-                  {profile.role === 'member' ? (
-                    <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                      <div className="rounded-xl border border-border/80 bg-surface/80 p-3 text-center">
-                        <p className="text-[11px] font-medium text-muted">مجموع امتیاز</p>
-                        <p className="text-base sm:text-lg font-black text-warning mt-0.5">{profile.xp_total} XP</p>
-                      </div>
-                      <div className="rounded-xl border border-border/80 bg-surface/80 p-3 text-center">
-                        <p className="text-[11px] font-medium text-muted">تسک‌های انجام‌شده</p>
-                        <p className="text-base sm:text-lg font-black text-default mt-0.5">{completedTasks.length}</p>
-                      </div>
-                      <div className="rounded-xl border border-border/80 bg-surface/80 p-3 text-center">
-                        <p className="text-[11px] font-medium text-muted">تشویقی‌های دریافتی</p>
-                        <p className="text-base sm:text-lg font-black text-action mt-0.5">{rewardsCount}</p>
-                      </div>
-                      <div className="rounded-xl border border-border/80 bg-surface/80 p-3 text-center">
-                        <p className="text-[11px] font-medium text-muted">جریمه‌های ثبت‌شده</p>
-                        <p className="text-base sm:text-lg font-black text-danger mt-0.5">{penaltiesCount}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      <div className="rounded-xl border border-border/80 bg-surface/80 p-3 text-center">
-                        <p className="text-[11px] font-medium text-muted">نقش کاربری</p>
-                        <p className="text-base sm:text-lg font-black text-action mt-0.5">
-                          {profile.role === 'admin' ? 'راهبر سیستم' : 'منتور باشگاه'}
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-border/80 bg-surface/80 p-3 text-center">
-                        <p className="text-[11px] font-medium text-muted">تسک‌های انجام‌شده</p>
-                        <p className="text-base sm:text-lg font-black text-default mt-0.5">{completedTasks.length}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Tabs */}
-                <div className="flex border-b border-border/80">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('tasks')}
-                    className={`cursor-pointer select-none flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-all ${
-                      activeTab === 'tasks'
-                        ? 'border-action text-action'
-                        : 'border-transparent text-muted hover:text-default'
-                    }`}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>تسک‌های انجام‌شده</span>
-                    <span className="rounded-full bg-surface-2 px-1.5 py-0.2 text-[10px] font-medium">
-                      {completedTasks.length}
-                    </span>
-                  </button>
-                  {profile.role === 'member' && (
+                  {/* Tabs */}
+                  <div className="flex border-b border-border/80">
                     <button
                       type="button"
-                      onClick={() => setActiveTab('xp')}
+                      onClick={() => setActiveTab('tasks')}
                       className={`cursor-pointer select-none flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-all ${
-                        activeTab === 'xp'
-                          ? 'border-amber-500 text-amber-500'
+                        activeTab === 'tasks'
+                          ? 'border-action text-action'
                           : 'border-transparent text-muted hover:text-default'
                       }`}
                     >
-                      <Zap className="w-3.5 h-3.5" />
-                      <span>ریز امتیازات و سوابق (XP)</span>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>تسک‌های انجام‌شده</span>
                       <span className="rounded-full bg-surface-2 px-1.5 py-0.2 text-[10px] font-medium">
-                        {adjustments.length}
+                        {completedTasks.length.toLocaleString('fa-IR')}
                       </span>
                     </button>
-                  )}
-                </div>
-
-                {/* Tab 1: Completed Tasks */}
-                {activeTab === 'tasks' && (
-                  <div className="space-y-2.5">
-                    {completedTasks.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-border/80 bg-surface-2/20 p-8 text-center text-xs text-muted">
-                        تاکنون هیچ تسکی با وضعیت «تکمیل‌شده» برای این عضو ثبت نشده است.
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center justify-between text-xs text-muted px-1">
-                          <span>لیست کارهای خاتمه‌یافته توسط {profile.full_name}:</span>
-                          {profile.role === 'member' && (
-                            <span>مجموع امتیاز تسک‌ها: <strong className="text-amber-400">{totalTasksXp} XP</strong></span>
-                          )}
-                        </div>
-                        {completedTasks.map((t) => {
-                          const priority = priorityLabels[t.priority] || priorityLabels.normal
-                          return (
-                            <div
-                              key={t.id}
-                              className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-2/30 p-3.5 transition-all hover:bg-surface-2/60"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-xs font-bold text-default truncate">
-                                    {t.title}
-                                  </span>
-                                  {t.projects && (
-                                    <span className="rounded-md bg-surface border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted shrink-0">
-                                      {Array.isArray(t.projects) ? (t.projects as unknown as { name: string }[])[0]?.name : (t.projects as { name: string }).name}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2 text-[11px] text-muted">
-                                  <span className={`rounded-full border px-1.5 py-0.2 text-[10px] font-medium ${priority.color}`}>
-                                    {priority.label}
-                                  </span>
-                                  <span>
-                                    تاریخ انجام: {(t.updated_at || t.created_at) ? formatToPersianDate(t.updated_at || t.created_at) : '---'}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <span className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-xs font-bold text-emerald-400">
-                                  +{t.xp_value} XP
-                                </span>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {/* Tab 2: XP Adjustments & History */}
-                {activeTab === 'xp' && (
-                  <div className="space-y-3">
-                    {/* Filters */}
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    {profile.role === 'member' && (
                       <button
                         type="button"
-                        onClick={() => setHistoryFilter('all')}
-                        className={`rounded-lg px-2.5 py-1 text-xs font-medium border transition-all ${
-                          historyFilter === 'all'
-                            ? 'border-border-subtle bg-surface text-default'
+                        onClick={() => setActiveTab('xp')}
+                        className={`cursor-pointer select-none flex items-center gap-2 border-b-2 px-4 py-2.5 text-xs font-bold transition-all ${
+                          activeTab === 'xp'
+                            ? 'border-amber-500 text-amber-500'
                             : 'border-transparent text-muted hover:text-default'
                         }`}
                       >
-                        همه سوابق ({adjustments.length})
+                        <Zap className="w-3.5 h-3.5" />
+                        <span>ریز امتیازات و سوابق (XP)</span>
+                        <span className="rounded-full bg-surface-2 px-1.5 py-0.2 text-[10px] font-medium">
+                          {adjustments.length.toLocaleString('fa-IR')}
+                        </span>
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setHistoryFilter('reward')}
-                        className={`cursor-pointer inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium border transition-all ${
-                          historyFilter === 'reward'
-                            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-                            : 'border-transparent text-muted hover:text-emerald-400'
-                        }`}
-                      >
-                        <Gift className="w-3 h-3" />
-                        <span>تشویقی‌ها ({rewardsCount})</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setHistoryFilter('penalty')}
-                        className={`cursor-pointer inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium border transition-all ${
-                          historyFilter === 'penalty'
-                            ? 'border-rose-500/30 bg-rose-500/10 text-rose-400'
-                            : 'border-transparent text-muted hover:text-rose-400'
-                        }`}
-                      >
-                        <AlertTriangle className="w-3 h-3" />
-                        <span>جریمه‌ها ({penaltiesCount})</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setHistoryFilter('task')}
-                        className={`cursor-pointer inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium border transition-all ${
-                          historyFilter === 'task'
-                            ? 'border-blue-500/30 bg-blue-500/10 text-blue-400'
-                            : 'border-transparent text-muted hover:text-blue-400'
-                        }`}
-                      >
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>امتیازات تسک</span>
-                      </button>
-                    </div>
-
-                    {filteredAdjustments.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-border/80 bg-surface-2/20 p-8 text-center text-xs text-muted">
-                        هیچ سابقه‌ای با این فیلتر یافت نشد.
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {filteredAdjustments.map((adj) => {
-                          const isPositive = adj.amount > 0
-                          const typeLabels: Record<string, { title: string; color: string; icon: React.ReactNode }> = {
-                            reward: { title: 'تشویقی', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', icon: <Gift className="w-3 h-3" /> },
-                            penalty: { title: 'جریمه', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20', icon: <AlertTriangle className="w-3 h-3" /> },
-                            task_completion: { title: 'تکمیل تسک', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20', icon: <CheckCircle2 className="w-3 h-3" /> },
-                            task_reversal: { title: 'کسر تسک', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20', icon: <RotateCcw className="w-3 h-3" /> },
-                          }
-                          const badge = typeLabels[adj.type] || { title: adj.type, color: 'bg-gray-500/10 text-gray-400', icon: null }
-
-                          return (
-                            <div
-                              key={adj.id}
-                              className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-2/30 p-3 text-xs transition-all hover:bg-surface-2/60"
-                            >
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${badge.color}`}>
-                                    {badge.icon}
-                                    <span>{badge.title}</span>
-                                  </span>
-                                  <span className="text-[10px] text-muted">
-                                    {adj.created_at ? formatToPersianDate(adj.created_at) : '---'}
-                                  </span>
-                                </div>
-                                <p className="text-default text-xs" title={adj.reason}>
-                                  {adj.reason}
-                                </p>
-                              </div>
-                              <span
-                                className={`font-bold shrink-0 text-sm ${
-                                  isPositive ? 'text-emerald-400' : 'text-rose-400'
-                                }`}
-                              >
-                                {isPositive ? `+${adj.amount}` : adj.amount} XP
-                              </span>
-                            </div>
-                          )
-                        })}
-                      </div>
                     )}
                   </div>
-                )}
-              </>
-            )}
+
+                  {/* Tab 1: Completed Tasks */}
+                  {activeTab === 'tasks' && (
+                    <div className="space-y-2.5">
+                      {completedTasks.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-border/80 bg-surface-2/20 p-8 text-center text-xs text-muted">
+                          تاکنون هیچ تسکی با وضعیت «تکمیل‌شده» برای این عضو ثبت نشده است.
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between text-xs text-muted px-1">
+                            <span>لیست کارهای خاتمه‌یافته توسط {profile.full_name}:</span>
+                            {profile.role === 'member' && (
+                              <span>مجموع امتیاز تسک‌ها: <strong className="text-amber-400">{totalTasksXp.toLocaleString('fa-IR')} XP</strong></span>
+                            )}
+                          </div>
+                          {completedTasks.map((t) => {
+                            const priority = priorityLabels[t.priority] || priorityLabels.normal
+                            const projName = Array.isArray(t.projects)
+                              ? (t.projects as unknown as { name?: string }[])[0]?.name
+                              : typeof t.projects === 'object' && t.projects
+                              ? (t.projects as { name?: string }).name
+                              : null
+
+                            return (
+                              <div
+                                key={t.id}
+                                className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-2/30 p-3.5 transition-all hover:bg-surface-2/60"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-xs font-bold text-default truncate">
+                                      {t.title}
+                                    </span>
+                                    {projName && (
+                                      <span className="rounded-md bg-surface border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted shrink-0">
+                                        {projName}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 text-[11px] text-muted">
+                                    <span className={`rounded-full border px-1.5 py-0.2 text-[10px] font-medium ${priority.color}`}>
+                                      {priority.label}
+                                    </span>
+                                    <span>
+                                      تاریخ انجام: {(t.updated_at || t.created_at) ? formatToPersianDate(t.updated_at || t.created_at) : '---'}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-xs font-bold text-emerald-400">
+                                    +{(t.xp_value || 0).toLocaleString('fa-IR')} XP
+                                  </span>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tab 2: XP Adjustments & History */}
+                  {activeTab === 'xp' && (
+                    <div className="space-y-3">
+                      {/* Filters */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setHistoryFilter('all')}
+                          className={`rounded-lg px-2.5 py-1 text-xs font-medium border transition-all ${
+                            historyFilter === 'all'
+                              ? 'border-border-subtle bg-surface text-default'
+                              : 'border-transparent text-muted hover:text-default'
+                          }`}
+                        >
+                          همه سوابق ({adjustments.length.toLocaleString('fa-IR')})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setHistoryFilter('reward')}
+                          className={`cursor-pointer inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium border transition-all ${
+                            historyFilter === 'reward'
+                              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                              : 'border-transparent text-muted hover:text-emerald-400'
+                          }`}
+                        >
+                          <Gift className="w-3 h-3" />
+                          <span>تشویقی‌ها ({rewardsCount.toLocaleString('fa-IR')})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setHistoryFilter('penalty')}
+                          className={`cursor-pointer inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium border transition-all ${
+                            historyFilter === 'penalty'
+                              ? 'border-rose-500/30 bg-rose-500/10 text-rose-400'
+                              : 'border-transparent text-muted hover:text-rose-400'
+                          }`}
+                        >
+                          <AlertTriangle className="w-3 h-3" />
+                          <span>جریمه‌ها ({penaltiesCount.toLocaleString('fa-IR')})</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setHistoryFilter('task')}
+                          className={`cursor-pointer inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium border transition-all ${
+                            historyFilter === 'task'
+                              ? 'border-blue-500/30 bg-blue-500/10 text-blue-400'
+                              : 'border-transparent text-muted hover:text-blue-400'
+                          }`}
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>امتیازات تسک</span>
+                        </button>
+                      </div>
+
+                      {filteredAdjustments.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-border/80 bg-surface-2/20 p-8 text-center text-xs text-muted">
+                          هیچ سابقه‌ای با این فیلتر یافت نشد.
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {filteredAdjustments.map((adj) => {
+                            const isPositive = adj.amount > 0
+                            const typeLabels: Record<string, { title: string; color: string; icon: React.ReactNode }> = {
+                              reward: { title: 'تشویقی', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', icon: <Gift className="w-3 h-3" /> },
+                              penalty: { title: 'جریمه', color: 'bg-rose-500/10 text-rose-400 border-rose-500/20', icon: <AlertTriangle className="w-3 h-3" /> },
+                              task_completion: { title: 'تکمیل تسک', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20', icon: <CheckCircle2 className="w-3 h-3" /> },
+                              task_reversal: { title: 'کسر تسک', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20', icon: <RotateCcw className="w-3 h-3" /> },
+                            }
+                            const badge = (adj.type && typeLabels[adj.type]) || {
+                              title: adj.type || 'تغییر امتیاز',
+                              color: 'bg-surface-2 text-muted border-border',
+                              icon: <Zap className="w-3 h-3" />,
+                            }
+
+                            return (
+                              <div
+                                key={adj.id}
+                                className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-2/30 p-3 text-xs transition-all hover:bg-surface-2/60"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${badge.color}`}>
+                                      {badge.icon}
+                                      <span>{badge.title}</span>
+                                    </span>
+                                    <span className="text-[10px] text-muted">
+                                      {adj.created_at ? formatToPersianDate(adj.created_at) : '---'}
+                                    </span>
+                                  </div>
+                                  <p className="text-default text-xs" title={adj.reason}>
+                                    {adj.reason}
+                                  </p>
+                                </div>
+                                <span
+                                  className={`font-bold shrink-0 text-sm ${
+                                    isPositive ? 'text-emerald-400' : 'text-rose-400'
+                                  }`}
+                                >
+                                  {isPositive ? `+${(adj.amount || 0).toLocaleString('fa-IR')}` : (adj.amount || 0).toLocaleString('fa-IR')} XP
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </MemberProfileErrorBoundary>
           </div>
         </div>
       </div>

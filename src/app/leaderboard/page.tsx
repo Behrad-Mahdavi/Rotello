@@ -445,57 +445,121 @@ export default function LeaderboardPage() {
                   )}
                 </div>
 
-                {/* Mobile Podium Stack */}
-                <div className="grid grid-cols-1 gap-2.5 sm:hidden pt-1">
-                  {[top1, top2, top3].filter(Boolean).map((m, idx) => {
-                    const titles = ['رتبه ۱ (پیشتاز)', 'رتبه ۲', 'رتبه ۳']
-                    return (
+                {/* Mobile Olympic-Style Podium */}
+                <div className="sm:hidden pt-6 pb-2">
+                  <div className="grid grid-cols-3 items-end gap-2 px-1">
+                    {/* Rank 2 (Silver) - Right column in RTL */}
+                    {top2 ? (
                       <div
-                        key={m!.id}
-                        onClick={() => setSelectedMemberId(m!.id)}
-                        className="flex items-center justify-between gap-3 rounded-2xl border-[1.5px] border-border bg-surface p-3.5 shadow-xs cursor-pointer active:scale-98"
+                        onClick={() => setSelectedMemberId(top2.id)}
+                        className="flex flex-col items-center cursor-pointer active:scale-95 transition-transform"
                       >
-                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                          <span className="text-xs font-black text-muted shrink-0 w-4 text-center">{idx + 1}</span>
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#59BBAF] to-[#202A5A] text-white font-black text-sm overflow-hidden shrink-0">
-                            {m!.avatar_url ? (
-                              <img src={m!.avatar_url} alt={m!.full_name} className="h-full w-full object-cover" />
+                        <div className="relative mb-2 flex flex-col items-center">
+                          <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-400 to-slate-600 text-white font-black text-sm shadow-md ring-3 ring-slate-300 dark:ring-slate-600 overflow-hidden">
+                            {top2.avatar_url ? (
+                              <img src={top2.avatar_url} alt={top2.full_name} className="h-full w-full object-cover" />
                             ) : (
-                              m!.full_name.charAt(0)
+                              top2.full_name.charAt(0)
                             )}
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <span className="text-[11px] font-black text-action flex items-center gap-1">
-                              {idx === 0 ? <Crown className="h-3.5 w-3.5 text-amber-500 shrink-0" /> : <Medal className="h-3.5 w-3.5 shrink-0" />}
-                              <span>{titles[idx]}</span>
-                            </span>
-                            <h4 className="text-xs sm:text-sm font-bold text-default truncate">{m!.full_name}</h4>
-                            <div className="mt-1 flex flex-wrap items-center gap-1">
-                              {m!.departments && m!.departments.length > 0 ? (
-                                m!.departments.map((d) => (
-                                  <span
-                                    key={d.department}
-                                    className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
-                                      DEPARTMENTS[d.department]?.badgeClass || 'bg-surface-2 text-muted'
-                                    }`}
-                                  >
-                                    <span>{DEPARTMENTS[d.department]?.label || d.department}</span>
-                                    <span className="opacity-80">| سطح {d.level}</span>
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="text-[10px] text-muted font-medium">عضو باشگاه | عمومی</span>
-                              )}
-                            </div>
-                          </div>
+                          <span className="absolute -bottom-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 px-2 py-0.2 text-[10px] font-black shadow-xs">
+                            ۲
+                          </span>
                         </div>
-                        <span className="text-xs sm:text-sm font-black text-[#F8A41D] flex items-center gap-1 shrink-0 rounded-xl bg-[#FEF6E8] dark:bg-[#57390A]/40 border border-[#F8A41D]/30 px-2.5 py-1.5 shadow-2xs">
-                          <Zap className="h-3.5 w-3.5 text-[#F8A41D]" />
-                          <span>{m!.xp_total.toLocaleString('fa-IR')} XP</span>
+
+                        <span className="text-xs font-black text-default text-center truncate max-w-full mt-1.5">
+                          {top2.full_name.split(' ')[0]}
                         </span>
+                        <div className="flex items-center gap-0.5 text-[11px] font-extrabold text-[#F8A41D] mt-0.5">
+                          <Zap className="h-3 w-3 text-[#F8A41D] shrink-0" />
+                          <span>{top2.xp_total.toLocaleString('fa-IR')}</span>
+                        </div>
+
+                        {/* Podium Step 2 */}
+                        <div className="w-full mt-2 h-18 rounded-t-xl bg-gradient-to-t from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-700 border-t-2 border-x-2 border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center shadow-xs">
+                          <span className="text-base font-black text-slate-500 dark:text-slate-400">2</span>
+                          <span className="text-[9px] font-bold text-slate-600 dark:text-slate-400">نقره</span>
+                        </div>
                       </div>
-                    )
-                  })}
+                    ) : (
+                      <div />
+                    )}
+
+                    {/* Rank 1 (Gold) - Center column */}
+                    {top1 ? (
+                      <div
+                        onClick={() => setSelectedMemberId(top1.id)}
+                        className="flex flex-col items-center cursor-pointer active:scale-95 transition-transform -mt-4 z-10"
+                      >
+                        <div className="relative mb-2 flex flex-col items-center">
+                          <Crown className="h-5 w-5 text-amber-500 animate-bounce mb-0.5" />
+                          <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white font-black text-base shadow-lg ring-4 ring-[#F8A41D]/50 overflow-hidden">
+                            {top1.avatar_url ? (
+                              <img src={top1.avatar_url} alt={top1.full_name} className="h-full w-full object-cover" />
+                            ) : (
+                              top1.full_name.charAt(0)
+                            )}
+                          </div>
+                          <span className="absolute -bottom-2 rounded-full bg-amber-500 text-white border-2 border-surface px-2 py-0.2 text-[10px] font-black shadow-xs">
+                            ۱
+                          </span>
+                        </div>
+
+                        <span className="text-xs font-black text-default text-center truncate max-w-full mt-1.5">
+                          {top1.full_name.split(' ')[0]}
+                        </span>
+                        <div className="flex items-center gap-0.5 text-xs font-black text-[#F8A41D] mt-0.5">
+                          <Zap className="h-3.5 w-3.5 text-[#F8A41D] shrink-0" />
+                          <span>{top1.xp_total.toLocaleString('fa-IR')}</span>
+                        </div>
+
+                        {/* Podium Step 1 */}
+                        <div className="w-full mt-2 h-24 rounded-t-xl bg-gradient-to-t from-amber-500/20 to-amber-500/10 dark:from-amber-500/30 dark:to-amber-500/20 border-t-2 border-x-2 border-[#F8A41D] flex flex-col items-center justify-center shadow-xs">
+                          <span className="text-xl font-black text-[#F8A41D]">1</span>
+                          <span className="text-[10px] font-black text-[#F8A41D]">طلا</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div />
+                    )}
+
+                    {/* Rank 3 (Bronze) - Left column in RTL */}
+                    {top3 ? (
+                      <div
+                        onClick={() => setSelectedMemberId(top3.id)}
+                        className="flex flex-col items-center cursor-pointer active:scale-95 transition-transform"
+                      >
+                        <div className="relative mb-2 flex flex-col items-center">
+                          <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-600 to-amber-800 text-white font-black text-sm shadow-md ring-3 ring-amber-700/30 overflow-hidden">
+                            {top3.avatar_url ? (
+                              <img src={top3.avatar_url} alt={top3.full_name} className="h-full w-full object-cover" />
+                            ) : (
+                              top3.full_name.charAt(0)
+                            )}
+                          </div>
+                          <span className="absolute -bottom-2 rounded-full bg-[#FEF6E8] dark:bg-[#57390A] text-amber-800 dark:text-amber-300 border border-amber-700/40 px-2 py-0.2 text-[10px] font-black shadow-xs">
+                            ۳
+                          </span>
+                        </div>
+
+                        <span className="text-xs font-black text-default text-center truncate max-w-full mt-1.5">
+                          {top3.full_name.split(' ')[0]}
+                        </span>
+                        <div className="flex items-center gap-0.5 text-[11px] font-extrabold text-[#F8A41D] mt-0.5">
+                          <Zap className="h-3 w-3 text-[#F8A41D] shrink-0" />
+                          <span>{top3.xp_total.toLocaleString('fa-IR')}</span>
+                        </div>
+
+                        {/* Podium Step 3 */}
+                        <div className="w-full mt-2 h-14 rounded-t-xl bg-gradient-to-t from-amber-900/15 to-amber-800/10 dark:from-amber-950 dark:to-amber-900/30 border-t-2 border-x-2 border-amber-700/40 flex flex-col items-center justify-center shadow-xs">
+                          <span className="text-sm font-black text-amber-800 dark:text-amber-400">3</span>
+                          <span className="text-[9px] font-bold text-amber-800 dark:text-amber-400">برنز</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div />
+                    )}
+                  </div>
                 </div>
               </div>
             )}

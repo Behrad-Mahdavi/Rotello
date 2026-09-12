@@ -8,6 +8,7 @@ import MemberXpModal from '@/components/MemberXpModal'
 import MemberProfileModal from '@/components/MemberProfileModal'
 import MemberEditModal from '@/components/MemberEditModal'
 import MemberTasksOverviewModal, { type MemberAssignmentItem } from '@/components/MemberTasksOverviewModal'
+import MemberTasksOverviewTab from '@/components/MemberTasksOverviewTab'
 import TaskDetailModal from '@/components/TaskDetailModal'
 import { formatToPersianDate, toPersianDigits } from '@/utils/jalaali'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
@@ -24,6 +25,7 @@ export default function AdminMembersPage() {
   const [members, setMembers] = useState<Profile[]>([])
   const [assignments, setAssignments] = useState<MemberAssignment[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'members' | 'tasks'>('members')
   const [showForm, setShowForm] = useState(false)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedTaskIdForDetail, setSelectedTaskIdForDetail] = useState<string | null>(null)
@@ -291,32 +293,69 @@ export default function AdminMembersPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              type="button"
-              onClick={() => setShowDetailsModal(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface-2 px-3.5 py-2 text-xs sm:text-sm font-semibold text-default transition-all hover:bg-surface hover:border-action/30 shadow-xs active:scale-95"
-            >
-              <svg className="h-4 w-4 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-              </svg>
-              <span>جزئیات تسک‌ها</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowForm(!showForm)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-action px-4 py-2 text-xs sm:text-sm font-semibold text-white transition-all hover:bg-action-hover active:scale-95 shadow-sm"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d={showForm ? 'M6 18L18 6M6 6l12 12' : 'M12 4v16m8-8H4'} />
-              </svg>
-              <span>{showForm ? 'بستن فرم' : 'عضو جدید'}</span>
-            </button>
+            {activeTab === 'members' && (
+              <button
+                type="button"
+                onClick={() => setShowForm(!showForm)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-action px-4 py-2 text-xs sm:text-sm font-semibold text-white transition-all hover:bg-action-hover active:scale-95 shadow-sm"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d={showForm ? 'M6 18L18 6M6 6l12 12' : 'M12 4v16m8-8H4'} />
+                </svg>
+                <span>{showForm ? 'بستن فرم' : 'عضو جدید'}</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Create Member Accordion Form */}
-        {showForm && (
+        {/* Admin Navigation Tabs */}
+        <div className="mb-6 flex border-b border-border/80">
+          <button
+            type="button"
+            onClick={() => setActiveTab('members')}
+            className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-all cursor-pointer ${
+              activeTab === 'members'
+                ? 'border-action text-action'
+                : 'border-transparent text-muted hover:text-default'
+            }`}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <span>لیست اعضا و دسترسی‌ها</span>
+            <span className={`rounded-full px-2 py-0.5 text-2xs font-extrabold ${
+              activeTab === 'members' ? 'bg-action/15 text-action' : 'bg-surface-2 text-muted'
+            }`}>
+              {toPersianDigits(members.length)}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('tasks')}
+            className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-all cursor-pointer ${
+              activeTab === 'tasks'
+                ? 'border-action text-action'
+                : 'border-transparent text-muted hover:text-default'
+            }`}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+            <span>کارتابل و جزئیات تسک‌ها</span>
+            <span className={`rounded-full px-2 py-0.5 text-2xs font-extrabold ${
+              activeTab === 'tasks' ? 'bg-action/15 text-action' : 'bg-surface-2 text-muted'
+            }`}>
+              {toPersianDigits(assignments.length)}
+            </span>
+          </button>
+        </div>
+
+        {/* Tab 1: Members List & Access */}
+        {activeTab === 'members' && (
+          <>
+            {/* Create Member Accordion Form */}
+            {showForm && (
           <div className="mb-6 rounded-2xl border border-border bg-surface p-5 sm:p-6 shadow-sm transition-all animate-in fade-in slide-in-from-top-3 duration-200">
             <div className="flex items-center gap-2 mb-4 border-b border-border pb-3">
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-action/10 text-action">
@@ -850,6 +889,18 @@ export default function AdminMembersPage() {
               )
             })}
           </div>
+        )}
+      </>
+    )}
+
+        {/* Tab 2: Tasks Overview Tab */}
+        {activeTab === 'tasks' && (
+          <MemberTasksOverviewTab
+            members={members}
+            assignments={assignments}
+            onOpenProfileModal={(uid) => setProfileModalUserId(uid)}
+            onOpenTaskDetail={(tid) => setSelectedTaskIdForDetail(tid)}
+          />
         )}
       </main>
 

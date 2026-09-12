@@ -544,7 +544,7 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
         isOpen={!!selectedMemberProfileId}
         onClose={() => setSelectedMemberProfileId(null)}
         currentProfile={profile}
-        isAdmin={profile.role === 'admin'}
+        isAdmin={profile?.role === 'admin'}
       />
     </div>
   )

@@ -198,10 +198,15 @@ export function formatJalaaliToGregorianString(jy: number, jm: number, jd: numbe
 
 // Helper: Format Gregorian date string to Persian text representation
 export function formatToPersianDate(dateStr: string | null | undefined, mode: 'short' | 'long' = 'long'): string {
-  const j = parseGregorianToJalaali(dateStr)
-  if (!j) return 'نامشخص'
-  if (mode === 'short') {
-    return `${toPersianDigits(j.jy)}/${toPersianDigits(j.jm.toString().padStart(2, '0'))}/${toPersianDigits(j.jd.toString().padStart(2, '0'))}`
+  try {
+    const j = parseGregorianToJalaali(dateStr)
+    if (!j) return 'نامشخص'
+    if (mode === 'short') {
+      return `${toPersianDigits(j.jy)}/${toPersianDigits(j.jm.toString().padStart(2, '0'))}/${toPersianDigits(j.jd.toString().padStart(2, '0'))}`
+    }
+    const month = PERSIAN_MONTHS[j.jm - 1] || ''
+    return `${toPersianDigits(j.jd)} ${month} ${toPersianDigits(j.jy)}`.trim()
+  } catch {
+    return 'نامشخص'
   }
-  return `${toPersianDigits(j.jd)} ${PERSIAN_MONTHS[j.jm - 1]} ${toPersianDigits(j.jy)}`
 }

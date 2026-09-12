@@ -7,6 +7,7 @@ import AppHeader from '@/components/AppHeader'
 import type { Profile, XpAdjustment } from '@/utils/database.types'
 import { Gift, AlertTriangle, CheckCircle2, Zap, RotateCcw, Camera, Trash2, Loader2 } from 'lucide-react'
 import { setCachedProfile } from '@/utils/userCache'
+import { formatToPersianDate } from '@/utils/jalaali'
 
 interface CompletedTaskItem {
   id: string
@@ -427,18 +428,26 @@ function ProfileContent() {
                             <span className="text-xs font-bold text-default truncate">
                               {t.title}
                             </span>
-                            {t.projects?.name && (
-                              <span className="rounded-md bg-surface border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted shrink-0">
-                                {t.projects.name}
-                              </span>
-                            )}
+                            {(() => {
+                              const projName = Array.isArray(t.projects)
+                                ? (t.projects as unknown as { name?: string }[])[0]?.name
+                                : typeof t.projects === 'object' && t.projects
+                                ? (t.projects as { name?: string }).name
+                                : null
+                              if (!projName) return null
+                              return (
+                                <span className="rounded-md bg-surface border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted shrink-0">
+                                  {projName}
+                                </span>
+                              )
+                            })()}
                           </div>
                           <div className="flex items-center gap-2 text-[11px] text-muted">
                             <span className={`rounded-full border px-1.5 py-0.2 text-[10px] font-medium ${priority.color}`}>
                               {priority.label}
                             </span>
                             <span>
-                              تاریخ انجام: {new Date(t.updated_at || t.created_at).toLocaleDateString('fa-IR')}
+                              تاریخ انجام: {formatToPersianDate(t.updated_at || t.created_at)}
                             </span>
                           </div>
                         </div>
@@ -446,7 +455,7 @@ function ProfileContent() {
                         {targetProfile.role === 'member' && (
                           <div className="flex items-center gap-1.5 shrink-0">
                             <span className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-xs font-bold text-emerald-400">
-                              +{t.xp_value} XP
+                              +{(t.xp_value || 0).toLocaleString('fa-IR')} XP
                             </span>
                           </div>
                         )}
@@ -540,7 +549,7 @@ function ProfileContent() {
                               <span>{badge.title}</span>
                             </span>
                             <span className="text-[10px] text-muted">
-                              {new Date(adj.created_at).toLocaleDateString('fa-IR')}
+                              {formatToPersianDate(adj.created_at)}
                             </span>
                           </div>
                           <p className="text-default text-xs" title={adj.reason}>
@@ -552,7 +561,7 @@ function ProfileContent() {
                             isPositive ? 'text-emerald-400' : 'text-rose-400'
                           }`}
                         >
-                          {isPositive ? `+${adj.amount}` : adj.amount} XP
+                          {isPositive ? `+${(adj.amount || 0).toLocaleString('fa-IR')}` : (adj.amount || 0).toLocaleString('fa-IR')} XP
                         </span>
                       </div>
                     )
