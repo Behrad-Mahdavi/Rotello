@@ -70,7 +70,11 @@ export default function AdminMembersPage() {
         router.push('/projects')
         return
       }
-      setProfile(prof)
+      setProfile({
+        ...(prof || { id: user.id, full_name: user.user_metadata?.full_name || 'مدیر', xp_total: 0, created_at: '' }),
+        role: 'admin',
+        avatar_url: prof?.avatar_url || user.user_metadata?.avatar_url || null,
+      })
 
       const [membersRes, assignRes] = await Promise.all([
         fetch('/api/admin/members')

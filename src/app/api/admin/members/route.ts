@@ -3,6 +3,8 @@ import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
 import type { Role, MemberDepartment } from '@/utils/database.types'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/admin/members - fetch all members with enriched user_metadata and email
 export async function GET() {
   try {
@@ -45,13 +47,24 @@ export async function GET() {
       if (data) profilesData = data
     }
 
-    const authUsersMap = new Map<string, { email?: string; role?: Role; departments?: MemberDepartment[] }>()
+    const authUsersMap = new Map<
+      string,
+      {
+        email?: string
+        role?: Role
+        departments?: MemberDepartment[]
+        avatar_url?: string | null
+        full_name?: string
+      }
+    >()
     if (authUsers.length > 0) {
       for (const u of authUsers) {
         authUsersMap.set(u.id, {
           email: u.email,
           role: (u.user_metadata?.role as Role) || undefined,
           departments: (u.user_metadata?.departments as MemberDepartment[]) || undefined,
+          avatar_url: (u.user_metadata?.avatar_url as string) || null,
+          full_name: (u.user_metadata?.full_name as string) || undefined,
         })
       }
     }
@@ -60,18 +73,29 @@ export async function GET() {
       const authInfo = authUsersMap.get(p.id)
       // Prioritize auth metadata for role if DB check constraint hasn't been updated yet
       const role: Role = (authInfo?.role || p.role || 'member') as Role
-      const departments: MemberDepartment[] = p.departments || authInfo?.departments || []
+      const departments: MemberDepartment[] = authInfo?.departments || p.departments || []
+      const avatar_url = authInfo?.avatar_url || p.avatar_url || null
+      const full_name = authInfo?.full_name || p.full_name || ''
       const email = authInfo?.email || ''
 
       return {
         ...p,
+        full_name,
         role,
         departments,
+        avatar_url,
         email,
       }
     })
 
-    return NextResponse.json({ members: enrichedMembers })
+    return NextResponse.json(
+      { members: enrichedMembers },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+        },
+      }
+    )
   } catch (err: unknown) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Unknown error' }, { status: 500 })
   }
