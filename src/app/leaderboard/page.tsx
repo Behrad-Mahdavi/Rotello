@@ -25,9 +25,7 @@ export default function LeaderboardPage() {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Filters
-  const [deptFilter, setDeptFilter] = useState<'all' | DepartmentKey>('all')
-  const [levelFilter, setLevelFilter] = useState<'all' | DepartmentLevel>('all')
+  // Search Filter
   const [searchQuery, setSearchQuery] = useState('')
 
   const router = useRouter()
@@ -91,35 +89,12 @@ export default function LeaderboardPage() {
     }
   }, [members, profile])
 
-  // Filtered members by Department, Level, and Search Query
+  // Filtered members by Search Query only
   const filteredMembers = useMemo(() => {
-    return members.filter((m) => {
-      // 1. Department filter
-      if (deptFilter !== 'all') {
-        const hasDept = m.departments?.some((d) => d.department === deptFilter)
-        if (!hasDept) return false
-      }
-
-      // 2. Level filter
-      if (levelFilter !== 'all') {
-        if (deptFilter !== 'all') {
-          const deptMatch = m.departments?.find((d) => d.department === deptFilter)
-          if (!deptMatch || deptMatch.level !== levelFilter) return false
-        } else {
-          const hasLevel = m.departments?.some((d) => d.level === levelFilter)
-          if (!hasLevel) return false
-        }
-      }
-
-      // 3. Search query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim()
-        if (!m.full_name.toLowerCase().includes(q)) return false
-      }
-
-      return true
-    })
-  }, [members, deptFilter, levelFilter, searchQuery])
+    if (!searchQuery.trim()) return members
+    const q = searchQuery.toLowerCase().trim()
+    return members.filter((m) => (m.full_name || '').toLowerCase().includes(q))
+  }, [members, searchQuery])
 
   // Top 3 from the currently filtered members
   const top1 = filteredMembers[0] || null
@@ -145,7 +120,7 @@ export default function LeaderboardPage() {
               </div>
               <div>
                 <h1 className="text-lg sm:text-xl font-black text-default tracking-tight">
-                  لیدربورد اعضای باشگاه کسب و کار رکاد
+                  لیدربورد اعضای باشگاه کسب‌وکار رکاد
                 </h1>
               </div>
             </div>
@@ -227,107 +202,41 @@ export default function LeaderboardPage() {
           </div>
         )}
 
-        {/* 3. Filter Navigation (Departments & Levels & Search) */}
-        <div className="rounded-2xl border-[1.5px] border-border bg-surface p-3.5 sm:p-4 shadow-[2px_2px_0_#202A5A] dark:shadow-[2px_2px_0_#59BBAF] space-y-3">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-            {/* Department Tabs */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs font-black text-muted ml-1">دپارتمان:</span>
+        {/* 3. Search Bar */}
+        <div className="rounded-2xl border-[1.5px] border-border bg-surface p-3 sm:p-4 shadow-[2px_2px_0_#202A5A] dark:shadow-[2px_2px_0_#59BBAF]">
+          <div className="relative w-full max-w-md">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="جستجوی نام عضو در لیدربورد..."
+              className="w-full rounded-xl border border-border bg-surface-2/60 px-3.5 py-2 pr-9 pl-8 text-xs sm:text-sm font-medium text-default placeholder:text-muted/60 transition-all focus:border-action focus:bg-surface focus:outline-none"
+            />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+            {searchQuery.trim() && (
               <button
                 type="button"
-                onClick={() => setDeptFilter('all')}
-                className={`cursor-pointer select-none rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
-                  deptFilter === 'all'
-                    ? 'bg-action text-white shadow-xs'
-                    : 'bg-surface-2 text-muted hover:text-default hover:bg-surface-3'
-                }`}
+                onClick={() => setSearchQuery('')}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1 text-muted hover:text-default hover:bg-surface-2 transition-colors cursor-pointer"
+                title="پاک کردن جستجو"
               >
-                همه دپارتمان‌ها
+                <X className="h-3.5 w-3.5" />
               </button>
-
-              {(['engineers', 'artists', 'generalists'] as DepartmentKey[]).map((dk) => {
-                const conf = DEPARTMENTS[dk]
-                const isActive = deptFilter === dk
-                return (
-                  <button
-                    key={dk}
-                    type="button"
-                    onClick={() => setDeptFilter(dk)}
-                    className={`cursor-pointer select-none rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
-                      isActive
-                        ? `${conf.bgClass} ${conf.textClass} border ${conf.borderClass} shadow-xs font-black`
-                        : 'bg-surface-2 text-muted hover:text-default hover:bg-surface-3'
-                    }`}
-                  >
-                    {conf.label}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Level Filter & Search Box */}
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Level Buttons */}
-              <div className="flex items-center gap-1 rounded-xl bg-surface-2 p-1 border border-border/70 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setLevelFilter('all')}
-                  className={`cursor-pointer rounded-lg px-2.5 py-1 font-bold transition-all ${
-                    levelFilter === 'all' ? 'bg-surface text-default shadow-2xs' : 'text-muted hover:text-default'
-                  }`}
-                >
-                  همه سطوح
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLevelFilter('A')}
-                  className={`cursor-pointer rounded-lg px-2.5 py-1 font-bold transition-all ${
-                    levelFilter === 'A' ? 'bg-emerald-500 text-white shadow-2xs' : 'text-muted hover:text-default'
-                  }`}
-                >
-                  سطح A
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLevelFilter('B')}
-                  className={`cursor-pointer rounded-lg px-2.5 py-1 font-bold transition-all ${
-                    levelFilter === 'B' ? 'bg-blue-600 text-white shadow-2xs' : 'text-muted hover:text-default'
-                  }`}
-                >
-                  سطح B
-                </button>
-              </div>
-
-              {/* Search Bar */}
-              <div className="relative w-full sm:w-52">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="جستجوی نام عضو..."
-                  className="w-full rounded-xl border border-border bg-surface-2/60 px-3 py-1.5 pr-8 text-xs sm:text-sm font-medium text-default placeholder:text-muted/60 transition-all focus:border-action focus:bg-surface focus:outline-none"
-                />
-                <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted pointer-events-none" />
-              </div>
-            </div>
+            )}
           </div>
 
-          {/* Active Filter Note */}
-          {(deptFilter !== 'all' || levelFilter !== 'all' || searchQuery.trim()) && (
-            <div className="pt-2 border-t border-border/70 flex items-center justify-between text-xs text-muted font-medium">
+          {/* Active Search Note */}
+          {searchQuery.trim() && (
+            <div className="pt-2.5 mt-2.5 border-t border-border/70 flex items-center justify-between text-xs text-muted font-medium">
               <span>
-                نمایش <strong>{filteredMembers.length}</strong> عضو با فیلترهای انتخابی
+                نمایش <strong>{filteredMembers.length}</strong> نتیجه برای عبارت «{searchQuery}»
               </span>
               <button
                 type="button"
-                onClick={() => {
-                  setDeptFilter('all')
-                  setLevelFilter('all')
-                  setSearchQuery('')
-                }}
+                onClick={() => setSearchQuery('')}
                 className="text-action font-bold hover:underline cursor-pointer flex items-center gap-1"
               >
-                <span>پاک کردن فیلترها</span>
+                <span>پاک کردن جستجو</span>
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -349,8 +258,8 @@ export default function LeaderboardPage() {
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2 text-muted border border-border">
               <Search className="h-6 w-6" />
             </div>
-            <h3 className="font-black text-default text-sm sm:text-base">عضوی با این مشخصات یافت نشد</h3>
-            <p className="text-xs text-muted mt-1 font-medium">فیلتر دپارتمان یا عبارت جستجو را تغییر دهید.</p>
+            <h3 className="font-black text-default text-sm sm:text-base">عضوی با این نام یافت نشد</h3>
+            <p className="text-xs text-muted mt-1 font-medium">عبارت جستجو را تغییر دهید یا پاک کنید.</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -546,8 +455,8 @@ export default function LeaderboardPage() {
                         onClick={() => setSelectedMemberId(m!.id)}
                         className="flex items-center justify-between gap-3 rounded-2xl border-[1.5px] border-border bg-surface p-3.5 shadow-xs cursor-pointer active:scale-98"
                       >
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-xs font-black text-muted">{idx + 1}</span>
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <span className="text-xs font-black text-muted shrink-0 w-4 text-center">{idx + 1}</span>
                           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#59BBAF] to-[#202A5A] text-white font-black text-sm overflow-hidden shrink-0">
                             {m!.avatar_url ? (
                               <img src={m!.avatar_url} alt={m!.full_name} className="h-full w-full object-cover" />
@@ -555,12 +464,12 @@ export default function LeaderboardPage() {
                               m!.full_name.charAt(0)
                             )}
                           </div>
-                          <div>
-                            <span className="text-xs font-black text-action flex items-center gap-1">
-                              {idx === 0 ? <Crown className="h-3.5 w-3.5 text-amber-500" /> : <Medal className="h-3.5 w-3.5" />}
+                          <div className="min-w-0 flex-1">
+                            <span className="text-[11px] font-black text-action flex items-center gap-1">
+                              {idx === 0 ? <Crown className="h-3.5 w-3.5 text-amber-500 shrink-0" /> : <Medal className="h-3.5 w-3.5 shrink-0" />}
                               <span>{titles[idx]}</span>
                             </span>
-                            <h4 className="text-xs sm:text-sm font-bold text-default">{m!.full_name}</h4>
+                            <h4 className="text-xs sm:text-sm font-bold text-default truncate">{m!.full_name}</h4>
                             <div className="mt-1 flex flex-wrap items-center gap-1">
                               {m!.departments && m!.departments.length > 0 ? (
                                 m!.departments.map((d) => (
@@ -571,16 +480,16 @@ export default function LeaderboardPage() {
                                     }`}
                                   >
                                     <span>{DEPARTMENTS[d.department]?.label || d.department}</span>
-                                    <span className="opacity-80">| سطح تخصصی {d.level}</span>
+                                    <span className="opacity-80">| سطح {d.level}</span>
                                   </span>
                                 ))
                               ) : (
-                                <span className="text-[10px] text-muted font-medium">عضو باشگاه | سطح عمومی</span>
+                                <span className="text-[10px] text-muted font-medium">عضو باشگاه | عمومی</span>
                               )}
                             </div>
                           </div>
                         </div>
-                        <span className="text-xs sm:text-sm font-black text-[#F8A41D] flex items-center gap-1 shrink-0">
+                        <span className="text-xs sm:text-sm font-black text-[#F8A41D] flex items-center gap-1 shrink-0 rounded-xl bg-[#FEF6E8] dark:bg-[#57390A]/40 border border-[#F8A41D]/30 px-2.5 py-1.5 shadow-2xs">
                           <Zap className="h-3.5 w-3.5 text-[#F8A41D]" />
                           <span>{m!.xp_total.toLocaleString('fa-IR')} XP</span>
                         </span>
@@ -844,6 +753,8 @@ export default function LeaderboardPage() {
         isOpen={!!selectedMemberId}
         onClose={() => setSelectedMemberId(null)}
         currentProfile={profile}
+        initialMember={members.find((m) => m.id === selectedMemberId) || null}
+        isAdmin={profile?.role === 'admin'}
         onXpChanged={(id, newXp) => {
           setMembers((prev) =>
             prev.map((m) => (m.id === id ? { ...m, xp_total: newXp } : m)).sort((a, b) => b.xp_total - a.xp_total)

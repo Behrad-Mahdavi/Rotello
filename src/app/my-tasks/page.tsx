@@ -156,7 +156,7 @@ export default function MyTasksPage() {
           <div className="flex items-center gap-1.5 rounded-xl bg-surface-2/80 p-1 self-start sm:self-auto overflow-x-auto max-w-full scrollbar-none" style={{ WebkitOverflowScrolling: 'touch' }}>
             <button
               onClick={() => setActiveTab('all')}
-              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              className={`shrink-0 rounded-lg min-h-[36px] px-3.5 py-1.5 text-xs font-semibold inline-flex items-center justify-center transition active:scale-95 ${
                 activeTab === 'all' ? 'bg-surface text-default shadow-sm' : 'text-muted hover:text-default'
               }`}
             >
@@ -164,7 +164,7 @@ export default function MyTasksPage() {
             </button>
             <button
               onClick={() => setActiveTab('projects')}
-              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              className={`shrink-0 rounded-lg min-h-[36px] px-3.5 py-1.5 text-xs font-semibold inline-flex items-center justify-center transition active:scale-95 ${
                 activeTab === 'projects' ? 'bg-surface text-default shadow-sm' : 'text-muted hover:text-default'
               }`}
             >
@@ -172,7 +172,7 @@ export default function MyTasksPage() {
             </button>
             <button
               onClick={() => setActiveTab('events')}
-              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+              className={`shrink-0 rounded-lg min-h-[36px] px-3.5 py-1.5 text-xs font-semibold inline-flex items-center justify-center transition active:scale-95 ${
                 activeTab === 'events' ? 'bg-surface text-default shadow-sm' : 'text-muted hover:text-default'
               }`}
             >

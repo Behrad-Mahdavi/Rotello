@@ -12,11 +12,12 @@ interface CreateTaskModalProps {
   projectId: string
   onClose: () => void
   onTaskCreated: (task: Task) => void
+  onOpenMembersModal?: () => void
 }
 
 interface CL { title: string; items: string[] }
 
-export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: CreateTaskModalProps) {
+export default function CreateTaskModal({ projectId, onClose, onTaskCreated, onOpenMembersModal }: CreateTaskModalProps) {
   useBodyScrollLock(true)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -29,21 +30,32 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: C
   const [showDropdown, setShowDropdown] = useState(false)
   const [checklists, setChecklists] = useState<CL[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingMembers, setLoadingMembers] = useState(true)
   const [error, setError] = useState('')
   const searchRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
   const filteredMembers = members.filter((m) =>
-    m.full_name.toLowerCase().includes(searchQuery.toLowerCase())
+    (m.full_name || '').toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from('profiles').select('*').order('full_name')
-      if (data) setMembers(data)
+      setLoadingMembers(true)
+      try {
+        const res = await fetch(`/api/projects/${projectId}/members`)
+        if (res.ok) {
+          const data = await res.json()
+          setMembers(data.members || [])
+        }
+      } catch (err) {
+        console.error('Error fetching project members:', err)
+      } finally {
+        setLoadingMembers(false)
+      }
     }
     load()
-  }, [])
+  }, [projectId])
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -89,10 +101,13 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: C
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
       <div className="max-h-[90vh] w-full overflow-y-auto overscroll-contain rounded-t-2xl border border-border bg-surface shadow-lg sm:max-h-[85vh] sm:max-w-lg sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        {/* Mobile Pull Handle */}
+        <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-border-strong/60 sm:hidden" />
+
         <div className="sticky top-0 z-10 border-b border-border bg-surface px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-default">تسک جدید</h2>
-            <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-default cursor-pointer">
+            <button onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-2 hover:text-default cursor-pointer">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -141,46 +156,99 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated }: C
           </div>
 
           <div ref={searchRef} className="relative">
-            <label className="block text-xs font-medium text-muted mb-2">مسئولین</label>
-            {selectedMembers.length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-1.5">
-                {selectedMembers.map((uid) => {
-                  const m = members.find((mm) => mm.id === uid)
-                  if (!m) return null
-                  return (
-                    <span key={uid} className="inline-flex items-center gap-1 rounded-full bg-action/15 px-2.5 py-1 text-xs font-medium text-action">
-                      {m.full_name}
-                      <button type="button" onClick={() => toggle(uid)} className="mr-0.5 text-action/60 hover:text-action cursor-pointer">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </span>
-                  )
-                })}
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-default">
+                مسئولین تسک <span className="text-muted font-normal">(صرفاً اعضای این پروژه)</span>
+              </label>
+              <span className="text-[11px] text-muted">
+                {members.length} عضو در پروژه
+              </span>
+            </div>
+
+            {loadingMembers ? (
+              <div className="rounded-lg border border-border bg-surface-2 p-2.5 text-center text-xs text-muted">
+                در حال دریافت اعضای پروژه...
               </div>
-            )}
-            <input type="text" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setShowDropdown(true) }}
-              onFocus={() => setShowDropdown(true)} placeholder="جستجوی اعضا..."
-              className="mt-1 block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors placeholder:text-muted focus:border-action/50 focus:bg-surface focus:outline-none" />
-            {showDropdown && searchQuery && filteredMembers.length > 0 && (
-              <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border bg-surface shadow-lg">
-                {filteredMembers.map((m) => {
-                  const isSelected = selectedMembers.includes(m.id)
-                  return (
-                    <button key={m.id} type="button" onClick={() => { toggle(m.id); setSearchQuery('') }}
-                      className={`flex w-full items-center gap-2 px-3 py-2 text-xs text-right transition-colors ${
-                        isSelected ? 'bg-action/10 text-action' : 'text-subtle hover:bg-surface-2 hover:text-default'
-                      }`}>
-                      <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white bg-gradient-to-br ${
-                        m.role === 'admin' ? 'from-violet-500 to-purple-600' : 'from-emerald-500 to-teal-600'
-                      }`}>
-                        {m.full_name.charAt(0)}
-                      </span>
-                      <span className="flex-1">{m.full_name}</span>
-                      {isSelected && <Check className="w-4 h-4 text-action" />}
-                    </button>
-                  )
-                })}
+            ) : members.length === 0 ? (
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-600 dark:text-amber-400 space-y-2">
+                <p className="font-semibold">
+                  ⚠️ هیچ عضوی در این پروژه ثبت نشده است.
+                </p>
+                <p className="text-[11px] leading-relaxed opacity-90">
+                  تسک‌های هر پروژه فقط برای اعضای همان پروژه قابل تعریف هستند. لطفاً ابتدا اعضای پروژه را تعیین کنید.
+                </p>
+                {onOpenMembersModal && (
+                  <button
+                    type="button"
+                    onClick={onOpenMembersModal}
+                    className="inline-flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-amber-400 transition-colors cursor-pointer"
+                  >
+                    افزودن اعضا به این پروژه
+                  </button>
+                )}
               </div>
+            ) : (
+              <>
+                {selectedMembers.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {selectedMembers.map((uid) => {
+                      const m = members.find((mm) => mm.id === uid)
+                      if (!m) return null
+                      return (
+                        <span key={uid} className="inline-flex items-center gap-1 rounded-lg bg-action/15 border border-action/30 px-2.5 py-1 text-xs font-medium text-action">
+                          {m.full_name}
+                          <button type="button" onClick={() => toggle(uid)} className="mr-0.5 text-action/60 hover:text-action cursor-pointer">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      )
+                    })}
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setShowDropdown(true) }}
+                  onFocus={() => setShowDropdown(true)}
+                  placeholder="انتخاب یا جستجو در اعضای پروژه..."
+                  className="mt-1 block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors placeholder:text-muted focus:border-action/50 focus:bg-surface focus:outline-none"
+                />
+                {showDropdown && (
+                  <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border bg-surface shadow-lg py-1">
+                    {filteredMembers.length === 0 ? (
+                      <div className="p-2.5 text-center text-xs text-muted">
+                        عضوی از این پروژه با این نام یافت نشد.
+                      </div>
+                    ) : (
+                      filteredMembers.map((m) => {
+                        const isSelected = selectedMembers.includes(m.id)
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => { toggle(m.id); setSearchQuery('') }}
+                            className={`flex w-full items-center justify-between px-3 py-2 text-xs transition-colors cursor-pointer ${
+                              isSelected ? 'bg-action/10 text-action font-bold' : 'text-default hover:bg-surface-2'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white bg-gradient-to-br from-[#59BBAF] to-[#202A5A] overflow-hidden">
+                                {m.avatar_url ? (
+                                  <img src={m.avatar_url} alt="" className="h-full w-full object-cover" />
+                                ) : (
+                                  m.full_name.charAt(0)
+                                )}
+                              </span>
+                              <span className="truncate">{m.full_name}</span>
+                            </div>
+                            {isSelected && <Check className="w-4 h-4 text-action shrink-0" />}
+                          </button>
+                        )
+                      })
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
 

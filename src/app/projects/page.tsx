@@ -6,10 +6,11 @@ import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
 import EditProjectModal from '@/components/EditProjectModal'
 import DeleteProjectModal from '@/components/DeleteProjectModal'
+import ProjectMembersModal from '@/components/ProjectMembersModal'
 import { formatToPersianDate, toPersianDigits } from '@/utils/jalaali'
 import { DEPARTMENTS, type DepartmentKey } from '@/constants/departments'
 import type { Project, Profile, Role, MemberDepartment } from '@/utils/database.types'
-import { X, Zap } from 'lucide-react'
+import { X, Zap, Users } from 'lucide-react'
 
 interface TaskSummary {
   id: string
@@ -23,6 +24,8 @@ export default function ProjectsListPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [tasks, setTasks] = useState<TaskSummary[]>([])
   const [myAssignedProjectIds, setMyAssignedProjectIds] = useState<string[]>([])
+  const [projectMembersMap, setProjectMembersMap] = useState<Record<string, string[]>>({})
+  const [selectedProjectForMembers, setSelectedProjectForMembers] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null)
@@ -36,11 +39,12 @@ export default function ProjectsListPage() {
       const user = session?.user
       if (!user) { router.push('/login'); return }
 
-      const [profRes, projRes, tasksRes, assignRes] = await Promise.all([
+      const [profRes, projRes, tasksRes, assignRes, mapRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('projects').select('*').order('created_at', { ascending: false }),
         supabase.from('tasks').select('id, project_id, status, xp_value'),
         supabase.from('task_assignees').select('task_id, tasks(project_id)').eq('user_id', user.id),
+        fetch('/api/projects/members-map').then((r) => r.ok ? r.json() : { map: {} }).catch(() => ({ map: {} })),
       ])
 
       const userRole: Role = (user.user_metadata?.role || profRes.data?.role || 'member') as Role
@@ -55,6 +59,7 @@ export default function ProjectsListPage() {
       setProfile(fullProfile)
       if (projRes.data) setProjects(projRes.data)
       if (tasksRes.data) setTasks(tasksRes.data)
+      if (mapRes?.map) setProjectMembersMap(mapRes.map)
 
       const assignedPids = new Set<string>()
       if (assignRes.data) {
@@ -74,8 +79,8 @@ export default function ProjectsListPage() {
 
   // Accessible projects according to Role:
   // - Admin: All projects
-  // - Mentor: Projects of their departments OR projects where they are assigned tasks
-  // - Member: Only projects where they are assigned tasks
+  // - Mentor: Projects of their departments OR projects where they are assigned tasks/members
+  // - Member: Only projects where they are assigned tasks OR are project members
   const accessibleProjects = useMemo(() => {
     if (!profile) return []
 
@@ -90,13 +95,15 @@ export default function ProjectsListPage() {
         if (p.department && mentorDeps.includes(p.department)) return true
         // Project where mentor is assigned
         if (myAssignedProjectIds.includes(p.id)) return true
+        // Project where mentor is a project member
+        if ((projectMembersMap[p.id] || []).includes(profile.id)) return true
         return false
       })
     }
 
-    // Member: only assigned projects
-    return projects.filter((p) => myAssignedProjectIds.includes(p.id))
-  }, [projects, profile, myAssignedProjectIds])
+    // Member: only assigned projects or project members
+    return projects.filter((p) => myAssignedProjectIds.includes(p.id) || (projectMembersMap[p.id] || []).includes(profile.id))
+  }, [projects, profile, myAssignedProjectIds, projectMembersMap])
 
   // Map task stats by project id
   const projectStats = useMemo(() => {
@@ -195,7 +202,7 @@ export default function ProjectsListPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="جستجوی پروژه..."
-                  className="w-full sm:w-60 rounded-xl border border-border bg-surface px-3 py-2 pr-9 text-xs transition-all focus:border-action focus:ring-2 focus:ring-action/20 focus:outline-none"
+                  className="w-full sm:w-60 rounded-xl border border-border bg-surface px-3 py-2 pr-9 text-xs transition-all focus:border-action focus:ring-2 focus:ring-action/20 focus:outline-none min-h-[38px]"
                 />
                 <svg
                   className="absolute right-2.5 top-2.5 h-4 w-4 text-muted pointer-events-none"
@@ -221,7 +228,7 @@ export default function ProjectsListPage() {
             {profile?.role === 'admin' && (
               <button
                 onClick={() => router.push('/admin/projects')}
-                className="rokad-btn-primary px-3.5 sm:px-4 py-2 text-xs sm:text-sm shrink-0"
+                className="rokad-btn-primary px-3.5 sm:px-4 py-2 text-xs sm:text-sm shrink-0 min-h-[38px] flex items-center justify-center gap-1.5"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -233,7 +240,7 @@ export default function ProjectsListPage() {
         </div>
 
         {/* Projects Grid */}
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {filteredProjects.map((project, i) => {
             const g = gradients[i % gradients.length]
             const stats = projectStats[project.id] || { total: 0, done: 0, pct: 0, totalXp: 0 }
@@ -250,7 +257,7 @@ export default function ProjectsListPage() {
                 <div className={`h-2 w-full bg-gradient-to-r ${g.bar}`} />
 
                 {/* Card Content */}
-                <div className="p-5 flex-1 flex flex-col justify-between">
+                <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
                   <div>
                     {/* Header with Initial & Badge */}
                     <div className="flex items-start justify-between gap-3 mb-3">
@@ -349,16 +356,28 @@ export default function ProjectsListPage() {
                 </div>
 
                 {/* Footer Action Bar */}
-                <div className="flex items-center justify-between border-t border-border bg-surface-2/40 px-5 py-3 text-xs font-semibold text-muted group-hover:text-action transition-colors">
-                  <div className="flex items-center gap-1.5">
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-                    </svg>
-                    <span>مشاهده بورد کانبان</span>
+                <div className="flex items-center justify-between border-t border-border bg-surface-2/40 px-4 sm:px-5 py-2.5 sm:py-3 text-xs font-semibold text-muted transition-colors">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedProjectForMembers(project)
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-surface px-2 py-1 text-[11px] font-bold text-default hover:text-action hover:border-action/40 transition-colors shadow-2xs"
+                      title="مشاهده و مدیریت اعضای این پروژه"
+                    >
+                      <Users className="h-3.5 w-3.5 text-action" />
+                      <span>{(projectMembersMap[project.id]?.length || 0)} عضو</span>
+                    </button>
                   </div>
-                  <span className="text-base transition-transform duration-200 group-hover:-translate-x-1">
-                    ←
-                  </span>
+
+                  <div className="flex items-center gap-1.5 group-hover:text-action transition-colors">
+                    <span className="text-[11px] sm:text-xs">مشاهده بورد</span>
+                    <span className="text-base transition-transform duration-200 group-hover:-translate-x-1">
+                      ←
+                    </span>
+                  </div>
                 </div>
               </div>
             )
@@ -369,7 +388,7 @@ export default function ProjectsListPage() {
               {searchQuery
                 ? 'هیچ پروژه‌ای مطابق با جستجوی شما یافت نشد.'
                 : profile?.role === 'member'
-                ? 'شما در حال حاضر در هیچ پروژه‌ای تسک فعالی ندارید. به محض انتساب تسک، پروژه‌های مربوطه در این بخش نمایش داده می‌شوند.'
+                ? 'شما در حال حاضر در هیچ پروژه‌ای عضویتی ندارید و تسک فعالی برای شما ثبت نشده است.'
                 : profile?.role === 'mentor'
                 ? 'پروژه‌ای متناسب با دپارتمان‌های شما یا پروژه‌های دارای تسک یافت نشد.'
                 : 'هنوز هیچ پروژه‌ای تعریف نشده است.'}
@@ -399,6 +418,23 @@ export default function ProjectsListPage() {
           onClose={() => setProjectToDelete(null)}
           onProjectDeleted={(deletedId) => {
             setProjects((prev) => prev.filter((p) => p.id !== deletedId))
+          }}
+        />
+      )}
+
+      {/* Project Members Modal */}
+      {selectedProjectForMembers && (
+        <ProjectMembersModal
+          isOpen={!!selectedProjectForMembers}
+          projectId={selectedProjectForMembers.id}
+          projectName={selectedProjectForMembers.name}
+          onClose={() => setSelectedProjectForMembers(null)}
+          canManage={profile?.role === 'admin' || profile?.role === 'mentor'}
+          onMembersUpdated={(newMembers) => {
+            setProjectMembersMap((prev) => ({
+              ...prev,
+              [selectedProjectForMembers.id]: newMembers.map((m) => m.id),
+            }))
           }}
         />
       )}

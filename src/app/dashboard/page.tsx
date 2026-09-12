@@ -262,13 +262,13 @@ export default function DashboardPage() {
     <div className="flex min-h-screen flex-col bg-canvas transition-colors duration-200" dir="rtl">
       <AppHeader profile={data.profile} />
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 sm:px-6 py-5 sm:py-6 space-y-6">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-3.5 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* 1. Welcome & Executive Banner */}
-        <div className="relative overflow-hidden rounded-2xl border-[1.5px] border-border bg-surface p-5 sm:p-6 shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2.5px_2.5px_0_#59BBAF] transition-all">
+        <div className="relative overflow-hidden rounded-2xl border-[1.5px] border-border bg-surface p-4 sm:p-6 shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2.5px_2.5px_0_#59BBAF] transition-all">
           <div className="absolute -left-16 -top-16 h-48 w-48 rounded-full bg-[#59BBAF]/10 blur-3xl pointer-events-none" />
           <div className="absolute -right-16 -bottom-16 h-48 w-48 rounded-full bg-[#652D90]/10 blur-3xl pointer-events-none" />
 
-          <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative z-10 flex flex-col gap-3.5 sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F0EAF4] dark:bg-[#231032] border border-[#652D90]/30 px-3 py-0.5 text-xs font-black text-[#652D90] dark:text-[#c084fc]">
@@ -276,19 +276,19 @@ export default function DashboardPage() {
                   <span>پنل راهبری باشگاه</span>
                 </span>
                 <span className="text-xs text-muted">|</span>
-                <span className="text-xs font-bold text-muted">باشگاه کسب و کار رکاد</span>
+                <span className="text-xs font-bold text-muted">باشگاه کسب‌وکار رکاد</span>
               </div>
-              <h1 className="text-xl sm:text-2xl font-black text-default tracking-tight flex items-center gap-2">
+              <h1 className="text-lg sm:text-2xl font-black text-default tracking-tight flex items-center gap-2">
                 <span>سلام، {data.profile.full_name} عزیز</span>
                 <Sparkles className="h-5 w-5 text-amber-500" />
               </h1>
             </div>
 
             {/* Quick Action Buttons */}
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
               <Link
                 href="/admin/projects"
-                className="rokad-btn-primary px-3.5 py-2 text-xs sm:text-sm font-bold flex items-center gap-1.5"
+                className="rokad-btn-primary px-3.5 py-2 text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 min-h-[38px]"
               >
                 <Plus className="h-4 w-4" />
                 <span>پروژه جدید</span>
@@ -296,7 +296,7 @@ export default function DashboardPage() {
 
               <Link
                 href="/admin/members"
-                className="rokad-btn-outline px-3.5 py-2 text-xs sm:text-sm font-bold flex items-center gap-1.5"
+                className="rokad-btn-outline px-3.5 py-2 text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 min-h-[38px]"
               >
                 <Users className="h-4 w-4" />
                 <span>مدیریت اعضا</span>
@@ -304,7 +304,7 @@ export default function DashboardPage() {
 
               <Link
                 href="/leaderboard"
-                className="cursor-pointer select-none inline-flex items-center gap-2 rounded-xl border-[1.5px] border-[#F8A41D] bg-[#FEF6E8] dark:bg-[#57390A]/40 px-3.5 py-2 text-xs sm:text-sm font-bold text-[#BA7B16] dark:text-[#fde047] shadow-[2px_2px_0_#BA7B16] hover:shadow-[2.5px_2.5px_0_#BA7B16] hover:-translate-y-0.5 active:translate-y-0.5 transition-all"
+                className="cursor-pointer select-none inline-flex items-center justify-center gap-2 rounded-xl border-[1.5px] border-[#F8A41D] bg-[#FEF6E8] dark:bg-[#57390A]/40 px-3.5 py-2 text-xs sm:text-sm font-bold text-[#BA7B16] dark:text-[#fde047] shadow-[2px_2px_0_#BA7B16] hover:shadow-[2.5px_2.5px_0_#BA7B16] hover:-translate-y-0.5 active:translate-y-0.5 transition-all min-h-[38px] col-span-2 sm:col-span-1"
               >
                 <Trophy className="h-4 w-4" />
                 <span>لیدربورد باشگاه</span>
@@ -314,20 +314,20 @@ export default function DashboardPage() {
         </div>
 
         {/* 2. Four Master Metric Cards (Rokad Persona Tokens) */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {/* 1. Ecosystem Token: Projects */}
-          <div className="group relative overflow-hidden rounded-2xl border-[1.5px] border-[#59BBAF]/60 bg-surface p-4 sm:p-5 shadow-[2.5px_2.5px_0_#59BBAF] transition-all duration-200 hover:-translate-y-0.5">
+          <div className="group relative overflow-hidden rounded-2xl border-[1.5px] border-[#59BBAF]/60 bg-surface p-3.5 sm:p-5 shadow-[2.5px_2.5px_0_#59BBAF] transition-all duration-200 hover:-translate-y-0.5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <span className="text-xs font-black text-[#59BBAF]">اکوسیستم پروژه‌ها</span>
-                <h3 className="mt-1 text-2xl sm:text-3xl font-black text-default">
+                <h3 className="mt-1 text-xl sm:text-3xl font-black text-default">
                   {metrics.totalProjects.toLocaleString('fa-IR')}
                 </h3>
                 <p className="mt-0.5 text-xs text-muted font-medium">
                   کل پروژه‌های تعریف‌شده
                 </p>
               </div>
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-ecosystem-light dark:bg-[#1F413D]/60 text-[#59BBAF] border border-[#59BBAF]/40 shadow-xs">
+              <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-ecosystem-light dark:bg-[#1F413D]/60 text-[#59BBAF] border border-[#59BBAF]/40 shadow-xs">
                 <FolderKanban className="h-5 w-5" />
               </div>
             </div>
@@ -338,18 +338,18 @@ export default function DashboardPage() {
           </div>
 
           {/* 2. Club Token: Tasks */}
-          <div className="group relative overflow-hidden rounded-2xl border-[1.5px] border-[#652D90]/50 dark:border-[#8A38F5]/50 bg-surface p-4 sm:p-5 shadow-[2.5px_2.5px_0_#652D90] dark:shadow-[2.5px_2.5px_0_#8A38F5] transition-all duration-200 hover:-translate-y-0.5">
+          <div className="group relative overflow-hidden rounded-2xl border-[1.5px] border-[#652D90]/50 dark:border-[#8A38F5]/50 bg-surface p-3.5 sm:p-5 shadow-[2.5px_2.5px_0_#652D90] dark:shadow-[2.5px_2.5px_0_#8A38F5] transition-all duration-200 hover:-translate-y-0.5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <span className="text-xs font-black text-[#652D90] dark:text-[#c084fc]">عملیات و تسک‌ها</span>
-                <h3 className="mt-1 text-2xl sm:text-3xl font-black text-default">
+                <h3 className="mt-1 text-xl sm:text-3xl font-black text-default">
                   {metrics.totalTasks.toLocaleString('fa-IR')}
                 </h3>
                 <p className="mt-0.5 text-xs text-muted font-medium">
                   <span className="font-bold text-emerald-500">{metrics.doneTasks.toLocaleString('fa-IR')}</span> کار انجام‌شده
                 </p>
               </div>
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#F0EAF4] dark:bg-[#231032] text-[#652D90] dark:text-[#c084fc] border border-[#652D90]/30 shadow-xs">
+              <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-[#F0EAF4] dark:bg-[#231032] text-[#652D90] dark:text-[#c084fc] border border-[#652D90]/30 shadow-xs">
                 <ClipboardList className="h-5 w-5" />
               </div>
             </div>
@@ -360,18 +360,18 @@ export default function DashboardPage() {
           </div>
 
           {/* 3. College Token: XP and Rewards */}
-          <div className="group relative overflow-hidden rounded-2xl border-[1.5px] border-[#F8A41D]/60 bg-surface p-4 sm:p-5 shadow-[2.5px_2.5px_0_#F8A41D] transition-all duration-200 hover:-translate-y-0.5">
+          <div className="group relative overflow-hidden rounded-2xl border-[1.5px] border-[#F8A41D]/60 bg-surface p-3.5 sm:p-5 shadow-[2.5px_2.5px_0_#F8A41D] transition-all duration-200 hover:-translate-y-0.5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <span className="text-xs font-black text-[#F8A41D]">مجموع امتیازات (XP)</span>
-                <h3 className="mt-1 text-2xl sm:text-3xl font-black text-[#F8A41D]">
+                <h3 className="mt-1 text-xl sm:text-3xl font-black text-[#F8A41D]">
                   {metrics.totalXp.toLocaleString('fa-IR')}
                 </h3>
                 <p className="mt-0.5 text-xs text-muted font-medium">
                   میانگین {metrics.avgXp.toLocaleString('fa-IR')} برای هر عضو
                 </p>
               </div>
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#FEF6E8] dark:bg-[#57390A]/60 text-[#F8A41D] border border-[#F8A41D]/40 shadow-xs">
+              <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-[#FEF6E8] dark:bg-[#57390A]/60 text-[#F8A41D] border border-[#F8A41D]/40 shadow-xs">
                 <Zap className="h-5 w-5" />
               </div>
             </div>
@@ -382,18 +382,18 @@ export default function DashboardPage() {
           </div>
 
           {/* 4. Male / Team Persona Token: Members */}
-          <div className="group relative overflow-hidden rounded-2xl border-[1.5px] border-[#202A5A]/30 dark:border-[#59BBAF]/30 bg-surface p-4 sm:p-5 shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2.5px_2.5px_0_#59BBAF] transition-all duration-200 hover:-translate-y-0.5">
+          <div className="group relative overflow-hidden rounded-2xl border-[1.5px] border-[#202A5A]/30 dark:border-[#59BBAF]/30 bg-surface p-3.5 sm:p-5 shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2.5px_2.5px_0_#59BBAF] transition-all duration-200 hover:-translate-y-0.5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <span className="text-xs font-black text-muted">جامعه اعضای باشگاه</span>
-                <h3 className="mt-1 text-2xl sm:text-3xl font-black text-default">
+                <h3 className="mt-1 text-xl sm:text-3xl font-black text-default">
                   {metrics.regularMembersCount.toLocaleString('fa-IR')}
                 </h3>
                 <p className="mt-0.5 text-xs text-muted font-medium">
                   {metrics.mentorsCount} منتور · {metrics.adminsCount} راهبر
                 </p>
               </div>
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-default border border-border shadow-xs">
+              <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-surface-2 text-default border border-border shadow-xs">
                 <Users className="h-5 w-5 text-muted" />
               </div>
             </div>
@@ -417,9 +417,9 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-3">
             {/* Engineers */}
-            <div className="rounded-2xl border-[1.5px] border-emerald-500/40 bg-surface p-4 shadow-[2.5px_2.5px_0_#10b981] transition-all duration-200 hover:-translate-y-0.5">
+            <div className="rounded-2xl border-[1.5px] border-emerald-500/40 bg-surface p-3.5 sm:p-4 shadow-[2.5px_2.5px_0_#10b981] transition-all duration-200 hover:-translate-y-0.5">
               <div className="flex items-center justify-between mb-2.5">
                 <span className="rounded-xl bg-emerald-500/15 border border-emerald-500/30 px-3 py-0.5 text-xs font-black text-emerald-600 dark:text-emerald-400">
                   {DEPARTMENTS.engineers.label}
@@ -429,24 +429,24 @@ export default function DashboardPage() {
                 </span>
               </div>
               <p className="text-xs text-muted font-medium leading-relaxed">{DEPARTMENTS.engineers.description}</p>
-              <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-surface-2/70 p-2.5 text-center border border-border/70">
+              <div className="mt-3 grid grid-cols-3 gap-1.5 sm:gap-2 rounded-xl bg-surface-2/70 p-2 sm:p-2.5 text-center border border-border/70">
                 <div>
-                  <div className="text-xs text-muted font-bold">کل اعضا</div>
+                  <div className="text-[11px] sm:text-xs text-muted font-bold">کل اعضا</div>
                   <div className="text-sm sm:text-base font-black text-default mt-0.5">{metrics.deptStats.engineers.membersCount}</div>
                 </div>
                 <div className="border-x border-border/80">
-                  <div className="text-xs text-emerald-500 font-black">سطح A</div>
+                  <div className="text-[11px] sm:text-xs text-emerald-500 font-black">سطح A</div>
                   <div className="text-sm sm:text-base font-black text-emerald-500 mt-0.5">{metrics.deptStats.engineers.levelACount}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted font-bold">سطح B</div>
+                  <div className="text-[11px] sm:text-xs text-muted font-bold">سطح B</div>
                   <div className="text-sm sm:text-base font-black text-default mt-0.5">{metrics.deptStats.engineers.levelBCount}</div>
                 </div>
               </div>
             </div>
 
             {/* Artists */}
-            <div className="rounded-2xl border-[1.5px] border-purple-500/40 bg-surface p-4 shadow-[2.5px_2.5px_0_#a855f7] transition-all duration-200 hover:-translate-y-0.5">
+            <div className="rounded-2xl border-[1.5px] border-purple-500/40 bg-surface p-3.5 sm:p-4 shadow-[2.5px_2.5px_0_#a855f7] transition-all duration-200 hover:-translate-y-0.5">
               <div className="flex items-center justify-between mb-2.5">
                 <span className="rounded-xl bg-purple-500/15 border border-purple-500/30 px-3 py-0.5 text-xs font-black text-purple-600 dark:text-purple-300">
                   {DEPARTMENTS.artists.label}
@@ -456,24 +456,24 @@ export default function DashboardPage() {
                 </span>
               </div>
               <p className="text-xs text-muted font-medium leading-relaxed">{DEPARTMENTS.artists.description}</p>
-              <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-surface-2/70 p-2.5 text-center border border-border/70">
+              <div className="mt-3 grid grid-cols-3 gap-1.5 sm:gap-2 rounded-xl bg-surface-2/70 p-2 sm:p-2.5 text-center border border-border/70">
                 <div>
-                  <div className="text-xs text-muted font-bold">کل اعضا</div>
+                  <div className="text-[11px] sm:text-xs text-muted font-bold">کل اعضا</div>
                   <div className="text-sm sm:text-base font-black text-default mt-0.5">{metrics.deptStats.artists.membersCount}</div>
                 </div>
                 <div className="border-x border-border/80">
-                  <div className="text-xs text-purple-500 font-black">سطح A</div>
+                  <div className="text-[11px] sm:text-xs text-purple-500 font-black">سطح A</div>
                   <div className="text-sm sm:text-base font-black text-purple-500 mt-0.5">{metrics.deptStats.artists.levelACount}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted font-bold">سطح B</div>
+                  <div className="text-[11px] sm:text-xs text-muted font-bold">سطح B</div>
                   <div className="text-sm sm:text-base font-black text-default mt-0.5">{metrics.deptStats.artists.levelBCount}</div>
                 </div>
               </div>
             </div>
 
             {/* Generalists */}
-            <div className="rounded-2xl border-[1.5px] border-amber-500/40 bg-surface p-4 shadow-[2.5px_2.5px_0_#f59e0b] transition-all duration-200 hover:-translate-y-0.5">
+            <div className="rounded-2xl border-[1.5px] border-amber-500/40 bg-surface p-3.5 sm:p-4 shadow-[2.5px_2.5px_0_#f59e0b] transition-all duration-200 hover:-translate-y-0.5">
               <div className="flex items-center justify-between mb-2.5">
                 <span className="rounded-xl bg-amber-500/15 border border-amber-500/30 px-3 py-0.5 text-xs font-black text-amber-600 dark:text-amber-400">
                   {DEPARTMENTS.generalists.label}
@@ -483,17 +483,17 @@ export default function DashboardPage() {
                 </span>
               </div>
               <p className="text-xs text-muted font-medium leading-relaxed">{DEPARTMENTS.generalists.description}</p>
-              <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-surface-2/70 p-2.5 text-center border border-border/70">
+              <div className="mt-3 grid grid-cols-3 gap-1.5 sm:gap-2 rounded-xl bg-surface-2/70 p-2 sm:p-2.5 text-center border border-border/70">
                 <div>
-                  <div className="text-xs text-muted font-bold">کل اعضا</div>
+                  <div className="text-[11px] sm:text-xs text-muted font-bold">کل اعضا</div>
                   <div className="text-sm sm:text-base font-black text-default mt-0.5">{metrics.deptStats.generalists.membersCount}</div>
                 </div>
                 <div className="border-x border-border/80">
-                  <div className="text-xs text-amber-500 font-black">سطح A</div>
+                  <div className="text-[11px] sm:text-xs text-amber-500 font-black">سطح A</div>
                   <div className="text-sm sm:text-base font-black text-amber-500 mt-0.5">{metrics.deptStats.generalists.levelACount}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted font-bold">سطح B</div>
+                  <div className="text-[11px] sm:text-xs text-muted font-bold">سطح B</div>
                   <div className="text-sm sm:text-base font-black text-default mt-0.5">{metrics.deptStats.generalists.levelBCount}</div>
                 </div>
               </div>
@@ -502,10 +502,9 @@ export default function DashboardPage() {
         </div>
 
         {/* 4. Operations & Velocity (Task Breakdown + Project Health) */}
-        {/* 4. Operations & Velocity (Task Breakdown + Project Health) */}
-        <div className="grid gap-5 lg:grid-cols-12 items-stretch">
+        <div className="grid gap-3.5 sm:gap-5 lg:grid-cols-12 items-stretch">
           {/* Task Status Breakdown (6 cols) */}
-          <div className="lg:col-span-6 flex flex-col justify-between rounded-2xl border-[1.5px] border-border bg-surface p-5 sm:p-6 shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2.5px_2.5px_0_#59BBAF] transition-all">
+          <div className="lg:col-span-6 flex flex-col justify-between rounded-2xl border-[1.5px] border-border bg-surface p-3.5 sm:p-6 shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2.5px_2.5px_0_#59BBAF] transition-all">
             {/* Header: Clean title + total tasks count */}
             <div className="flex items-center justify-between border-b border-border/70 pb-3 mb-4">
               <div className="flex items-center gap-2.5">
@@ -558,10 +557,7 @@ export default function DashboardPage() {
                   <span className="text-2xl sm:text-3xl font-black text-default leading-none tracking-tight">
                     {metrics.completionRate}٪
                   </span>
-                  <span className="text-[11px] font-bold text-muted mt-1">
-                    نرخ کل تکمیل
-                  </span>
-                  <span className="mt-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  <span className="mt-1.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                     {metrics.doneTasks.toLocaleString('fa-IR')} از {metrics.totalTasks.toLocaleString('fa-IR')}
                   </span>
                 </div>
@@ -668,7 +664,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Project Health & Progress (6 cols) */}
-          <div className="lg:col-span-6 flex flex-col justify-between rounded-2xl border-[1.5px] border-border bg-surface p-5 sm:p-6 shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2.5px_2.5px_0_#59BBAF] transition-all">
+          <div className="lg:col-span-6 flex flex-col justify-between rounded-2xl border-[1.5px] border-border bg-surface p-3.5 sm:p-6 shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2.5px_2.5px_0_#59BBAF] transition-all">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border/70 pb-3 mb-4">
               <div className="flex items-center gap-2.5">
@@ -746,21 +742,21 @@ export default function DashboardPage() {
         </div>
 
         {/* 5. Bottom Row: Recent Tasks & Leaderboard Top Performers */}
-        <div className="grid gap-5 lg:grid-cols-12">
+        <div className="grid gap-3.5 sm:gap-5 lg:grid-cols-12">
           {/* Recent Tasks Stream (6 cols) */}
-          <div className="lg:col-span-6 rounded-2xl border-[1.5px] border-border bg-surface p-5 shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2.5px_2.5px_0_#59BBAF] space-y-3.5 flex flex-col justify-between">
+          <div className="lg:col-span-6 rounded-xl sm:rounded-2xl border-[1.5px] border-border bg-surface p-3.5 sm:p-5 shadow-[2px_2px_0_#202A5A] sm:shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2px_2px_0_#59BBAF] sm:dark:shadow-[2.5px_2.5px_0_#59BBAF] space-y-2.5 sm:space-y-3.5 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between mb-3.5">
-                <h3 className="text-sm sm:text-base font-black text-default">
+              <div className="flex items-center justify-between mb-2.5 sm:mb-3.5">
+                <h3 className="text-xs sm:text-base font-black text-default">
                   آخرین کارهای تعریف‌شده
                 </h3>
-                <Link href="/projects" className="text-xs font-bold text-action hover:underline flex items-center gap-0.5">
+                <Link href="/projects" className="text-[11px] sm:text-xs font-bold text-action hover:underline flex items-center gap-0.5">
                   <span>مشاهده همه کارها</span>
-                  <ChevronLeft className="h-3.5 w-3.5" />
+                  <ChevronLeft className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 </Link>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5 sm:space-y-2">
                 {data.tasks.slice(0, 5).map((t) => {
                   const proj = data.projects.find((p) => p.id === t.project_id)
                   const conf = STATUS_CONFIG[t.status] || STATUS_CONFIG.backlog
@@ -768,42 +764,42 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={t.id}
-                      className="flex items-center justify-between gap-2.5 rounded-xl border border-border/70 bg-surface-2/40 p-2.5 sm:p-3 transition-colors hover:bg-surface-2"
+                      className="flex items-center justify-between gap-2 sm:gap-2.5 rounded-lg sm:rounded-xl border border-border/70 bg-surface-2/40 p-2 sm:p-3 transition-colors hover:bg-surface-2"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-black ${conf.bg} ${conf.color}`}>
+                      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
+                        <span className={`flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-md sm:rounded-lg border text-[11px] sm:text-xs font-black ${conf.bg} ${conf.color}`}>
                           {t.status === 'done' ? (
-                            <CheckCircle2 className="h-4 w-4" />
+                            <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           ) : t.status === 'in_progress' ? (
-                            <Clock className="h-4 w-4" />
+                            <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           ) : t.status === 'todo' ? (
-                            <CircleDot className="h-4 w-4" />
+                            <CircleDot className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           ) : (
-                            <Archive className="h-4 w-4" />
+                            <Archive className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           )}
                         </span>
                         <div className="min-w-0 flex-1">
                           <h5 className="truncate text-xs sm:text-sm font-bold text-default">
                             {t.title}
                           </h5>
-                          <div className="mt-0.5 flex items-center gap-2 text-xs text-muted font-medium">
+                          <div className="mt-0.5 flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-muted font-medium">
                             <span className="truncate">{proj?.name || 'پروژه عمومی'}</span>
                             {t.priority === 'urgent' && (
-                              <span className="shrink-0 rounded bg-rose-500/10 text-rose-500 px-1.5 py-0.2 font-black text-[11px]">فوری</span>
+                              <span className="shrink-0 rounded bg-rose-500/10 text-rose-500 px-1 sm:px-1.5 py-0 font-black text-[9px] sm:text-[11px]">فوری</span>
                             )}
                             {t.priority === 'important' && (
-                              <span className="shrink-0 rounded bg-amber-500/10 text-amber-500 px-1.5 py-0.2 font-black text-[11px]">مهم</span>
+                              <span className="shrink-0 rounded bg-amber-500/10 text-amber-500 px-1 sm:px-1.5 py-0 font-black text-[9px] sm:text-[11px]">مهم</span>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                        <span className="text-xs sm:text-sm font-black text-[#F8A41D] flex items-center gap-0.5 sm:gap-1">
+                      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                        <span className="text-[11px] sm:text-sm font-black text-[#F8A41D] flex items-center gap-0.5 sm:gap-1">
                           <Zap className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#F8A41D]" />
                           <span>{t.xp_value.toLocaleString('fa-IR')} XP</span>
                         </span>
-                        <span className={`rounded-lg px-1.5 sm:px-2 py-0.5 text-[11px] sm:text-xs font-bold border ${conf.bg} ${conf.color}`}>
+                        <span className={`rounded-md sm:rounded-lg px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-bold border ${conf.bg} ${conf.color}`}>
                           {conf.label}
                         </span>
                       </div>
@@ -815,38 +811,38 @@ export default function DashboardPage() {
           </div>
 
           {/* Top Performers Spotlight (6 cols) */}
-          <div className="lg:col-span-6 rounded-2xl border-[1.5px] border-border bg-surface p-5 shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2.5px_2.5px_0_#59BBAF] space-y-3.5 flex flex-col justify-between">
+          <div className="lg:col-span-6 rounded-xl sm:rounded-2xl border-[1.5px] border-border bg-surface p-3.5 sm:p-5 shadow-[2px_2px_0_#202A5A] sm:shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2px_2px_0_#59BBAF] sm:dark:shadow-[2.5px_2.5px_0_#59BBAF] space-y-2.5 sm:space-y-3.5 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between mb-3.5">
-                <h3 className="text-sm sm:text-base font-black text-default">
+              <div className="flex items-center justify-between mb-2.5 sm:mb-3.5">
+                <h3 className="text-xs sm:text-base font-black text-default">
                   پیشتازان لیدربورد
                 </h3>
-                <Link href="/leaderboard" className="text-xs font-bold text-action hover:underline flex items-center gap-0.5">
+                <Link href="/leaderboard" className="text-[11px] sm:text-xs font-bold text-action hover:underline flex items-center gap-0.5">
                   <span>جدول کامل</span>
-                  <ChevronLeft className="h-3.5 w-3.5" />
+                  <ChevronLeft className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 </Link>
               </div>
 
               {metrics.topPerformers.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center py-10 text-center text-xs text-muted border border-dashed border-border rounded-xl font-medium">
+                <div className="flex-1 flex items-center justify-center py-8 sm:py-10 text-center text-xs text-muted border border-dashed border-border rounded-xl font-medium">
                   هنوز عضوی ثبت نشده است.
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1.5 sm:space-y-2">
                   {metrics.topPerformers.map((m, idx) => (
                     <div
                       key={m.id}
                       onClick={() => setSelectedMemberId(m.id)}
-                      className={`group cursor-pointer select-none flex items-center justify-between gap-3 rounded-xl border p-2.5 sm:p-3 transition-all hover:border-action/50 hover:shadow-xs active:scale-[0.99] ${
+                      className={`group cursor-pointer select-none flex items-center justify-between gap-2 sm:gap-3 rounded-lg sm:rounded-xl border p-2 sm:p-3 transition-all hover:border-action/50 hover:shadow-xs active:scale-[0.99] ${
                         idx === 0
                           ? 'border-amber-400/50 bg-amber-500/[0.04] hover:bg-amber-500/[0.08]'
                           : 'border-border/70 bg-surface-2/40 hover:bg-surface-2'
                       }`}
                       title="مشاهده کارنامه و عملکرد"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                         {/* Rank Medal */}
-                        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-black shadow-xs ${
+                        <span className={`flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-md sm:rounded-lg text-[10px] sm:text-xs font-black shadow-xs ${
                           idx === 0
                             ? 'bg-gradient-to-br from-amber-400 to-amber-500 text-amber-950'
                             : idx === 1
@@ -856,16 +852,16 @@ export default function DashboardPage() {
                             : 'bg-surface-2 text-muted border border-border/80'
                         }`}>
                           {idx === 0 ? (
-                            <Crown className="h-4 w-4" />
+                            <Crown className="h-3 w-3 sm:h-4 sm:w-4" />
                           ) : idx === 1 || idx === 2 ? (
-                            <Medal className="h-4 w-4" />
+                            <Medal className="h-3 w-3 sm:h-4 sm:w-4" />
                           ) : (
                             idx + 1
                           )}
                         </span>
 
                         {/* Avatar */}
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#59BBAF] to-[#202A5A] text-xs font-black text-white shadow-2xs overflow-hidden">
+                        <div className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg sm:rounded-xl bg-gradient-to-br from-[#59BBAF] to-[#202A5A] text-[10px] sm:text-xs font-black text-white shadow-2xs overflow-hidden">
                           {m.avatar_url ? (
                             <img src={m.avatar_url} alt={m.full_name} className="h-full w-full object-cover" />
                           ) : (
@@ -875,7 +871,7 @@ export default function DashboardPage() {
 
                         {/* Info */}
                         <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1 sm:gap-1.5">
                             <h5 className="truncate text-xs sm:text-sm font-bold text-default group-hover:text-action transition-colors">
                               {m.full_name}
                             </h5>
@@ -888,12 +884,12 @@ export default function DashboardPage() {
                           <div className="flex flex-wrap gap-1 mt-0.5">
                             {m.departments && m.departments.length > 0 ? (
                               m.departments.map((d) => (
-                                <span key={d.department} className={`rounded-md px-1.5 py-0.2 text-[10px] font-bold ${DEPARTMENTS[d.department]?.badgeClass}`}>
+                                <span key={d.department} className={`rounded px-1 sm:px-1.5 py-0 text-[9px] sm:text-[10px] font-bold ${DEPARTMENTS[d.department]?.badgeClass}`}>
                                   {DEPARTMENTS[d.department]?.label} (سطح {d.level})
                                 </span>
                               ))
                             ) : (
-                              <span className="text-xs text-muted font-medium">عضو باشگاه</span>
+                              <span className="text-[10px] sm:text-xs text-muted font-medium">عضو باشگاه</span>
                             )}
                           </div>
                         </div>
@@ -901,8 +897,8 @@ export default function DashboardPage() {
 
                       {/* XP Score */}
                       <div className="flex items-center gap-1 shrink-0">
-                        <span className="rounded-xl bg-[#FEF6E8] dark:bg-[#57390A]/40 border border-[#F8A41D]/30 px-2 sm:px-2.5 py-1 text-xs font-black text-[#BA7B16] dark:text-[#fde047] flex items-center gap-1 shadow-2xs">
-                          <Zap className="h-3.5 w-3.5 text-[#F8A41D]" />
+                        <span className="rounded-lg sm:rounded-xl bg-[#FEF6E8] dark:bg-[#57390A]/40 border border-[#F8A41D]/30 px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[11px] sm:text-xs font-black text-[#BA7B16] dark:text-[#fde047] flex items-center gap-0.5 sm:gap-1 shadow-2xs">
+                          <Zap className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#F8A41D]" />
                           <span>{m.xp_total.toLocaleString('fa-IR')} XP</span>
                         </span>
                       </div>
@@ -921,6 +917,8 @@ export default function DashboardPage() {
         isOpen={!!selectedMemberId}
         onClose={() => setSelectedMemberId(null)}
         currentProfile={data.profile}
+        initialMember={data.members.find((m) => m.id === selectedMemberId) || null}
+        isAdmin={true}
       />
     </div>
   )

@@ -7,16 +7,15 @@ import AppHeader from '@/components/AppHeader'
 import MemberXpModal from '@/components/MemberXpModal'
 import MemberProfileModal from '@/components/MemberProfileModal'
 import MemberEditModal from '@/components/MemberEditModal'
+import MemberTasksOverviewModal, { type MemberAssignmentItem } from '@/components/MemberTasksOverviewModal'
+import TaskDetailModal from '@/components/TaskDetailModal'
 import { formatToPersianDate, toPersianDigits } from '@/utils/jalaali'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import { DEPARTMENTS, DEPARTMENT_KEYS, getRoleInfo, type DepartmentKey, type DepartmentLevel } from '@/constants/departments'
 import type { Profile, Role, MemberDepartment } from '@/utils/database.types'
 import { Plus, Crown, X, Search, Pencil, Gift, AlertTriangle } from 'lucide-react'
 
-interface MemberAssignment {
-  user_id: string
-  tasks: { id: string; title: string; status: string; deadline: string | null } | null
-}
+type MemberAssignment = MemberAssignmentItem
 
 type SortOption = 'xp_desc' | 'xp_asc' | 'name_asc' | 'date_desc' | 'date_asc'
 
@@ -27,6 +26,7 @@ export default function AdminMembersPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedTaskIdForDetail, setSelectedTaskIdForDetail] = useState<string | null>(null)
   const [selectedMemberForXp, setSelectedMemberForXp] = useState<Profile | null>(null)
   const [xpModalTab, setXpModalTab] = useState<'reward' | 'penalty'>('reward')
   const [profileModalUserId, setProfileModalUserId] = useState<string | null>(null)
@@ -54,7 +54,7 @@ export default function AdminMembersPage() {
   const [formError, setFormError] = useState('')
   const [isCreating, setIsCreating] = useState(false)
 
-  useBodyScrollLock(showDetailsModal || !!memberToDelete || !!memberToEdit)
+  useBodyScrollLock(showDetailsModal || !!memberToDelete || !!memberToEdit || !!selectedTaskIdForDetail)
   const router = useRouter()
   const supabase = createClient()
 
@@ -67,7 +67,7 @@ export default function AdminMembersPage() {
       const [profRes, membersRes, assignRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         fetch('/api/admin/members').then((r) => r.json()),
-        supabase.from('task_assignees').select('user_id, tasks(id, title, status, deadline)'),
+        supabase.from('task_assignees').select('user_id, tasks(id, title, status, deadline, xp_value, priority, project_id, projects(name))'),
       ])
 
       const prof = profRes.data
@@ -85,7 +85,7 @@ export default function AdminMembersPage() {
         if (data) setMembers(data)
       }
 
-      if (assignRes.data) setAssignments(assignRes.data)
+      if (assignRes.data) setAssignments(assignRes.data as unknown as MemberAssignment[])
     } catch (err) {
       console.error('Error loading members:', err)
     } finally {
@@ -107,8 +107,8 @@ export default function AdminMembersPage() {
         const { data: dbData } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
         if (dbData) setMembers(dbData)
       }
-      const { data: assignData } = await supabase.from('task_assignees').select('user_id, tasks(id, title, status, deadline)')
-      if (assignData) setAssignments(assignData)
+      const { data: assignData } = await supabase.from('task_assignees').select('user_id, tasks(id, title, status, deadline, xp_value, priority, project_id, projects(name))')
+      if (assignData) setAssignments(assignData as unknown as MemberAssignment[])
     } catch (err) {
       console.error('Reload error:', err)
     }
@@ -691,10 +691,14 @@ export default function AdminMembersPage() {
                     <div className="flex items-start gap-3">
                       <div
                         onClick={() => setProfileModalUserId(m.id)}
-                        className={`flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-2xl text-base font-black text-white shadow-sm transition-transform hover:scale-105 bg-gradient-to-br ${roleInfo.badgeGradient}`}
+                        className={`relative flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-2xl text-base font-black text-white shadow-sm transition-transform hover:scale-105 overflow-hidden bg-gradient-to-br ${roleInfo.badgeGradient}`}
                         title="مشاهده کارنامه و پروفایل"
                       >
-                        {m.full_name?.charAt(0) || '؟'}
+                        {m.avatar_url ? (
+                          <img src={m.avatar_url} alt={m.full_name} className="h-full w-full object-cover" />
+                        ) : (
+                          <span>{m.full_name?.charAt(0) || '؟'}</span>
+                        )}
                       </div>
 
                       <div className="min-w-0 flex-1">
@@ -849,99 +853,33 @@ export default function AdminMembersPage() {
         )}
       </main>
 
-      {/* Task Details Modal */}
-      {showDetailsModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={() => setShowDetailsModal(false)}
-        >
-          <div
-            className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-2xl border border-border bg-surface p-5 shadow-xl sm:p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 z-10 -mx-5 -mt-5 mb-5 flex items-center justify-between border-b border-border bg-surface px-5 py-3.5 sm:-mx-6 sm:-mt-6 sm:px-6">
-              <h3 className="text-base font-bold text-default">جزئیات تسک‌های اعضا</h3>
-              <button
-                onClick={() => setShowDetailsModal(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-default cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {/* Member Tasks Overview Modal */}
+      <MemberTasksOverviewModal
+        isOpen={showDetailsModal}
+        onClose={() => setShowDetailsModal(false)}
+        members={members}
+        assignments={assignments}
+        onOpenProfileModal={(uid) => {
+          setShowDetailsModal(false)
+          setProfileModalUserId(uid)
+        }}
+        onOpenTaskDetail={(tid) => setSelectedTaskIdForDetail(tid)}
+      />
 
-            <div className="space-y-4" dir="rtl">
-              {members.filter((m) => m.role !== 'admin').map((m) => {
-                const userAssignments = assignments.filter((a) => a.user_id === m.id && a.tasks)
-                return (
-                  <div key={m.id} className="rounded-xl border border-border bg-surface-2/40 p-4">
-                    <div className="flex items-center justify-between border-b border-border/40 pb-2">
-                      <div
-                        onClick={() => {
-                          setShowDetailsModal(false)
-                          setProfileModalUserId(m.id)
-                        }}
-                        className="flex items-center gap-2 cursor-pointer group hover:text-action transition-colors"
-                      >
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-xs font-bold text-white shadow-sm">
-                          {m.full_name?.charAt(0) || '؟'}
-                        </span>
-                        <h4 className="text-sm font-bold text-default group-hover:text-action transition-colors flex items-center gap-1">
-                          <span>{m.full_name}</span>
-                          <span className="text-[10px] text-muted font-normal">← کارنامه</span>
-                        </h4>
-                      </div>
-                      <span className="text-xs font-bold text-amber-500">{toPersianDigits(m.xp_total || 0)} XP</span>
-                    </div>
-
-                    <div className="mt-3 space-y-2">
-                      {userAssignments.length > 0 ? (
-                        userAssignments.map((a) => {
-                          const t = a.tasks
-                          if (!t) return null
-                          const statusLabels: Record<string, string> = {
-                            backlog: 'بک‌لاگ',
-                            todo: 'صف',
-                            in_progress: 'در حال',
-                            review: 'بازبینی',
-                            done: 'تکمیل',
-                          }
-                          const statusColors: Record<string, string> = {
-                            backlog: 'bg-gray-500/10 text-gray-400 border border-gray-500/20',
-                            todo: 'bg-slate-500/10 text-slate-400 border border-slate-500/20',
-                            in_progress: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
-                            review: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
-                            done: 'bg-teal-500/10 text-teal-400 border border-teal-500/20',
-                          }
-                          return (
-                            <div key={t.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2">
-                              <span className="text-xs font-medium text-default line-clamp-1">{t.title}</span>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${statusColors[t.status] || 'bg-gray-500/10 text-gray-400'}`}>
-                                  {statusLabels[t.status] || t.status}
-                                </span>
-                                {t.deadline ? (
-                                  <span className="text-[10px] text-muted">
-                                    {formatToPersianDate(t.deadline)}
-                                  </span>
-                                ) : (
-                                  <span className="text-[10px] text-muted">بدون ددلاین</span>
-                                )}
-                              </div>
-                            </div>
-                          )
-                        })
-                      ) : (
-                        <div className="rounded-lg border border-dashed border-border/80 bg-surface-2/20 px-3 py-2 text-center text-xs text-muted">
-                          تسک فعالی به این کاربر محول نشده است.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
+      {/* Task Detail Modal */}
+      {selectedTaskIdForDetail && (
+        <TaskDetailModal
+          taskId={selectedTaskIdForDetail}
+          onClose={() => setSelectedTaskIdForDetail(null)}
+          profile={profile}
+          onTaskDeleted={async () => {
+            setSelectedTaskIdForDetail(null)
+            await reload()
+          }}
+          onTaskUpdated={async () => {
+            await reload()
+          }}
+        />
       )}
 
       {/* Member Edit Modal */}
@@ -967,6 +905,8 @@ export default function AdminMembersPage() {
         isOpen={!!profileModalUserId}
         onClose={() => setProfileModalUserId(null)}
         currentProfile={profile}
+        initialMember={members.find((m) => m.id === profileModalUserId) || null}
+        isAdmin={true}
         onXpChanged={handleXpUpdated}
       />
 

@@ -6,7 +6,23 @@ import { createClient } from '@/utils/supabase/server'
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user: cookieUser } } = await supabase.auth.getUser()
+
+    let user = cookieUser
+    if (!user) {
+      const authHeader = request.headers.get('Authorization')
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.substring(7)
+        if (token && token === process.env.SUPABASE_SERVICE_ROLE_KEY) {
+          user = { id: 'service-role', user_metadata: { role: 'admin' } } as unknown as typeof cookieUser
+        } else {
+          const adminClient = createAdminClient()
+          const { data: tokenUser } = await adminClient.auth.getUser(token)
+          user = tokenUser?.user || null
+        }
+      }
+    }
+
     if (!user) {
       return NextResponse.json({ error: 'احراز هویت نشده‌اید.' }, { status: 401 })
     }
@@ -27,9 +43,15 @@ export async function POST(request: Request) {
 
     const adminClient = createAdminClient()
 
-    // 1. Update user_metadata in Supabase Auth
+    // 1. Update user_metadata in Supabase Auth (preserving existing metadata)
+    const { data: existingUser } = await adminClient.auth.admin.getUserById(targetUserId)
+    const existingMeta = existingUser?.user?.user_metadata || {}
+
     const { error: authErr } = await adminClient.auth.admin.updateUserById(targetUserId, {
-      user_metadata: { avatar_url: avatarUrl },
+      user_metadata: {
+        ...existingMeta,
+        avatar_url: avatarUrl,
+      },
     })
 
     if (authErr) {

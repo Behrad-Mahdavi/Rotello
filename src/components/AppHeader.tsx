@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
 import LogoutButton from '@/components/LogoutButton'
@@ -18,10 +18,25 @@ interface AppHeaderProps {
 export default function AppHeader({ profile: propProfile }: AppHeaderProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const activeTabRef = useRef<HTMLButtonElement | null>(null)
   const [currentProfile, setCurrentProfile] = useState<Profile | { full_name: string; xp_total: number; role: string } | null>(() => {
     return propProfile || getCachedProfile()
   })
   const [currentDateStr, setCurrentDateStr] = useState<string>('')
+
+  // Keep active mobile tab in view on navigation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (activeTabRef.current) {
+        activeTabRef.current.scrollIntoView({
+          behavior: 'smooth',
+          inline: 'center',
+          block: 'nearest',
+        })
+      }
+    }, 60)
+    return () => clearTimeout(timer)
+  }, [pathname])
 
   useEffect(() => {
     const now = new Date()
@@ -104,7 +119,7 @@ export default function AppHeader({ profile: propProfile }: AppHeaderProps) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-canvas/90 backdrop-blur-md transition-colors duration-200">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5 sm:py-3">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3">
         {/* Brand Logo & Title */}
         <div 
           onClick={() => router.push('/projects')}
@@ -116,21 +131,19 @@ export default function AppHeader({ profile: propProfile }: AppHeaderProps) {
           <div className="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl shadow-xs border border-border group-hover:scale-105 group-hover:border-action/50 transition-all shrink-0 bg-surface">
             <Image 
               src="/logo-main.jpg" 
-              alt="روتلو باشگاه رکاد" 
+              alt="روتلو باشگاه کسب‌وکار" 
               width={36} 
               height={36} 
               className="h-full w-full object-cover" 
             />
           </div>
-          <div className="leading-tight">
-            <div className="flex items-center gap-2">
-              <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-default group-hover:text-action transition-colors">
-                روتلو
-              </h1>
-              <span className="inline-flex items-center rounded-full badge-club px-2.5 py-0.5 text-[10px] sm:text-[11px] font-black tracking-wide transition-all">
-                باشگاه
-              </span>
-            </div>
+          <div className="flex flex-col items-start justify-center">
+            <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-default group-hover:text-action transition-colors leading-tight">
+              روتلو
+            </h1>
+            <span className="inline-flex items-center rounded-full badge-club px-2 py-0.5 text-[9px] sm:text-[10px] font-black tracking-wide transition-all mt-0.5">
+              باشگاه کسب‌وکار
+            </span>
           </div>
         </div>
 
@@ -189,7 +202,7 @@ export default function AppHeader({ profile: propProfile }: AppHeaderProps) {
 
               <span className="hidden sm:inline font-bold">{currentProfile.full_name}</span>
               {currentProfile.role === 'member' && (
-                <span className="rounded-full bg-warning/15 px-2 py-0.5 text-xp font-extrabold tracking-tight">
+                <span className="rounded-full bg-warning/15 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xp font-extrabold tracking-tight">
                   {currentProfile.xp_total} XP
                 </span>
               )}
@@ -207,16 +220,17 @@ export default function AppHeader({ profile: propProfile }: AppHeaderProps) {
       </div>
 
       {/* Mobile Navigation Tabs */}
-      <nav className="border-t border-border px-3 py-2 md:hidden bg-surface-2/50">
-        <div className="flex gap-1.5 overflow-x-auto scrollbar-none py-0.5" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <nav className="border-t border-border px-2.5 sm:px-3 py-1.5 sm:py-2 md:hidden bg-surface-2/70 backdrop-blur-md">
+        <div className="flex gap-1.5 overflow-x-auto scrollbar-none py-0.5 px-0.5" style={{ WebkitOverflowScrolling: 'touch' }}>
           {TABS.map((t) => {
             const active = isTabActive(t.key)
             return (
               <button
                 key={t.key}
+                ref={active ? activeTabRef : null}
                 type="button"
                 onClick={() => router.push(t.key)}
-                className={`cursor-pointer select-none shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all duration-150 active:scale-95 ${
+                className={`cursor-pointer select-none shrink-0 rounded-xl min-h-[38px] px-3.5 py-1.5 text-xs font-semibold inline-flex items-center justify-center transition-all duration-150 active:scale-95 ${
                   active
                     ? 'bg-action text-white shadow-xs'
                     : 'text-muted hover:text-action hover:bg-action/10'

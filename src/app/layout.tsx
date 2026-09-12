@@ -3,7 +3,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "روتلو | باشگاه رکاد",
+  title: "روتلو | باشگاه کسب‌وکار",
   description: "سیستم مدیریت پروژه و تسک‌های باشگاه کسب‌وکار رکاد",
   icons: {
     icon: "/logo-main.jpg",

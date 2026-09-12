@@ -11,12 +11,15 @@ import { DEPARTMENTS, type DepartmentKey } from '@/constants/departments'
 import type { Project, Profile } from '@/utils/database.types'
 import EditProjectModal from '@/components/EditProjectModal'
 import DeleteProjectModal from '@/components/DeleteProjectModal'
-import { Zap } from 'lucide-react'
+import ProjectMembersModal from '@/components/ProjectMembersModal'
+import { Zap, Users } from 'lucide-react'
 
 export default function AdminProjectsPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [projectXps, setProjectXps] = useState<Record<string, number>>({})
+  const [projectMembersMap, setProjectMembersMap] = useState<Record<string, string[]>>({})
+  const [projectForMembers, setProjectForMembers] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
@@ -36,11 +39,13 @@ export default function AdminProjectsPage() {
       const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (prof?.role !== 'admin') { router.push('/projects'); return }
       setProfile(prof)
-      const [projRes, tasksRes] = await Promise.all([
+      const [projRes, tasksRes, mapRes] = await Promise.all([
         supabase.from('projects').select('*').order('created_at', { ascending: false }),
         supabase.from('tasks').select('project_id, xp_value'),
+        fetch('/api/projects/members-map').then((r) => r.ok ? r.json() : { map: {} }).catch(() => ({ map: {} })),
       ])
       if (projRes.data) setProjects(projRes.data)
+      if (mapRes?.map) setProjectMembersMap(mapRes.map)
       if (tasksRes.data) {
         const xps: Record<string, number> = {}
         for (const t of tasksRes.data) {
@@ -56,11 +61,13 @@ export default function AdminProjectsPage() {
   }, [])
 
   async function reload() {
-    const [projRes, tasksRes] = await Promise.all([
+    const [projRes, tasksRes, mapRes] = await Promise.all([
       supabase.from('projects').select('*').order('created_at', { ascending: false }),
       supabase.from('tasks').select('project_id, xp_value'),
+      fetch('/api/projects/members-map').then((r) => r.ok ? r.json() : { map: {} }).catch(() => ({ map: {} })),
     ])
     if (projRes.data) setProjects(projRes.data)
+    if (mapRes?.map) setProjectMembersMap(mapRes.map)
     if (tasksRes.data) {
       const xps: Record<string, number> = {}
       for (const t of tasksRes.data) {
@@ -230,6 +237,14 @@ export default function AdminProjectsPage() {
                     </div>
                     <div className="flex items-center gap-1.5">
                       <button
+                        onClick={() => setProjectForMembers(project)}
+                        className="rounded-xl bg-action/10 hover:bg-action hover:text-white border border-action/30 px-2.5 py-1.5 text-xs font-semibold text-action transition-colors cursor-pointer active:scale-95 flex items-center gap-1"
+                        title="مدیریت اعضای پروژه"
+                      >
+                        <Users className="h-3 w-3" />
+                        <span>اعضا ({projectMembersMap[project.id]?.length || 0})</span>
+                      </button>
+                      <button
                         onClick={() => setProjectToEdit(project)}
                         className="rounded-xl bg-surface-2 hover:bg-accent/15 hover:text-accent border border-border px-2.5 py-1.5 text-xs font-medium text-default transition-colors cursor-pointer active:scale-95"
                         title="ویرایش پروژه"
@@ -272,6 +287,18 @@ export default function AdminProjectsPage() {
         onClose={() => setProjectToDelete(null)}
         onProjectDeleted={reload}
       />
+
+      {/* Project Members Modal */}
+      {projectForMembers && (
+        <ProjectMembersModal
+          isOpen={!!projectForMembers}
+          projectId={projectForMembers.id}
+          projectName={projectForMembers.name}
+          onClose={() => setProjectForMembers(null)}
+          canManage={true}
+          onMembersUpdated={() => reload()}
+        />
+      )}
     </div>
   )
 }

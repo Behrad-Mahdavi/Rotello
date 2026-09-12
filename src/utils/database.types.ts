@@ -33,6 +33,15 @@ export interface Project {
   created_at: string
 }
 
+export interface ProjectMember {
+  id?: string
+  project_id: string
+  user_id: string
+  role?: string
+  created_at?: string
+  profile?: Profile
+}
+
 export interface Task {
   id: string
   project_id: string

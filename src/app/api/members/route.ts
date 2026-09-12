@@ -93,15 +93,45 @@ export async function GET(request: Request) {
     const targetId = searchParams.get('id')
     const roleFilter = searchParams.get('role')
 
-    const members = await getEnrichedMembers()
-
     if (targetId) {
-      const member = members.find((m) => m.id === targetId)
-      if (!member) {
+      // 1. Fast cache check
+      const cached = getCachedMembers()
+      if (cached) {
+        const found = cached.find((m) => m.id === targetId)
+        if (found) {
+          return NextResponse.json({ member: found })
+        }
+      }
+
+      // 2. Direct single user lookup
+      const adminClient = createAdminClient()
+      const [profileRes, userRes] = await Promise.all([
+        adminClient.from('profiles').select('*').eq('id', targetId).single(),
+        adminClient.auth.admin.getUserById(targetId).catch(() => ({ data: null })),
+      ])
+
+      if (!profileRes.data) {
         return NextResponse.json({ error: 'Member not found' }, { status: 404 })
       }
-      return NextResponse.json({ member })
+
+      const authUser = userRes.data?.user
+      const role: Role = (authUser?.user_metadata?.role || profileRes.data.role || 'member') as Role
+      const departments: MemberDepartment[] = authUser?.user_metadata?.departments || profileRes.data.departments || []
+      const avatar_url = authUser?.user_metadata?.avatar_url || profileRes.data.avatar_url || null
+      const full_name = authUser?.user_metadata?.full_name || profileRes.data.full_name || ''
+
+      return NextResponse.json({
+        member: {
+          ...profileRes.data,
+          full_name,
+          role,
+          departments,
+          avatar_url,
+        },
+      })
     }
+
+    const members = await getEnrichedMembers()
 
     let filtered = members
     if (roleFilter) {
@@ -110,6 +140,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ members: filtered })
   } catch (err: unknown) {
+    console.error('Error in /api/members:', err)
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500 }

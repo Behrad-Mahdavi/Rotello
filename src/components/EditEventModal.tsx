@@ -261,7 +261,7 @@ export default function EditEventModal({
               type="text"
               value={targetAudience}
               onChange={(e) => setTargetAudience(e.target.value)}
-              placeholder="مثال: اعضای باشگاه کسب و کار رکاد"
+              placeholder="مثال: اعضای باشگاه کسب‌وکار رکاد"
               className="rokad-input"
             />
           </div>

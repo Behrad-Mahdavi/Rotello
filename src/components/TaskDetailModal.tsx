@@ -53,12 +53,11 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
 
   useEffect(() => {
     async function load() {
-      const [tRes, clsRes, rptsRes, aaRes, memRes] = await Promise.all([
+      const [tRes, clsRes, rptsRes, aaRes] = await Promise.all([
         supabase.from('tasks').select('*').eq('id', taskId).single(),
         supabase.from('checklists').select('*, items:checklist_items(*)').eq('task_id', taskId).order('sort_order'),
         supabase.from('task_reports').select('*, author:profiles(full_name)').eq('task_id', taskId).order('created_at', { ascending: true }),
         supabase.from('task_assignees').select('user_id, profile:profiles(*)').eq('task_id', taskId),
-        profile.role === 'admin' ? supabase.from('profiles').select('*').order('full_name') : null,
       ])
       const t = tRes.data
       const cls = clsRes.data
@@ -76,7 +75,18 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
         setEditAssigneeIds(userIds)
         setAssignees(profsList)
       }
-      if (memRes) setAllMembers(memRes.data as unknown as Profile[])
+
+      if (t?.project_id && profile.role === 'admin') {
+        try {
+          const mRes = await fetch(`/api/projects/${t.project_id}/members`)
+          if (mRes.ok) {
+            const mData = await mRes.json()
+            setAllMembers(mData.members || [])
+          }
+        } catch (e) {
+          console.error('Error fetching project members for task detail:', e)
+        }
+      }
       setLoading(false)
     }
     load()
@@ -233,6 +243,9 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
       <div className="max-h-[90vh] w-full overflow-y-auto overscroll-contain rounded-t-2xl border border-border bg-surface shadow-lg sm:max-h-[85vh] sm:max-w-xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        {/* Mobile Pull Handle */}
+        <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-border-strong/60 sm:hidden" />
+
         <div className="sticky top-0 z-10 border-b border-border bg-surface px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
@@ -280,10 +293,12 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
               </div>
               )}
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               {canEdit && !isEditing && (
                 <button onClick={startEditing}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-default">
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-2 hover:text-default"
+                  title="ویرایش تسک"
+                >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                   </svg>
@@ -291,13 +306,15 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
               )}
               {canEdit && (
                 <button onClick={handleDeleteTask}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-danger/60 transition-colors hover:bg-danger-subtle hover:text-danger">
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-danger/60 transition-colors hover:bg-danger-subtle hover:text-danger"
+                  title="حذف تسک"
+                >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                   </svg>
                 </button>
               )}
-              <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-surface-2 hover:text-default cursor-pointer">
+              <button onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-2 hover:text-default cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -341,7 +358,12 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
               </div>
 
               <div ref={memberDropdownRef}>
-                <h4 className="mb-1.5 text-xs font-semibold text-muted">مسئولین</h4>
+                <div className="flex items-center justify-between mb-1.5">
+                  <h4 className="text-xs font-semibold text-muted">
+                    مسئولین تسک <span className="text-[11px] font-normal">(صرفاً اعضای این پروژه)</span>
+                  </h4>
+                  <span className="text-[11px] text-muted">{allMembers.length} عضو در پروژه</span>
+                </div>
                 {editAssigneeIds.length > 0 && (
                   <div className="mb-2 flex flex-wrap gap-1.5">
                     {allMembers.filter((m) => editAssigneeIds.includes(m.id)).map((m) => (
@@ -360,7 +382,7 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
                 <div className="relative">
                   <input value={memberSearch} onChange={(e) => { setMemberSearch(e.target.value); setMemberDropdownOpen(true) }}
                     onFocus={() => setMemberDropdownOpen(true)}
-                    placeholder="جستجوی اعضا برای افزودن مسئول..."
+                    placeholder="انتخاب یا جستجو در اعضای پروژه..."
                     className="block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors placeholder:text-muted focus:border-action/50 focus:bg-surface focus:outline-none" />
                   {memberDropdownOpen && (
                     <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border bg-surface-2 shadow-lg">
@@ -522,6 +544,7 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
         isOpen={!!selectedMemberProfileId}
         onClose={() => setSelectedMemberProfileId(null)}
         currentProfile={profile}
+        isAdmin={profile.role === 'admin'}
       />
     </div>
   )

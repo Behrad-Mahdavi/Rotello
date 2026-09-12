@@ -7,7 +7,8 @@ import { getRoleInfo, DEPARTMENTS } from '@/constants/departments'
 import MemberXpModal from './MemberXpModal'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import { X, Gift, AlertTriangle, CheckCircle2, Zap, RotateCcw, Camera, Loader2, Trash2 } from 'lucide-react'
-import { setCachedProfile } from '@/utils/userCache'
+import { setCachedProfile, getCachedProfile } from '@/utils/userCache'
+import { formatToPersianDate } from '@/utils/jalaali'
 
 interface CompletedTaskItem {
   id: string
@@ -26,6 +27,8 @@ interface MemberProfileModalProps {
   isOpen: boolean
   onClose: () => void
   currentProfile?: Profile | null
+  initialMember?: Profile | null
+  isAdmin?: boolean
   onXpChanged?: (userId: string, newXp: number) => void
 }
 
@@ -34,13 +37,17 @@ export default function MemberProfileModal({
   isOpen,
   onClose,
   currentProfile,
+  initialMember,
+  isAdmin,
   onXpChanged,
 }: MemberProfileModalProps) {
   useBodyScrollLock(isOpen)
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(initialMember || null)
+  const [sessionAdmin, setSessionAdmin] = useState(false)
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null)
   const [completedTasks, setCompletedTasks] = useState<CompletedTaskItem[]>([])
   const [adjustments, setAdjustments] = useState<XpAdjustment[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!initialMember)
   const [activeTab, setActiveTab] = useState<'tasks' | 'xp'>('tasks')
   const [historyFilter, setHistoryFilter] = useState<'all' | 'reward' | 'penalty' | 'task'>('all')
 
@@ -58,11 +65,19 @@ export default function MemberProfileModal({
       return
     }
 
-    async function loadMemberData() {
+    if (initialMember && initialMember.id === userId) {
+      setProfile(initialMember)
+      setLoading(false)
+    } else {
       setLoading(true)
+    }
+
+    async function loadMemberData() {
       try {
         const [memberRes, assigneesRes, adjRes] = await Promise.all([
-          fetch(`/api/members?id=${userId}`).then((r) => (r.ok ? r.json() : null)),
+          fetch(`/api/members?id=${userId}`)
+            .then((r) => (r.ok ? r.json() : null))
+            .catch(() => null),
           supabase
             .from('task_assignees')
             .select('task_id, tasks(id, title, status, xp_value, priority, deadline, updated_at, created_at, project_id, projects(name))')
@@ -143,11 +158,39 @@ export default function MemberProfileModal({
       .then((res: { data: unknown }) => {
         if (res.data) setAdjustments(res.data as XpAdjustment[])
       })
-
   }
 
+  useEffect(() => {
+    const cached = getCachedProfile()
+    if (cached) {
+      if (cached.role === 'admin') setSessionAdmin(true)
+      if (cached.id) setSessionUserId(cached.id)
+    }
+    async function checkSession() {
+      const { data } = await supabase.auth.getSession()
+      const u = data?.session?.user
+      if (u) {
+        setSessionUserId(u.id)
+        if (u.user_metadata?.role === 'admin') setSessionAdmin(true)
+      }
+    }
+    checkSession()
+  }, [supabase])
+
+  const isUserAdmin = Boolean(
+    isAdmin ||
+    sessionAdmin ||
+    currentProfile?.role === 'admin'
+  )
+
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const canEditAvatar = profile && (currentProfile?.id === profile.id || currentProfile?.role === 'admin')
+  const canEditAvatar = Boolean(
+    profile && (
+      isUserAdmin ||
+      currentProfile?.id === profile.id ||
+      sessionUserId === profile.id
+    )
+  )
 
   async function handleAvatarUpload(file: File) {
     if (!profile) return
@@ -307,7 +350,7 @@ export default function MemberProfileModal({
                               className="h-full w-full object-cover"
                             />
                           ) : (
-                            profile.full_name.charAt(0)
+                            (profile.full_name || '؟').charAt(0)
                           )}
 
                           {uploadingAvatar && (
@@ -355,7 +398,7 @@ export default function MemberProfileModal({
                       </div>
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="text-lg font-bold text-default">{profile.full_name}</h2>
+                          <h2 className="text-lg font-bold text-default">{profile.full_name || 'کاربر'}</h2>
                           <span
                             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
                               getRoleInfo(profile.role).colorClass
@@ -395,7 +438,7 @@ export default function MemberProfileModal({
                         )}
 
                         <p className="mt-1 text-xs text-muted">
-                          عضویت از: {new Date(profile.created_at).toLocaleDateString('fa-IR')}
+                          عضویت از: {profile.created_at ? formatToPersianDate(profile.created_at) : '---'}
                         </p>
                       </div>
                     </div>
@@ -522,9 +565,9 @@ export default function MemberProfileModal({
                                   <span className="text-xs font-bold text-default truncate">
                                     {t.title}
                                   </span>
-                                  {t.projects?.name && (
+                                  {t.projects && (
                                     <span className="rounded-md bg-surface border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted shrink-0">
-                                      {t.projects.name}
+                                      {Array.isArray(t.projects) ? (t.projects as unknown as { name: string }[])[0]?.name : (t.projects as { name: string }).name}
                                     </span>
                                   )}
                                 </div>
@@ -533,7 +576,7 @@ export default function MemberProfileModal({
                                     {priority.label}
                                   </span>
                                   <span>
-                                    تاریخ انجام: {new Date(t.updated_at || t.created_at).toLocaleDateString('fa-IR')}
+                                    تاریخ انجام: {(t.updated_at || t.created_at) ? formatToPersianDate(t.updated_at || t.created_at) : '---'}
                                   </span>
                                 </div>
                               </div>
@@ -633,7 +676,7 @@ export default function MemberProfileModal({
                                     <span>{badge.title}</span>
                                   </span>
                                   <span className="text-[10px] text-muted">
-                                    {new Date(adj.created_at).toLocaleDateString('fa-IR')}
+                                    {adj.created_at ? formatToPersianDate(adj.created_at) : '---'}
                                   </span>
                                 </div>
                                 <p className="text-default text-xs" title={adj.reason}>
