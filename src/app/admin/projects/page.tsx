@@ -7,7 +7,7 @@ import AppHeader from '@/components/AppHeader'
 import PersianDatePicker from '@/components/PersianDatePicker'
 import { formatToPersianDate } from '@/utils/jalaali'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
-import { DEPARTMENTS, type DepartmentKey } from '@/constants/departments'
+import { DEPARTMENTS, DEPARTMENT_KEYS, type DepartmentKey } from '@/constants/departments'
 import type { Project, Profile } from '@/utils/database.types'
 import EditProjectModal from '@/components/EditProjectModal'
 import DeleteProjectModal from '@/components/DeleteProjectModal'
@@ -19,13 +19,14 @@ export default function AdminProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [projectXps, setProjectXps] = useState<Record<string, number>>({})
   const [projectMembersMap, setProjectMembersMap] = useState<Record<string, string[]>>({})
+  const [projectDepartmentsMap, setProjectDepartmentsMap] = useState<Record<string, DepartmentKey[]>>({})
   const [projectForMembers, setProjectForMembers] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [deadline, setDeadline] = useState('')
-  const [department, setDepartment] = useState<string>('')
+  const [departments, setDepartments] = useState<DepartmentKey[]>([])
   const [error, setError] = useState('')
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null)
   const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null)
@@ -43,13 +44,15 @@ export default function AdminProjectsPage() {
         role: 'admin',
         avatar_url: prof?.avatar_url || user.user_metadata?.avatar_url || null,
       })
-      const [projRes, tasksRes, mapRes] = await Promise.all([
+      const [projRes, tasksRes, mapRes, deptsMapRes] = await Promise.all([
         supabase.from('projects').select('*').order('created_at', { ascending: false }),
         supabase.from('tasks').select('project_id, xp_value, title'),
         fetch('/api/projects/members-map').then((r) => r.ok ? r.json() : { map: {} }).catch(() => ({ map: {} })),
+        fetch('/api/projects/departments-map').then((r) => r.ok ? r.json() : { map: {} }).catch(() => ({ map: {} })),
       ])
       if (projRes.data) setProjects(projRes.data)
       if (mapRes?.map) setProjectMembersMap(mapRes.map)
+      if (deptsMapRes?.map) setProjectDepartmentsMap(deptsMapRes.map)
       if (tasksRes.data) {
         const xps: Record<string, number> = {}
         for (const t of tasksRes.data) {
@@ -66,13 +69,15 @@ export default function AdminProjectsPage() {
   }, [])
 
   async function reload() {
-    const [projRes, tasksRes, mapRes] = await Promise.all([
+    const [projRes, tasksRes, mapRes, deptsMapRes] = await Promise.all([
       supabase.from('projects').select('*').order('created_at', { ascending: false }),
       supabase.from('tasks').select('project_id, xp_value, title'),
       fetch('/api/projects/members-map').then((r) => r.ok ? r.json() : { map: {} }).catch(() => ({ map: {} })),
+      fetch('/api/projects/departments-map').then((r) => r.ok ? r.json() : { map: {} }).catch(() => ({ map: {} })),
     ])
     if (projRes.data) setProjects(projRes.data)
     if (mapRes?.map) setProjectMembersMap(mapRes.map)
+    if (deptsMapRes?.map) setProjectDepartmentsMap(deptsMapRes.map)
     if (tasksRes.data) {
       const xps: Record<string, number> = {}
       for (const t of tasksRes.data) {
@@ -95,19 +100,34 @@ export default function AdminProjectsPage() {
       description: description || null,
       deadline: deadline || null,
       created_by: user.id,
-      department: department || null,
+      department: departments[0] || null,
     }
 
-    let { error: err } = await supabase.from('projects').insert(insertData)
+    let { data: inserted, error: err } = await supabase.from('projects').insert(insertData).select().single()
     if (err && err.message?.includes('department')) {
       delete insertData.department
-      const fallback = await supabase.from('projects').insert(insertData)
+      const fallback = await supabase.from('projects').insert(insertData).select().single()
+      inserted = fallback.data
       err = fallback.error
     }
 
     if (err) { setError(err.message); setLoading(false); return }
-    setName(''); setDescription(''); setDeadline(''); setDepartment(''); setShowForm(false)
+
+    if (inserted?.id && departments.length > 0) {
+      try {
+        await fetch(`/api/projects/${inserted.id}/departments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ departments }),
+        })
+      } catch (deptErr) {
+        console.error('Error setting project departments:', deptErr)
+      }
+    }
+
+    setName(''); setDescription(''); setDeadline(''); setDepartments([]); setShowForm(false)
     await reload()
+    setLoading(false)
   }
 
 
@@ -159,17 +179,38 @@ export default function AdminProjectsPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-subtle">دپارتمان مربوطه (اختیاری)</label>
-                <select
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  className="mt-1 block w-full rounded-xl border border-border bg-surface-2/60 px-3.5 py-2 text-sm text-default transition-all focus:border-action focus:bg-surface focus:outline-none"
-                >
-                  <option value="">عمومی / بدون دپارتمان خاص (برای همه)</option>
-                  <option value="engineers">مهندسا</option>
-                  <option value="artists">آرتیستا</option>
-                  <option value="generalists">آچارفرانسه‌ها</option>
-                </select>
+                <label className="block text-xs font-semibold text-subtle mb-1.5">دپارتمان‌های مربوطه (امکان انتخاب همزمان چند دپارتمان)</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {DEPARTMENT_KEYS.map((key) => {
+                    const dep = DEPARTMENTS[key]
+                    const isSelected = departments.includes(key)
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          setDepartments((prev) =>
+                            prev.includes(key) ? prev.filter((d) => d !== key) : [...prev, key]
+                          )
+                        }}
+                        className={`flex flex-col items-center justify-center p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? `${dep.badgeClass} ring-2 ring-offset-1 ring-action/50 shadow-xs scale-[1.02]`
+                            : 'border-border bg-surface-2/60 text-muted hover:border-border-strong hover:text-default'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className={`h-2 w-2 rounded-full ${isSelected ? 'bg-current' : 'bg-muted/40'}`} />
+                          <span>{dep.label}</span>
+                        </div>
+                        <span className="text-[10px] font-normal opacity-80 mt-0.5">{dep.shortLabel}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                {departments.length === 0 && (
+                  <p className="text-[11px] text-muted mt-1.5">بدون دپارتمان خاص (پروژه عمومی برای همه)</p>
+                )}
               </div>
               {error && <div className="rounded-lg bg-danger-subtle px-3 py-2 text-sm text-danger">{error}</div>}
               <button type="submit" disabled={loading}
@@ -191,9 +232,8 @@ export default function AdminProjectsPage() {
               'from-orange-500 to-red-600',
             ]
             const g = gradients[i % gradients.length]
-            const depConfig = project.department && (project.department in DEPARTMENTS)
-              ? DEPARTMENTS[project.department as DepartmentKey]
-              : null
+            const assignedDepts: DepartmentKey[] = projectDepartmentsMap[project.id] ||
+              (project.department && (project.department in DEPARTMENTS) ? [project.department as DepartmentKey] : [])
 
             return (
               <div key={project.id} className="group relative overflow-hidden rounded-2xl border border-border bg-surface pt-0 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg hover:border-border-subtle">
@@ -209,10 +249,18 @@ export default function AdminProjectsPage() {
                       </div>
                     </div>
 
-                    {depConfig ? (
-                      <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-bold ${depConfig.badgeClass}`}>
-                        {depConfig.label}
-                      </span>
+                    {assignedDepts.length > 0 ? (
+                      <div className="flex flex-wrap items-center gap-1 justify-end">
+                        {assignedDepts.map((dKey) => {
+                          const depConfig = DEPARTMENTS[dKey]
+                          if (!depConfig) return null
+                          return (
+                            <span key={dKey} className={`inline-flex items-center rounded-lg px-2 py-0.5 text-[10px] font-bold ${depConfig.badgeClass}`}>
+                              {depConfig.label}
+                            </span>
+                          )
+                        })}
+                      </div>
                     ) : (
                       <span className="inline-flex items-center rounded-lg bg-surface-2 px-2 py-0.5 text-[10px] font-medium text-muted">
                         عمومی
@@ -220,7 +268,7 @@ export default function AdminProjectsPage() {
                     )}
                   </div>
                   <p className="mt-3 line-clamp-2 min-h-[2.5rem] text-xs text-muted sm:text-sm leading-relaxed">
-                    {project.description || 'بدون توضیحات'}
+                    {(project.description || '').replace(/\s*\[DEPS:[^\]]*\]/g, '').trim() || 'بدون توضیحات'}
                   </p>
                   {project.deadline && (
                     <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted">

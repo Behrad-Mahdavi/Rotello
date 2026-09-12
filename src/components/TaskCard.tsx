@@ -43,10 +43,11 @@ export default function TaskCard({ task, canDrag, onClick }: TaskCardProps) {
     id: task.id, disabled: !canDrag,
   })
 
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.35 : 1,
+    touchAction: canDrag ? 'manipulation' : undefined,
   }
 
   return (
@@ -56,13 +57,16 @@ export default function TaskCard({ task, canDrag, onClick }: TaskCardProps) {
       {...attributes} 
       {...(canDrag ? listeners : {})} 
       onClick={onClick}
-      className={`group cursor-pointer rounded-xl border border-border bg-surface p-3 transition-all duration-200 hover:shadow-md hover:border-action/40 ${STATUS_BORDER[task.status]} border-r-[3px] ${
+      className={`group cursor-pointer select-none rounded-xl border border-border bg-surface p-3 transition-all duration-200 hover:shadow-md hover:border-action/40 ${STATUS_BORDER[task.status]} border-r-[3px] ${
         canDrag ? 'cursor-grab active:cursor-grabbing' : ''
       } ${task.status === 'done' ? 'opacity-70 hover:opacity-100' : ''}`}
     >
       <div className="flex items-start gap-2">
         {canDrag && (
-          <span className="mt-0.5 shrink-0 text-muted/30 group-hover:text-muted/70 transition-colors">
+          <span 
+            style={{ touchAction: 'none' }}
+            className="mt-0.5 shrink-0 text-muted/30 group-hover:text-muted/70 transition-colors p-0.5 -m-0.5"
+          >
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M8 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm8 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4zM8 14a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm8 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4zM8 22a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm8 0a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" />
             </svg>

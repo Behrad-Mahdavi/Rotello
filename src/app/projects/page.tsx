@@ -26,6 +26,7 @@ export default function ProjectsListPage() {
   const [tasks, setTasks] = useState<TaskSummary[]>([])
   const [myAssignedProjectIds, setMyAssignedProjectIds] = useState<string[]>([])
   const [projectMembersMap, setProjectMembersMap] = useState<Record<string, string[]>>({})
+  const [projectDepartmentsMap, setProjectDepartmentsMap] = useState<Record<string, DepartmentKey[]>>({})
   const [selectedProjectForMembers, setSelectedProjectForMembers] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -39,12 +40,13 @@ export default function ProjectsListPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
 
-      const [profRes, projRes, tasksRes, assignRes, mapRes] = await Promise.all([
+      const [profRes, projRes, tasksRes, assignRes, mapRes, deptsMapRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('projects').select('*').order('created_at', { ascending: false }),
         supabase.from('tasks').select('id, project_id, status, xp_value, title'),
         supabase.from('task_assignees').select('task_id, tasks(project_id)').eq('user_id', user.id),
         fetch('/api/projects/members-map').then((r) => r.ok ? r.json() : { map: {} }).catch(() => ({ map: {} })),
+        fetch('/api/projects/departments-map').then((r) => r.ok ? r.json() : { map: {} }).catch(() => ({ map: {} })),
       ])
 
       const userRole: Role = (user.user_metadata?.role || profRes.data?.role || 'member') as Role
@@ -61,6 +63,7 @@ export default function ProjectsListPage() {
       if (projRes.data) setProjects(projRes.data)
       if (tasksRes.data) setTasks(tasksRes.data)
       if (mapRes?.map) setProjectMembersMap(mapRes.map)
+      if (deptsMapRes?.map) setProjectDepartmentsMap(deptsMapRes.map)
 
       const assignedPids = new Set<string>()
       if (assignRes.data) {
@@ -92,8 +95,10 @@ export default function ProjectsListPage() {
     if (profile.role === 'mentor') {
       const mentorDeps = (profile.departments || []).map((d) => d.department)
       return projects.filter((p) => {
+        const pDeps: DepartmentKey[] = projectDepartmentsMap[p.id] ||
+          (p.department ? [p.department as DepartmentKey] : [])
         // Project matching mentor's department
-        if (p.department && mentorDeps.includes(p.department)) return true
+        if (pDeps.some((d) => mentorDeps.includes(d))) return true
         // Project where mentor is assigned
         if (myAssignedProjectIds.includes(p.id)) return true
         // Project where mentor is a project member
@@ -301,11 +306,24 @@ export default function ProjectsListPage() {
                           </div>
                         )}
 
-                        {project.department && (project.department in DEPARTMENTS) && (
-                          <span className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-bold ${DEPARTMENTS[project.department as DepartmentKey].badgeClass}`}>
-                            {DEPARTMENTS[project.department as DepartmentKey].label}
-                          </span>
-                        )}
+                        {(() => {
+                          const assignedDepts: DepartmentKey[] = projectDepartmentsMap[project.id] ||
+                            (project.department && (project.department in DEPARTMENTS) ? [project.department as DepartmentKey] : [])
+                          if (assignedDepts.length === 0) return null
+                          return (
+                            <div className="flex flex-wrap items-center gap-1">
+                              {assignedDepts.map((dKey) => {
+                                const depConfig = DEPARTMENTS[dKey]
+                                if (!depConfig) return null
+                                return (
+                                  <span key={dKey} className={`inline-flex items-center rounded-lg px-2 py-0.5 text-xs font-bold ${depConfig.badgeClass}`}>
+                                    {depConfig.label}
+                                  </span>
+                                )
+                              })}
+                            </div>
+                          )
+                        })()}
 
                         {deadline && (
                           <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-bold ${deadline.color}`}>
@@ -325,7 +343,7 @@ export default function ProjectsListPage() {
 
                     {/* Description */}
                     <p className="mt-1.5 text-xs text-muted line-clamp-2 leading-relaxed min-h-[2rem]">
-                      {project.description || 'بدون توضیحات ثبت‌شده برای این پروژه.'}
+                      {(project.description || '').replace(/\s*\[DEPS:[^\]]*\]/g, '').trim() || 'بدون توضیحات ثبت‌شده برای این پروژه.'}
                     </p>
                   </div>
 

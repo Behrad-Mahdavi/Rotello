@@ -46,13 +46,19 @@ export async function POST(
 
     const { projectId } = await params
     const body = await request.json()
-    const userId = body.user_id as string
+    const userIds: string[] = Array.isArray(body.user_ids)
+      ? body.user_ids
+      : body.user_id
+      ? [body.user_id]
+      : []
 
-    if (!projectId || !userId) {
+    if (!projectId || userIds.length === 0) {
       return NextResponse.json({ error: 'شناسه پروژه و کاربر الزامی است.' }, { status: 400 })
     }
 
-    await addProjectMember(projectId, userId)
+    for (const uid of userIds) {
+      await addProjectMember(projectId, uid)
+    }
     const members = await getProjectMembers(projectId)
     return NextResponse.json(
       { success: true, members },

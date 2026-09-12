@@ -36,6 +36,7 @@ interface DashData {
   projects: Project[]
   tasks: Task[]
   members: Profile[]
+  departmentsMap?: Record<string, DepartmentKey[]>
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
@@ -80,11 +81,12 @@ export default function DashboardPage() {
       const user = session?.user
       if (!user) { router.push('/login'); return }
 
-      const [profRes, projectsRes, tasksRes, membersFetch] = await Promise.all([
+      const [profRes, projectsRes, tasksRes, membersFetch, deptsMapFetch] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('projects').select('*').order('created_at', { ascending: false }),
         supabase.from('tasks').select('*').order('created_at', { ascending: false }),
         fetch('/api/members').then((r) => (r.ok ? r.json() : { members: [] })),
+        fetch('/api/projects/departments-map').then((r) => (r.ok ? r.json() : { map: {} })).catch(() => ({ map: {} })),
       ])
 
       const userRole = (user.user_metadata?.role || profRes.data?.role || 'member')
@@ -109,6 +111,7 @@ export default function DashboardPage() {
         projects: projectsRes.data || [],
         tasks: tasksRes.data || [],
         members: membersFetch.members || [],
+        departmentsMap: deptsMapFetch.map || {},
       })
       setLoading(false)
     }
@@ -153,9 +156,14 @@ export default function DashboardPage() {
     })
 
     projects.forEach((p) => {
-      if (p.department && deptStats[p.department as DepartmentKey]) {
-        deptStats[p.department as DepartmentKey].projectsCount++
-      }
+      const assignedDepts: DepartmentKey[] = (data.departmentsMap && data.departmentsMap[p.id]) ||
+        (p.department ? [p.department as DepartmentKey] : [])
+
+      assignedDepts.forEach((deptKey) => {
+        if (deptStats[deptKey as DepartmentKey]) {
+          deptStats[deptKey as DepartmentKey].projectsCount++
+        }
+      })
     })
 
     const topPerformers = [...regularMembers].slice(0, 5)
@@ -178,6 +186,14 @@ export default function DashboardPage() {
       topPerformers,
       urgentTasks,
     }
+  }, [data])
+
+  // Latest completed tasks (done status only, sorted by newest completion)
+  const completedTasks = useMemo(() => {
+    if (!data) return []
+    return data.tasks
+      .filter((t) => t.status === 'done')
+      .sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
   }, [data])
 
   // Donut chart segments calculation for task status breakdown
@@ -742,87 +758,104 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 5. Bottom Row: Recent Tasks & Leaderboard Top Performers */}
-        {/* 5. Bottom Row: Recent Tasks & Leaderboard Top Performers */}
+        {/* 5. Bottom Row: Recent Completed Tasks & Leaderboard Top Performers */}
         <div className="grid gap-3.5 sm:gap-5 lg:grid-cols-12">
-          {/* Recent Tasks Stream (6 cols) */}
-          <div className="lg:col-span-6 rounded-xl sm:rounded-2xl border-[1.5px] border-border bg-surface p-3 sm:p-5 shadow-[2px_2px_0_#202A5A] sm:shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2px_2px_0_#59BBAF] sm:dark:shadow-[2.5px_2.5px_0_#59BBAF] space-y-2.5 sm:space-y-3.5 flex flex-col justify-between">
+          {/* Recent Completed Tasks Stream (6 cols) */}
+          <div className="lg:col-span-6 rounded-2xl border-[1.5px] border-border bg-surface p-3.5 sm:p-6 shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2.5px_2.5px_0_#59BBAF] flex flex-col justify-between transition-all">
             <div>
-              <div className="flex items-center justify-between mb-2.5 sm:mb-3.5">
-                <h3 className="text-xs sm:text-base font-black text-default">
-                  آخرین کارهای تعریف‌شده
-                </h3>
-                <Link href="/projects" className="text-[11px] sm:text-xs font-bold text-action hover:underline flex items-center gap-0.5">
-                  <span>مشاهده همه</span>
-                  <ChevronLeft className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                </Link>
+              <div className="flex items-center justify-between border-b border-border/70 pb-3 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-surface-2 text-emerald-500 border border-border/80">
+                    <CheckCircle2 className="h-4 w-4" />
+                  </div>
+                  <h3 className="text-sm sm:text-base font-black text-default">
+                    آخرین کارهای تکمیل‌شده
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <span className="rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-bold text-muted border border-border">
+                    {completedTasks.length.toLocaleString('fa-IR')} تسک
+                  </span>
+                  <Link href="/projects" className="text-xs font-bold text-action hover:underline flex items-center gap-0.5">
+                    <span>مشاهده همه</span>
+                    <ChevronLeft className="h-3 w-3" />
+                  </Link>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                {data.tasks.slice(0, 5).map((t) => {
-                  const proj = data.projects.find((p) => p.id === t.project_id)
-                  const conf = STATUS_CONFIG[t.status] || STATUS_CONFIG.backlog
+              {completedTasks.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center py-8 sm:py-10 text-center text-xs text-muted border border-dashed border-border rounded-xl font-medium">
+                  هنوز تسک تکمیل‌شده‌ای ثبت نشده است.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {completedTasks.slice(0, 5).map((t) => {
+                    const proj = data.projects.find((p) => p.id === t.project_id)
+                    const conf = STATUS_CONFIG.done
 
-                  return (
-                    <div
-                      key={t.id}
-                      className="flex items-center justify-between gap-2 rounded-xl border border-border/70 bg-surface-2/40 p-2.5 sm:p-3 transition-colors hover:bg-surface-2"
-                    >
-                      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
-                        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-black shadow-2xs ${conf.bg} ${conf.color}`}>
-                          {t.status === 'done' ? (
+                    return (
+                      <div
+                        key={t.id}
+                        className="flex items-center justify-between gap-2 rounded-xl border border-border/70 bg-surface-2/40 p-2.5 sm:p-3 transition-colors hover:bg-surface-2"
+                      >
+                        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
+                          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-xs font-black shadow-2xs ${conf.bg} ${conf.color}`}>
                             <CheckCircle2 className="h-3.5 w-3.5" />
-                          ) : t.status === 'in_progress' ? (
-                            <Clock className="h-3.5 w-3.5" />
-                          ) : t.status === 'todo' ? (
-                            <CircleDot className="h-3.5 w-3.5" />
-                          ) : (
-                            <Archive className="h-3.5 w-3.5" />
-                          )}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <h5 className="truncate text-xs sm:text-sm font-bold text-default" title={t.title}>
-                            {t.title}
-                          </h5>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] sm:text-xs text-muted font-medium">
-                            <span className="truncate max-w-[110px] sm:max-w-none">{proj?.name || 'پروژه عمومی'}</span>
-                            {t.priority === 'urgent' && (
-                              <span className="shrink-0 rounded bg-rose-500/10 text-rose-500 px-1.5 py-0.2 font-black text-[9px] sm:text-[10px]">فوری</span>
-                            )}
-                            {t.priority === 'important' && (
-                              <span className="shrink-0 rounded bg-amber-500/10 text-amber-500 px-1.5 py-0.2 font-black text-[9px] sm:text-[10px]">مهم</span>
-                            )}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <h5 className="truncate text-xs sm:text-sm font-bold text-default" title={t.title}>
+                              {t.title}
+                            </h5>
+                            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] sm:text-xs text-muted font-medium">
+                              <span className="truncate max-w-[110px] sm:max-w-none">{proj?.name || 'پروژه عمومی'}</span>
+                              {t.priority === 'urgent' && (
+                                <span className="shrink-0 rounded bg-rose-500/10 text-rose-500 px-1.5 py-0.2 font-black text-[9px] sm:text-[10px]">فوری</span>
+                              )}
+                              {t.priority === 'important' && (
+                                <span className="shrink-0 rounded bg-amber-500/10 text-amber-500 px-1.5 py-0.2 font-black text-[9px] sm:text-[10px]">مهم</span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="flex flex-col sm:flex-row sm:items-center items-end gap-1 sm:gap-2 shrink-0">
-                        <span className="text-[11px] sm:text-xs font-black text-[#F8A41D] flex items-center gap-0.5 whitespace-nowrap">
-                          <Zap className="h-3 w-3 text-[#F8A41D]" />
-                          <span>{(t.xp_value || 0).toLocaleString('fa-IR')} XP</span>
-                        </span>
-                        <span className={`rounded-md sm:rounded-lg px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-bold border whitespace-nowrap ${conf.bg} ${conf.color}`}>
-                          {conf.label}
-                        </span>
+                        <div className="flex flex-col sm:flex-row sm:items-center items-end gap-1 sm:gap-2 shrink-0">
+                          <span className="text-[11px] sm:text-xs font-black text-[#F8A41D] flex items-center gap-0.5 whitespace-nowrap">
+                            <Zap className="h-3 w-3 text-[#F8A41D]" />
+                            <span>{(t.xp_value || 0).toLocaleString('fa-IR')} XP</span>
+                          </span>
+                          <span className={`rounded-md sm:rounded-lg px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[11px] font-bold border whitespace-nowrap ${conf.bg} ${conf.color}`}>
+                            {conf.label}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
-              </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Top Performers Spotlight (6 cols) */}
-          <div className="lg:col-span-6 rounded-xl sm:rounded-2xl border-[1.5px] border-border bg-surface p-3 sm:p-5 shadow-[2px_2px_0_#202A5A] sm:shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2px_2px_0_#59BBAF] sm:dark:shadow-[2.5px_2.5px_0_#59BBAF] space-y-2.5 sm:space-y-3.5 flex flex-col justify-between">
+          <div className="lg:col-span-6 rounded-2xl border-[1.5px] border-border bg-surface p-3.5 sm:p-6 shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2.5px_2.5px_0_#59BBAF] flex flex-col justify-between transition-all">
             <div>
-              <div className="flex items-center justify-between mb-2.5 sm:mb-3.5">
-                <h3 className="text-xs sm:text-base font-black text-default">
-                  پیشتازان لیدربورد
-                </h3>
-                <Link href="/leaderboard" className="text-[11px] sm:text-xs font-bold text-action hover:underline flex items-center gap-0.5">
-                  <span>جدول کامل</span>
-                  <ChevronLeft className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                </Link>
+              <div className="flex items-center justify-between border-b border-border/70 pb-3 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-surface-2 text-amber-500 border border-border/80">
+                    <Trophy className="h-4 w-4" />
+                  </div>
+                  <h3 className="text-sm sm:text-base font-black text-default">
+                    پیشتازان لیدربورد
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <span className="rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-bold text-muted border border-border">
+                    {metrics.regularMembersCount.toLocaleString('fa-IR')} عضو
+                  </span>
+                  <Link href="/leaderboard" className="text-xs font-bold text-action hover:underline flex items-center gap-0.5">
+                    <span>جدول کامل</span>
+                    <ChevronLeft className="h-3 w-3" />
+                  </Link>
+                </div>
               </div>
 
               {metrics.topPerformers.length === 0 ? (
@@ -888,7 +921,7 @@ export default function DashboardPage() {
                             {Array.isArray(m.departments) && m.departments.length > 0 ? (
                               m.departments.slice(0, 2).map((d) => (
                                 <span key={d.department} className={`rounded px-1.5 py-0 text-[9px] sm:text-[10px] font-bold ${DEPARTMENTS[d.department]?.badgeClass || 'bg-surface-2 text-muted'}`}>
-                                  {DEPARTMENTS[d.department]?.shortLabel || DEPARTMENTS[d.department]?.label || d.department} (سطح {d.level})
+                                  {DEPARTMENTS[d.department]?.label || d.department} (سطح {d.level})
                                 </span>
                               ))
                             ) : (

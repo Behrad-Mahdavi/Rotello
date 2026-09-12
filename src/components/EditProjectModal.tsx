@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import PersianDatePicker from './PersianDatePicker'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
-import { DEPARTMENTS } from '@/constants/departments'
+import { DEPARTMENTS, DEPARTMENT_KEYS, type DepartmentKey } from '@/constants/departments'
 import type { Project } from '@/utils/database.types'
 import { Pencil, X } from 'lucide-react'
 
@@ -25,7 +25,7 @@ export default function EditProjectModal({
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [deadline, setDeadline] = useState('')
-  const [department, setDepartment] = useState('')
+  const [departments, setDepartments] = useState<DepartmentKey[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -34,10 +34,32 @@ export default function EditProjectModal({
   useEffect(() => {
     if (project && isOpen) {
       setName(project.name || '')
-      setDescription(project.description || '')
+      const cleanedDesc = (project.description || '').replace(/\s*\[DEPS:[^\]]*\]/g, '').trim()
+      setDescription(cleanedDesc)
       setDeadline(project.deadline ? project.deadline.split('T')[0] : '')
-      setDepartment(project.department || '')
       setError('')
+
+      // Fetch project departments from API
+      fetch(`/api/projects/${project.id}/departments`)
+        .then((r) => r.ok ? r.json() : { departments: [] })
+        .then((data) => {
+          if (data.departments && data.departments.length > 0) {
+            setDepartments(data.departments)
+          } else if (project.department) {
+            setDepartments([project.department as DepartmentKey])
+          } else {
+            const match = (project.description || '').match(/\[DEPS:([^\]]+)\]/)
+            if (match && match[1]) {
+              const deps = match[1].split(',').map((d: string) => d.trim() as DepartmentKey).filter(Boolean)
+              setDepartments(deps)
+            } else {
+              setDepartments([])
+            }
+          }
+        })
+        .catch(() => {
+          if (project.department) setDepartments([project.department as DepartmentKey])
+        })
     }
   }, [project, isOpen])
 
@@ -57,7 +79,7 @@ export default function EditProjectModal({
       name: name.trim(),
       description: description.trim() || null,
       deadline: deadline || null,
-      department: department || null,
+      department: departments[0] || null,
     }
 
     let { data: updated, error: updateErr } = await supabase
@@ -77,6 +99,17 @@ export default function EditProjectModal({
         .single()
       updated = fallback.data
       updateErr = fallback.error
+    }
+
+    // Also persist multi-departments in cloud & store
+    try {
+      await fetch(`/api/projects/${project!.id}/departments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ departments }),
+      })
+    } catch (deptErr) {
+      console.error('Error saving multi-departments:', deptErr)
     }
 
     if (updateErr) {
@@ -111,7 +144,7 @@ export default function EditProjectModal({
             </div>
             <div>
               <h3 className="text-base font-black text-default">ویرایش پروژه</h3>
-              <p className="text-xs text-muted font-medium mt-0.5">اصلاح مشخصات، دپارتمان و مهلت پروژه</p>
+              <p className="text-xs text-muted font-medium mt-0.5">اصلاح مشخصات، دپارتمان‌ها و مهلت پروژه</p>
             </div>
           </div>
           <button
@@ -167,18 +200,39 @@ export default function EditProjectModal({
 
           <div>
             <label className="block text-xs font-bold text-default mb-1.5">
-              دپارتمان مربوطه
+              دپارتمان‌های مربوطه (امکان انتخاب همزمان چند دپارتمان)
             </label>
-            <select
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              className="w-full rounded-xl border border-border bg-surface-2/60 px-3.5 py-2.5 text-sm font-medium text-default transition-all focus:border-action focus:bg-surface focus:outline-none cursor-pointer"
-            >
-              <option value="">عمومی (بدون دپارتمان خاص)</option>
-              <option value="engineers">{DEPARTMENTS.engineers.label}</option>
-              <option value="artists">{DEPARTMENTS.artists.label}</option>
-              <option value="generalists">{DEPARTMENTS.generalists.label}</option>
-            </select>
+            <div className="grid grid-cols-3 gap-2">
+              {DEPARTMENT_KEYS.map((key) => {
+                const dep = DEPARTMENTS[key]
+                const isSelected = departments.includes(key)
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      setDepartments((prev) =>
+                        prev.includes(key) ? prev.filter((d) => d !== key) : [...prev, key]
+                      )
+                    }}
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                      isSelected
+                        ? `${dep.badgeClass} ring-2 ring-offset-1 ring-action/50 shadow-xs scale-[1.02]`
+                        : 'border-border bg-surface-2/60 text-muted hover:border-border-strong hover:text-default'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className={`h-2 w-2 rounded-full ${isSelected ? 'bg-current' : 'bg-muted/40'}`} />
+                      <span>{dep.label}</span>
+                    </div>
+                    <span className="text-[10px] font-normal opacity-80 mt-0.5">{dep.shortLabel}</span>
+                  </button>
+                )
+              })}
+            </div>
+            {departments.length === 0 && (
+              <p className="text-[11px] text-muted mt-1.5">بدون دپارتمان خاص (پروژه عمومی برای همه اعضا)</p>
+            )}
           </div>
 
           {/* Modal Actions */}

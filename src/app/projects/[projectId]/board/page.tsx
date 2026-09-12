@@ -51,7 +51,7 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
   )
 
   useEffect(() => {
@@ -200,12 +200,12 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
           {/* Project Members Widget */}
           <button
             onClick={() => setShowMembersModal(true)}
-            className="inline-flex items-center gap-1.5 sm:gap-2 rounded-xl border border-border bg-surface px-2 sm:px-2.5 py-1 sm:py-1.5 text-xs font-semibold text-default hover:bg-surface-2 transition-all cursor-pointer active:scale-95 shadow-2xs"
+            className="group inline-flex items-center gap-1.5 sm:gap-2 rounded-xl border border-border bg-surface px-2 sm:px-2.5 py-1 sm:py-1.5 text-xs font-semibold text-default hover:border-action/40 hover:bg-surface-2 transition-all cursor-pointer active:scale-95 shadow-2xs"
             title="مشاهده و مدیریت اعضای پروژه"
           >
             {projectMembers.length > 0 ? (
-              <div className="flex -space-x-1.5 rtl:space-x-reverse overflow-hidden items-center">
-                {projectMembers.slice(0, 4).map((m) => (
+              <div className="flex -space-x-2 rtl:space-x-reverse items-center">
+                {projectMembers.slice(0, 3).map((m) => (
                   <UserAvatar
                     key={m.id}
                     src={m.avatar_url}
@@ -213,16 +213,23 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
                     role={m.role}
                     size="xs"
                     shape="circle"
-                    className="border-2 border-surface"
+                    className="ring-2 ring-surface shrink-0"
                   />
                 ))}
+                {projectMembers.length > 3 && (
+                  <div className="flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-full bg-surface-2 text-[9px] sm:text-[10px] font-black text-muted ring-2 ring-surface shrink-0">
+                    +{projectMembers.length - 3}
+                  </div>
+                )}
               </div>
             ) : (
-              <Users className="h-3.5 w-3.5 text-muted" />
+              <div className="flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-lg bg-surface-2 text-muted shrink-0">
+                <Users className="h-3.5 w-3.5" />
+              </div>
             )}
-            <span className="hidden sm:inline">اعضای پروژه</span>
-            <span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-bold text-muted">
-              {projectMembers.length}
+            <span className="hidden sm:inline font-bold text-default group-hover:text-action transition-colors">اعضای پروژه</span>
+            <span className="rounded-full bg-action/10 px-1.5 py-0.2 text-[10px] sm:text-[11px] font-black text-action">
+              {projectMembers.length.toLocaleString('fa-IR')}
             </span>
           </button>
 

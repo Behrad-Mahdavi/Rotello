@@ -41,7 +41,7 @@ export default function ProjectMembersModal({
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
   const [removingId, setRemovingId] = useState<string | null>(null)
-  const [selectedUserId, setSelectedUserId] = useState<string>('')
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [error, setError] = useState('')
@@ -77,10 +77,9 @@ export default function ProjectMembersModal({
           setAllSystemMembers(sysData.members || [])
         }
       } catch (err: unknown) {
-        if (isMounted) {
-          const msg = err instanceof Error ? err.message : 'خطای شبکه'
-          setError(msg)
-        }
+        if (!isMounted) return
+        const msg = err instanceof Error ? err.message : 'خطای شبکه'
+        setError(msg)
       } finally {
         if (isMounted) setLoading(false)
       }
@@ -116,13 +115,29 @@ export default function ProjectMembersModal({
     return availableUsers.filter((u) => u.full_name?.toLowerCase().includes(q))
   }, [availableUsers, searchQuery])
 
-  const selectedUser = useMemo(() => {
-    return allSystemMembers.find((u) => u.id === selectedUserId)
-  }, [allSystemMembers, selectedUserId])
+  const selectedUsers = useMemo(() => {
+    const set = new Set(selectedUserIds)
+    return allSystemMembers.filter((u) => set.has(u.id))
+  }, [allSystemMembers, selectedUserIds])
 
-  // Add member
-  async function handleAddMember() {
-    if (!selectedUserId || adding) return
+  const toggleUserSelection = (userId: string) => {
+    setSelectedUserIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    )
+  }
+
+  const selectAllFiltered = () => {
+    const ids = filteredAvailableUsers.map((u) => u.id)
+    setSelectedUserIds((prev) => Array.from(new Set([...prev, ...ids])))
+  }
+
+  const clearSelection = () => {
+    setSelectedUserIds([])
+  }
+
+  // Add members (batch)
+  async function handleAddMembers() {
+    if (selectedUserIds.length === 0 || adding) return
     setAdding(true)
     setError('')
 
@@ -130,22 +145,22 @@ export default function ProjectMembersModal({
       const res = await fetch(`/api/projects/${projectId}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: selectedUserId }),
+        body: JSON.stringify({ user_ids: selectedUserIds }),
       })
 
       if (!res.ok) {
         const errData = await res.json()
-        throw new Error(errData.error || 'خطا در افزودن عضو')
+        throw new Error(errData.error || 'خطا در افزودن اعضا')
       }
 
       const data = await res.json()
       setMembers(data.members || [])
       onMembersUpdated?.(data.members || [])
-      setSelectedUserId('')
+      setSelectedUserIds([])
       setSearchQuery('')
       setDropdownOpen(false)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'خطا در ثبت عضو'
+      const msg = err instanceof Error ? err.message : 'خطای ثبت اعضا'
       setError(msg)
     } finally {
       setAdding(false)
@@ -239,109 +254,153 @@ export default function ProjectMembersModal({
                 </span>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2">
-                {/* Searchable Dropdown */}
-                <div className="relative flex-1" ref={dropdownRef}>
-                  <button
-                    type="button"
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="w-full flex items-center justify-between rounded-xl border border-border bg-surface px-3 py-2 text-xs text-default hover:border-action/40 transition-colors"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      {selectedUser ? (
-                        <>
-                          <UserAvatar
-                            src={selectedUser.avatar_url}
-                            name={selectedUser.full_name}
-                            size="xs"
-                            shape="circle"
-                          />
-                          <span className="truncate font-semibold">{selectedUser.full_name}</span>
-                        </>
-                      ) : (
-                        <span className="text-muted">انتخاب کاربر برای افزودن...</span>
-                      )}
-                    </div>
-                    <ChevronDown className="h-4 w-4 text-muted shrink-0" />
-                  </button>
-
-                  {/* Dropdown Menu */}
-                  {dropdownOpen && (
-                    <div className="absolute top-full right-0 left-0 mt-1 z-30 max-h-56 overflow-y-auto rounded-xl border border-border bg-surface shadow-xl py-1">
-                      <div className="p-2 border-b border-border/60 sticky top-0 bg-surface">
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="جستجوی نام کاربر..."
-                            className="w-full rounded-lg border border-border/80 bg-surface-2/50 py-1.5 pr-7 pl-2 text-xs text-default focus:border-action focus:outline-none"
-                            autoFocus
-                          />
-                          <Search className="absolute right-2 top-2 h-3.5 w-3.5 text-muted" />
-                        </div>
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  {/* Searchable Multi-Select Dropdown */}
+                  <div className="relative flex-1" ref={dropdownRef}>
+                    <button
+                      type="button"
+                      onClick={() => setDropdownOpen(!dropdownOpen)}
+                      className="w-full flex items-center justify-between rounded-xl border border-border bg-surface px-3 py-2 text-xs text-default hover:border-action/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {selectedUsers.length > 0 ? (
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="rounded-md bg-action/15 text-action px-2 py-0.5 text-[11px] font-bold">
+                              {selectedUsers.length} نفر انتخاب شده
+                            </span>
+                            <span className="text-xs font-medium text-default truncate max-w-[160px] sm:max-w-[200px]">
+                              {selectedUsers.map((u) => u.full_name).join('، ')}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-muted">انتخاب یک یا چند عضو برای افزودن...</span>
+                        )}
                       </div>
+                      <ChevronDown className={`h-4 w-4 text-muted shrink-0 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
 
-                      {filteredAvailableUsers.length === 0 ? (
-                        <div className="p-3 text-center text-xs text-muted">
-                          کاربر دیگری برای افزودن یافت نشد.
+                    {/* Dropdown Menu */}
+                    {dropdownOpen && (
+                      <div className="absolute top-full right-0 left-0 mt-1 z-30 max-h-64 overflow-y-auto rounded-xl border border-border bg-surface shadow-2xl py-1">
+                        <div className="p-2 border-b border-border/60 sticky top-0 bg-surface z-10 space-y-1.5">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              placeholder="جستجوی نام کاربر..."
+                              className="w-full rounded-lg border border-border/80 bg-surface-2/50 py-1.5 pr-7 pl-2 text-xs text-default focus:border-action focus:outline-none"
+                              autoFocus
+                            />
+                            <Search className="absolute right-2 top-2 h-3.5 w-3.5 text-muted" />
+                          </div>
+                          {filteredAvailableUsers.length > 0 && (
+                            <div className="flex items-center justify-between text-[11px] px-1 pt-0.5">
+                              <button
+                                type="button"
+                                onClick={selectAllFiltered}
+                                className="font-bold text-action hover:underline cursor-pointer"
+                              >
+                                انتخاب همه ({filteredAvailableUsers.length})
+                              </button>
+                              {selectedUserIds.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={clearSelection}
+                                  className="font-bold text-rose-500 hover:underline cursor-pointer"
+                                >
+                                  لغو همه
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
-                      ) : (
-                        filteredAvailableUsers.map((u) => {
-                          const isSelected = u.id === selectedUserId
-                          return (
-                            <button
-                              key={u.id}
-                              type="button"
-                              onClick={() => {
-                                setSelectedUserId(u.id)
-                                setDropdownOpen(false)
-                              }}
-                              className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors hover:bg-surface-2 text-right ${
-                                isSelected ? 'bg-action/10 text-action font-bold' : 'text-default'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
+
+                        {filteredAvailableUsers.length === 0 ? (
+                          <div className="p-4 text-center text-xs text-muted">
+                            کاربر دیگری برای افزودن یافت نشد.
+                          </div>
+                        ) : (
+                          filteredAvailableUsers.map((u) => {
+                            const isSelected = selectedUserIds.includes(u.id)
+                            return (
+                              <button
+                                key={u.id}
+                                type="button"
+                                onClick={() => toggleUserSelection(u.id)}
+                                className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors hover:bg-surface-2 text-right cursor-pointer ${
+                                  isSelected ? 'bg-action/10' : ''
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                                    isSelected ? 'bg-action border-action text-white' : 'border-border/80 bg-surface'
+                                  }`}>
+                                    {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                                  </div>
                                   <UserAvatar
                                     src={u.avatar_url}
                                     name={u.full_name}
                                     size="sm"
                                     shape="circle"
                                   />
-                                <div className="min-w-0">
-                                  <div className="truncate font-semibold">{u.full_name}</div>
-                                  {u.departments && u.departments.length > 0 && (
-                                    <div className="text-[10px] text-muted truncate">
-                                      {u.departments.map((d) => DEPARTMENTS[d.department]?.label || d.department).join('، ')}
-                                    </div>
-                                  )}
+                                  <div className="min-w-0">
+                                    <div className="truncate font-semibold text-default">{u.full_name}</div>
+                                    {u.departments && u.departments.length > 0 && (
+                                      <div className="text-[10px] text-muted truncate">
+                                        {u.departments.map((d) => DEPARTMENTS[d.department]?.label || d.department).join('، ')}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                              {isSelected && <Check className="h-3.5 w-3.5 text-action shrink-0" />}
-                            </button>
-                          )
-                        })
-                      )}
-                    </div>
-                  )}
+                              </button>
+                            )
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Add button */}
+                  <button
+                    type="button"
+                    onClick={handleAddMembers}
+                    disabled={selectedUserIds.length === 0 || adding}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-action px-4 py-2 text-xs font-bold text-white shadow-xs transition-all hover:bg-action-hover disabled:opacity-50 disabled:cursor-not-allowed shrink-0 active:scale-95 cursor-pointer"
+                  >
+                    {adding ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <UserPlus className="h-3.5 w-3.5" />
+                        <span>افزودن ({selectedUserIds.length}) عضو</span>
+                      </>
+                    )}
+                  </button>
                 </div>
 
-                {/* Add button */}
-                <button
-                  type="button"
-                  onClick={handleAddMember}
-                  disabled={!selectedUserId || adding}
-                  className="inline-flex items-center justify-center gap-1 rounded-xl bg-action px-3.5 py-2 text-xs font-bold text-white shadow-xs transition-all hover:bg-action-hover disabled:opacity-50 disabled:cursor-not-allowed shrink-0 active:scale-95"
-                >
-                  {adding ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <UserPlus className="h-3.5 w-3.5" />
-                      <span>افزودن عضو</span>
-                    </>
-                  )}
-                </button>
+                {/* Selected user chips */}
+                {selectedUsers.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {selectedUsers.map((u) => (
+                      <span
+                        key={u.id}
+                        className="inline-flex items-center gap-1 rounded-lg bg-surface border border-border px-2 py-0.5 text-[11px] font-semibold text-default"
+                      >
+                        <UserAvatar src={u.avatar_url} name={u.full_name} size="xs" shape="circle" className="h-4 w-4 text-[8px]" />
+                        <span>{u.full_name}</span>
+                        <button
+                          type="button"
+                          onClick={() => toggleUserSelection(u.id)}
+                          className="text-muted hover:text-rose-500 cursor-pointer p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
