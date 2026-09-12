@@ -9,6 +9,7 @@ import TaskCard from '@/components/TaskCard'
 import TaskDetailModal from '@/components/TaskDetailModal'
 import CreateTaskModal from '@/components/CreateTaskModal'
 import ProjectMembersModal from '@/components/ProjectMembersModal'
+import UserAvatar from '@/components/UserAvatar'
 import {
   DndContext, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors,
   type DragStartEvent, type DragEndEvent,
@@ -72,6 +73,7 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
         ...(profRes.data || { id: user.id, full_name: user.user_metadata?.full_name || 'کاربر', xp_total: 0, created_at: '' }),
         role: userRole,
         departments: userDeps,
+        avatar_url: profRes.data?.avatar_url || user.user_metadata?.avatar_url || null,
       }
 
       if (profRes.data) setProfile(fullProfile)
@@ -203,14 +205,16 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
           >
             {projectMembers.length > 0 ? (
               <div className="flex -space-x-1.5 rtl:space-x-reverse overflow-hidden items-center">
-                {projectMembers.slice(0, 3).map((m) => (
-                  <div key={m.id} className="h-5 w-5 rounded-full border border-surface bg-action/20 text-[9px] font-bold text-action flex items-center justify-center overflow-hidden">
-                    {m.avatar_url ? (
-                      <img src={m.avatar_url} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      m.full_name?.charAt(0)
-                    )}
-                  </div>
+                {projectMembers.slice(0, 4).map((m) => (
+                  <UserAvatar
+                    key={m.id}
+                    src={m.avatar_url}
+                    name={m.full_name}
+                    role={m.role}
+                    size="xs"
+                    shape="circle"
+                    className="border-2 border-surface"
+                  />
                 ))}
               </div>
             ) : (

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import { DEPARTMENTS } from '@/constants/departments'
 import type { Profile } from '@/utils/database.types'
+import UserAvatar from '@/components/UserAvatar'
 import {
   Users,
   UserPlus,
@@ -249,13 +250,12 @@ export default function ProjectMembersModal({
                     <div className="flex items-center gap-2 min-w-0">
                       {selectedUser ? (
                         <>
-                          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-surface-2 text-[10px] font-bold overflow-hidden">
-                            {selectedUser.avatar_url ? (
-                              <img src={selectedUser.avatar_url} alt="" className="h-full w-full object-cover" />
-                            ) : (
-                              selectedUser.full_name?.charAt(0)
-                            )}
-                          </div>
+                          <UserAvatar
+                            src={selectedUser.avatar_url}
+                            name={selectedUser.full_name}
+                            size="xs"
+                            shape="circle"
+                          />
                           <span className="truncate font-semibold">{selectedUser.full_name}</span>
                         </>
                       ) : (
@@ -302,13 +302,12 @@ export default function ProjectMembersModal({
                               }`}
                             >
                               <div className="flex items-center gap-2 min-w-0">
-                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-2 text-[11px] font-black overflow-hidden border border-border/60">
-                                  {u.avatar_url ? (
-                                    <img src={u.avatar_url} alt="" className="h-full w-full object-cover" />
-                                  ) : (
-                                    u.full_name?.charAt(0)
-                                  )}
-                                </div>
+                                  <UserAvatar
+                                    src={u.avatar_url}
+                                    name={u.full_name}
+                                    size="sm"
+                                    shape="circle"
+                                  />
                                 <div className="min-w-0">
                                   <div className="truncate font-semibold">{u.full_name}</div>
                                   {u.departments && u.departments.length > 0 && (
@@ -380,13 +379,13 @@ export default function ProjectMembersModal({
                       className="flex items-center justify-between gap-3 p-2.5 sm:p-3 transition-colors hover:bg-surface-2/40"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#59BBAF] to-[#202A5A] text-xs font-black text-white shadow-2xs overflow-hidden">
-                          {m.avatar_url ? (
-                            <img src={m.avatar_url} alt={m.full_name} className="h-full w-full object-cover" />
-                          ) : (
-                            m.full_name?.charAt(0) || 'ع'
-                          )}
-                        </div>
+                        <UserAvatar
+                          src={m.avatar_url}
+                          name={m.full_name}
+                          role={m.role}
+                          size="md"
+                          shape="rounded"
+                        />
 
                         <div className="min-w-0">
                           <h4 className="text-xs sm:text-sm font-bold text-default truncate">

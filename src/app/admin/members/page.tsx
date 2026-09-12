@@ -10,6 +10,7 @@ import MemberEditModal from '@/components/MemberEditModal'
 import MemberTasksOverviewTab from '@/components/MemberTasksOverviewTab'
 import type { MemberAssignmentItem } from '@/components/MemberTasksOverviewModal'
 import TaskDetailModal from '@/components/TaskDetailModal'
+import UserAvatar from '@/components/UserAvatar'
 import { formatToPersianDate, toPersianDigits } from '@/utils/jalaali'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import { DEPARTMENTS, DEPARTMENT_KEYS, getRoleInfo, type DepartmentKey, type DepartmentLevel } from '@/constants/departments'
@@ -729,14 +730,16 @@ export default function AdminMembersPage() {
                     <div className="flex items-start gap-3">
                       <div
                         onClick={() => setProfileModalUserId(m.id)}
-                        className={`relative flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center rounded-2xl text-base font-black text-white shadow-sm transition-transform hover:scale-105 overflow-hidden bg-gradient-to-br ${roleInfo.badgeGradient}`}
+                        className="cursor-pointer transition-transform hover:scale-105 shrink-0"
                         title="مشاهده کارنامه و پروفایل"
                       >
-                        {m.avatar_url ? (
-                          <img src={m.avatar_url} alt={m.full_name} className="h-full w-full object-cover" />
-                        ) : (
-                          <span>{m.full_name?.charAt(0) || '؟'}</span>
-                        )}
+                        <UserAvatar
+                          src={m.avatar_url}
+                          name={m.full_name}
+                          role={m.role}
+                          size="lg"
+                          shape="rounded"
+                        />
                       </div>
 
                       <div className="min-w-0 flex-1">

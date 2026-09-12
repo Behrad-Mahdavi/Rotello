@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
 import MemberProfileModal from '@/components/MemberProfileModal'
+import UserAvatar from '@/components/UserAvatar'
 import { DEPARTMENTS, type DepartmentKey, type DepartmentLevel } from '@/constants/departments'
 import type { Profile } from '@/utils/database.types'
 import {
@@ -281,12 +282,15 @@ export default function LeaderboardPage() {
                       </div>
 
                       <div className="pt-2 flex flex-col items-center w-full">
-                        <div className="relative mb-2 flex h-13 w-13 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-300 to-slate-500 text-white text-lg font-black shadow-sm ring-4 ring-slate-300/30 group-hover:scale-105 transition-transform overflow-hidden">
-                          {top2.avatar_url ? (
-                            <img src={top2.avatar_url} alt={top2.full_name} className="h-full w-full object-cover" />
-                          ) : (
-                            top2.full_name.charAt(0)
-                          )}
+                        <div className="relative mb-2 ring-4 ring-slate-300/30 rounded-2xl group-hover:scale-105 transition-transform">
+                          <UserAvatar
+                            src={top2.avatar_url}
+                            name={top2.full_name}
+                            role={top2.role}
+                            size="lg"
+                            shape="rounded"
+                            className="h-13 w-13 text-lg"
+                          />
                         </div>
                         <h3 className="text-sm sm:text-base font-black text-default group-hover:text-action transition-colors line-clamp-1">
                           {top2.full_name}
@@ -340,12 +344,15 @@ export default function LeaderboardPage() {
                     </div>
 
                     <div className="pt-2 flex flex-col items-center w-full">
-                      <div className="relative mb-2 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-[#F8A41D] to-yellow-600 text-white text-xl font-black shadow-md ring-4 ring-[#F8A41D]/30 group-hover:scale-105 transition-transform overflow-hidden">
-                        {top1.avatar_url ? (
-                          <img src={top1.avatar_url} alt={top1.full_name} className="h-full w-full object-cover" />
-                        ) : (
-                          top1.full_name.charAt(0)
-                        )}
+                      <div className="relative mb-2 ring-4 ring-[#F8A41D]/30 rounded-2xl group-hover:scale-105 transition-transform">
+                        <UserAvatar
+                          src={top1.avatar_url}
+                          name={top1.full_name}
+                          role={top1.role}
+                          size="xl"
+                          shape="rounded"
+                          className="h-16 w-16 text-xl shadow-md"
+                        />
                       </div>
                       <h3 className="text-base sm:text-lg font-black text-default group-hover:text-action transition-colors line-clamp-1">
                         {top1.full_name}
@@ -397,12 +404,15 @@ export default function LeaderboardPage() {
                       </div>
 
                       <div className="pt-2 flex flex-col items-center w-full">
-                        <div className="relative mb-2 flex h-13 w-13 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-600 to-amber-800 text-white text-lg font-black shadow-sm ring-4 ring-amber-700/30 group-hover:scale-105 transition-transform overflow-hidden">
-                          {top3.avatar_url ? (
-                            <img src={top3.avatar_url} alt={top3.full_name} className="h-full w-full object-cover" />
-                          ) : (
-                            top3.full_name.charAt(0)
-                          )}
+                        <div className="relative mb-2 ring-4 ring-amber-600/30 rounded-2xl group-hover:scale-105 transition-transform">
+                          <UserAvatar
+                            src={top3.avatar_url}
+                            name={top3.full_name}
+                            role={top3.role}
+                            size="lg"
+                            shape="rounded"
+                            className="h-13 w-13 text-lg"
+                          />
                         </div>
                         <h3 className="text-sm sm:text-base font-black text-default group-hover:text-action transition-colors line-clamp-1">
                           {top3.full_name}
@@ -455,13 +465,14 @@ export default function LeaderboardPage() {
                         className="flex flex-col items-center cursor-pointer active:scale-95 transition-transform"
                       >
                         <div className="relative mb-2 flex flex-col items-center">
-                          <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-400 to-slate-600 text-white font-black text-sm shadow-md ring-3 ring-slate-300 dark:ring-slate-600 overflow-hidden">
-                            {top2.avatar_url ? (
-                              <img src={top2.avatar_url} alt={top2.full_name} className="h-full w-full object-cover" />
-                            ) : (
-                              top2.full_name.charAt(0)
-                            )}
-                          </div>
+                          <UserAvatar
+                            src={top2.avatar_url}
+                            name={top2.full_name}
+                            role={top2.role}
+                            size="lg"
+                            shape="rounded"
+                            className="ring-3 ring-slate-300 dark:ring-slate-600 shadow-md"
+                          />
                           <span className="absolute -bottom-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600 px-2 py-0.2 text-[10px] font-black shadow-xs">
                             ۲
                           </span>
@@ -513,13 +524,14 @@ export default function LeaderboardPage() {
                       >
                         <div className="relative mb-2 flex flex-col items-center">
                           <Crown className="h-5 w-5 text-amber-500 animate-bounce mb-0.5" />
-                          <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white font-black text-base shadow-lg ring-4 ring-[#F8A41D]/50 overflow-hidden">
-                            {top1.avatar_url ? (
-                              <img src={top1.avatar_url} alt={top1.full_name} className="h-full w-full object-cover" />
-                            ) : (
-                              top1.full_name.charAt(0)
-                            )}
-                          </div>
+                          <UserAvatar
+                            src={top1.avatar_url}
+                            name={top1.full_name}
+                            role={top1.role}
+                            size="lg"
+                            shape="rounded"
+                            className="ring-4 ring-[#F8A41D]/50 shadow-lg"
+                          />
                           <span className="absolute -bottom-2 rounded-full bg-amber-500 text-white border-2 border-surface px-2 py-0.2 text-[10px] font-black shadow-xs">
                             ۱
                           </span>
@@ -570,13 +582,14 @@ export default function LeaderboardPage() {
                         className="flex flex-col items-center cursor-pointer active:scale-95 transition-transform"
                       >
                         <div className="relative mb-2 flex flex-col items-center">
-                          <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-600 to-amber-800 text-white font-black text-sm shadow-md ring-3 ring-amber-700/30 overflow-hidden">
-                            {top3.avatar_url ? (
-                              <img src={top3.avatar_url} alt={top3.full_name} className="h-full w-full object-cover" />
-                            ) : (
-                              top3.full_name.charAt(0)
-                            )}
-                          </div>
+                          <UserAvatar
+                            src={top3.avatar_url}
+                            name={top3.full_name}
+                            role={top3.role}
+                            size="lg"
+                            shape="rounded"
+                            className="ring-3 ring-amber-700/30 shadow-md"
+                          />
                           <span className="absolute -bottom-2 rounded-full bg-[#FEF6E8] dark:bg-[#57390A] text-amber-800 dark:text-amber-300 border border-amber-700/40 px-2 py-0.2 text-[10px] font-black shadow-xs">
                             ۳
                           </span>
@@ -807,15 +820,13 @@ export default function LeaderboardPage() {
                                 )}
                               </div>
 
-                              <div
-                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#59BBAF] to-[#202A5A] text-xs font-black text-white overflow-hidden"
-                              >
-                                {m.avatar_url ? (
-                                  <img src={m.avatar_url} alt={m.full_name} className="h-full w-full object-cover" />
-                                ) : (
-                                  m.full_name.charAt(0)
-                                )}
-                              </div>
+                              <UserAvatar
+                                src={m.avatar_url}
+                                name={m.full_name}
+                                role={m.role}
+                                size="md"
+                                shape="rounded"
+                              />
 
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5">

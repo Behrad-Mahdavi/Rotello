@@ -2,6 +2,28 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
 
+// Helper to remove any existing avatar files for a user from the 'avatars' bucket
+async function cleanOldAvatars(
+  adminClient: ReturnType<typeof createAdminClient>,
+  userId: string
+) {
+  try {
+    const { data: files } = await adminClient.storage.from('avatars').list('', {
+      search: userId,
+    })
+    if (files && files.length > 0) {
+      const pathsToRemove = files
+        .filter((f) => f.name.startsWith(userId))
+        .map((f) => f.name)
+      if (pathsToRemove.length > 0) {
+        await adminClient.storage.from('avatars').remove(pathsToRemove)
+      }
+    }
+  } catch (err) {
+    console.error('Error cleaning old avatars from storage:', err)
+  }
+}
+
 // Helper to upload base64 data to Supabase Storage bucket 'avatars'
 async function uploadBase64ToStorage(
   adminClient: ReturnType<typeof createAdminClient>,
@@ -18,7 +40,7 @@ async function uploadBase64ToStorage(
     const base64Data = matches[2]
     const buffer = Buffer.from(base64Data, 'base64')
     const ext = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg'
-    const filePath = `${userId}.${ext}`
+    const filePath = `${userId}-${Date.now()}.${ext}`
 
     // Ensure bucket exists
     try {
@@ -26,6 +48,9 @@ async function uploadBase64ToStorage(
     } catch {
       // Ignore if bucket already exists
     }
+
+    // Clean up older avatar files for this user
+    await cleanOldAvatars(adminClient, userId)
 
     const { error: uploadErr } = await adminClient.storage
       .from('avatars')
@@ -92,9 +117,12 @@ export async function POST(request: Request) {
     const adminClient = createAdminClient()
     let finalAvatarUrl: string | null = inputAvatarUrl
 
-    // If avatarUrl is a base64 string, upload to Supabase Storage and get short public URL!
-    // NEVER store base64 in user_metadata because it blows up JWT size > 14KB causing Vercel 494!
-    if (inputAvatarUrl && typeof inputAvatarUrl === 'string' && inputAvatarUrl.startsWith('data:image')) {
+    if (inputAvatarUrl === null) {
+      // Remove avatar
+      await cleanOldAvatars(adminClient, targetUserId)
+      finalAvatarUrl = null
+    } else if (typeof inputAvatarUrl === 'string' && inputAvatarUrl.startsWith('data:image')) {
+      // If avatarUrl is base64, upload to Supabase Storage and get short public URL!
       const storageUrl = await uploadBase64ToStorage(adminClient, targetUserId, inputAvatarUrl)
       if (storageUrl) {
         finalAvatarUrl = storageUrl

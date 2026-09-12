@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
 import LogoutButton from '@/components/LogoutButton'
 import ThemeToggle from '@/components/ThemeToggle'
+import UserAvatar from '@/components/UserAvatar'
 import { getCachedProfile, setCachedProfile } from '@/utils/userCache'
 import { createClient } from '@/utils/supabase/client'
 import { toJalaali, PERSIAN_MONTHS, toPersianDigits } from '@/utils/jalaali'
@@ -60,20 +61,19 @@ export default function AppHeader({ profile: propProfile }: AppHeaderProps) {
         // Fallback: fetch session profile if missing
         const fetchProfile = async () => {
           const supabase = createClient()
-          const { data } = await supabase.auth.getSession()
-          const session = data?.session
-          if (session?.user) {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
             const { data: profData } = await supabase
               .from('profiles')
               .select('*')
-              .eq('id', session.user.id)
+              .eq('id', user.id)
               .single()
             if (profData) {
               const p = {
                 ...profData,
-                role: session.user.user_metadata?.role || profData.role,
-                departments: session.user.user_metadata?.departments || profData.departments || [],
-                avatar_url: profData.avatar_url || session.user.user_metadata?.avatar_url || null,
+                role: user.user_metadata?.role || profData.role,
+                departments: user.user_metadata?.departments || profData.departments || [],
+                avatar_url: profData.avatar_url || user.user_metadata?.avatar_url || null,
               } as Profile
               setCurrentProfile(p)
               setCachedProfile(p)
@@ -188,17 +188,14 @@ export default function AppHeader({ profile: propProfile }: AppHeaderProps) {
               title="مشاهده پروفایل کاربری"
             >
               {/* Circular Avatar Photo */}
-              <div className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/80 bg-gradient-to-br from-[#59BBAF] to-[#202A5A] text-white text-[11px] font-black shadow-2xs">
-                {'avatar_url' in currentProfile && currentProfile.avatar_url ? (
-                  <img
-                    src={currentProfile.avatar_url}
-                    alt={currentProfile.full_name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span>{currentProfile.full_name ? currentProfile.full_name.charAt(0) : 'ک'}</span>
-                )}
-              </div>
+              <UserAvatar
+                src={'avatar_url' in currentProfile ? (currentProfile.avatar_url as string | null) : null}
+                name={currentProfile.full_name}
+                role={currentProfile.role}
+                size="base"
+                shape="circle"
+                priority
+              />
 
               <span className="hidden sm:inline font-bold">{currentProfile.full_name}</span>
               {currentProfile.role === 'member' && (

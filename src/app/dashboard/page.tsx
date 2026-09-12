@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AppHeader from '@/components/AppHeader'
 import MemberProfileModal from '@/components/MemberProfileModal'
+import UserAvatar from '@/components/UserAvatar'
 import { DEPARTMENTS, type DepartmentKey } from '@/constants/departments'
 import type { Profile, Task, Project } from '@/utils/database.types'
 import {
@@ -862,13 +863,14 @@ export default function DashboardPage() {
                         </span>
 
                         {/* Avatar */}
-                        <div className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#59BBAF] to-[#202A5A] text-[10px] sm:text-xs font-black text-white shadow-2xs overflow-hidden">
-                          {m.avatar_url ? (
-                            <img src={m.avatar_url} alt={m.full_name} className="h-full w-full object-cover" />
-                          ) : (
-                            m.full_name.charAt(0)
-                          )}
-                        </div>
+                        <UserAvatar
+                          src={m.avatar_url}
+                          name={m.full_name}
+                          role={m.role}
+                          size="base"
+                          shape="rounded"
+                          className="h-8 w-8"
+                        />
 
                         {/* Info */}
                         <div className="min-w-0 flex-1">

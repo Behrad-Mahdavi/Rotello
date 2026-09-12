@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client'
 
 import MemberProfileModal from './MemberProfileModal'
 import PersianDatePicker from './PersianDatePicker'
+import UserAvatar from './UserAvatar'
 import { formatToPersianDate } from '@/utils/jalaali'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import type { Task, Profile, Checklist, ChecklistItem, TaskReport } from '@/utils/database.types'
@@ -76,12 +77,18 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
         setAssignees(profsList)
       }
 
-      if (t?.project_id && profile.role === 'admin') {
+      if (t?.project_id) {
         try {
           const mRes = await fetch(`/api/projects/${t.project_id}/members`)
           if (mRes.ok) {
             const mData = await mRes.json()
-            setAllMembers(mData.members || [])
+            const projectMembers: Profile[] = mData.members || []
+            setAllMembers(projectMembers)
+            if (aa) {
+              const userIds = aa.map((a: { user_id: string }) => a.user_id)
+              const memberMap = new Map<string, Profile>(projectMembers.map((m) => [m.id, m]))
+              setAssignees(userIds.map((uid: string) => memberMap.get(uid) || { id: uid, full_name: 'کاربر', role: 'member', xp_total: 0, created_at: '' }))
+            }
           }
         } catch (e) {
           console.error('Error fetching project members for task detail:', e)
@@ -369,7 +376,13 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
                     {allMembers.filter((m) => editAssigneeIds.includes(m.id)).map((m) => (
                       <span key={m.id}
                         className="inline-flex items-center gap-1.5 rounded-full bg-action-subtle px-2.5 py-1 text-xs font-medium text-action">
-                        <span className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white bg-gradient-to-br ${m.role === 'admin' ? 'from-violet-500 to-purple-600' : 'from-emerald-500 to-teal-600'}`}>{m.full_name.charAt(0)}</span>
+                        <UserAvatar
+                          src={m.avatar_url}
+                          name={m.full_name}
+                          role={m.role}
+                          size="xs"
+                          shape="circle"
+                        />
                         {m.full_name}
                         <button type="button" onClick={() => setEditAssigneeIds((prev) => prev.filter((id) => id !== m.id))}
                           className="text-action/60 transition-colors hover:text-danger" aria-label="حذف">
@@ -392,7 +405,13 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
                         allMembers.filter((m) => !editAssigneeIds.includes(m.id) && m.full_name.toLowerCase().includes(memberSearch.toLowerCase())).map((m) => (
                           <button key={m.id} type="button" onClick={() => setEditAssigneeIds((prev) => [...prev, m.id])}
                             className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-default transition-colors hover:bg-surface">
-                            <span className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white bg-gradient-to-br ${m.role === 'admin' ? 'from-violet-500 to-purple-600' : 'from-emerald-500 to-teal-600'}`}>{m.full_name.charAt(0)}</span>
+                            <UserAvatar
+                              src={m.avatar_url}
+                              name={m.full_name}
+                              role={m.role}
+                              size="sm"
+                              shape="circle"
+                            />
                             {m.full_name}
                           </button>
                         ))
@@ -435,9 +454,13 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
                     className="inline-flex items-center gap-1.5 rounded-full bg-action-subtle px-2.5 py-1 text-xs font-medium text-action transition-all hover:bg-action/20 active:scale-95 cursor-pointer"
                     title={`مشاهده کارنامه و تسک‌های انجام‌شده ${a.full_name}`}
                   >
-                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-action text-[9px] font-bold text-white">
-                      {a.full_name.charAt(0)}
-                    </span>
+                    <UserAvatar
+                      src={a.avatar_url}
+                      name={a.full_name}
+                      role={a.role}
+                      size="xs"
+                      shape="circle"
+                    />
                     <span>{a.full_name}</span>
                   </button>
                 ))}

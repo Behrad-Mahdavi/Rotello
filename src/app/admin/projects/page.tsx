@@ -38,7 +38,11 @@ export default function AdminProjectsPage() {
       if (!user) { router.push('/login'); return }
       const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       if (prof?.role !== 'admin') { router.push('/projects'); return }
-      setProfile(prof)
+      setProfile({
+        ...(prof || { id: user.id, full_name: user.user_metadata?.full_name || 'مدیر', xp_total: 0, created_at: '' }),
+        role: 'admin',
+        avatar_url: prof?.avatar_url || user.user_metadata?.avatar_url || null,
+      })
       const [projRes, tasksRes, mapRes] = await Promise.all([
         supabase.from('projects').select('*').order('created_at', { ascending: false }),
         supabase.from('tasks').select('project_id, xp_value, title'),

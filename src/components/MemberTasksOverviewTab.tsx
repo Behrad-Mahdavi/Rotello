@@ -23,6 +23,7 @@ import { toPersianDigits, formatToPersianDate } from '@/utils/jalaali'
 import { DEPARTMENTS, type DepartmentKey } from '@/constants/departments'
 import type { Profile } from '@/utils/database.types'
 import type { MemberAssignmentItem } from './MemberTasksOverviewModal'
+import UserAvatar from './UserAvatar'
 
 interface MemberTasksOverviewTabProps {
   members: Profile[]
@@ -392,13 +393,13 @@ export default function MemberTasksOverviewTab({
                 <div className="p-3.5 sm:p-4 bg-surface flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/70">
                   <div className="flex items-center gap-3 min-w-0">
                     {/* Avatar */}
-                    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#59BBAF] to-[#202A5A] text-white text-xs font-black shadow-xs overflow-hidden border border-border/80">
-                      {m.avatar_url ? (
-                        <img src={m.avatar_url} alt={m.full_name} className="h-full w-full object-cover" />
-                      ) : (
-                        <span>{m.full_name?.charAt(0) || 'ک'}</span>
-                      )}
-                    </div>
+                    <UserAvatar
+                      src={m.avatar_url}
+                      name={m.full_name}
+                      role={m.role}
+                      size="md"
+                      shape="rounded"
+                    />
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">

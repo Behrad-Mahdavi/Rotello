@@ -33,9 +33,9 @@ export async function proxy(request: NextRequest) {
 
   function createRedirect(url: URL) {
     const redirectRes = NextResponse.redirect(url)
-    // Copy cookies to the redirect response so tokens are not lost
+    // Copy cookies to the redirect response with their options preserved
     supabaseResponse.cookies.getAll().forEach((c) => {
-      redirectRes.cookies.set(c.name, c.value)
+      redirectRes.cookies.set(c)
     })
     return redirectRes
   }

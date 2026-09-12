@@ -54,6 +54,7 @@ export default function ProjectsListPage() {
         ...(profRes.data || { id: user.id, full_name: user.user_metadata?.full_name || 'کاربر', xp_total: 0, created_at: '' }),
         role: userRole,
         departments: userDeps,
+        avatar_url: profRes.data?.avatar_url || user.user_metadata?.avatar_url || null,
       }
 
       setProfile(fullProfile)
