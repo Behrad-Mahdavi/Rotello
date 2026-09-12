@@ -447,7 +447,7 @@ export default function LeaderboardPage() {
 
                 {/* Mobile Olympic-Style Podium */}
                 <div className="sm:hidden pt-6 pb-2">
-                  <div className="grid grid-cols-3 items-end gap-2 px-1">
+                  <div className="grid grid-cols-3 items-end gap-1.5 px-0.5">
                     {/* Rank 2 (Silver) - Right column in RTL */}
                     {top2 ? (
                       <div
@@ -467,18 +467,38 @@ export default function LeaderboardPage() {
                           </span>
                         </div>
 
-                        <span className="text-xs font-black text-default text-center truncate max-w-full mt-1.5">
-                          {top2.full_name.split(' ')[0]}
+                        {/* Full Name */}
+                        <span className="text-[11px] font-black text-default text-center leading-tight line-clamp-2 px-1 mt-1">
+                          {top2.full_name}
                         </span>
-                        <div className="flex items-center gap-0.5 text-[11px] font-extrabold text-[#F8A41D] mt-0.5">
+
+                        {/* Department & Level */}
+                        <div className="mt-1 flex flex-wrap items-center justify-center gap-0.5 max-w-full">
+                          {top2.departments && top2.departments.length > 0 ? (
+                            top2.departments.slice(0, 1).map((d) => (
+                              <span
+                                key={d.department}
+                                className={`inline-flex items-center gap-0.5 rounded px-1 py-0.2 text-[9px] font-bold ${
+                                  DEPARTMENTS[d.department]?.badgeClass || 'bg-surface-2 text-muted'
+                                }`}
+                              >
+                                <span>{DEPARTMENTS[d.department]?.label || d.department}</span>
+                                <span className="opacity-85 font-mono">({d.level})</span>
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[9px] text-muted/70 font-medium">عمومی</span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-0.5 text-[11px] font-extrabold text-[#F8A41D] mt-1">
                           <Zap className="h-3 w-3 text-[#F8A41D] shrink-0" />
                           <span>{top2.xp_total.toLocaleString('fa-IR')}</span>
                         </div>
 
                         {/* Podium Step 2 */}
                         <div className="w-full mt-2 h-18 rounded-t-xl bg-gradient-to-t from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-700 border-t-2 border-x-2 border-slate-300 dark:border-slate-600 flex flex-col items-center justify-center shadow-xs">
-                          <span className="text-base font-black text-slate-500 dark:text-slate-400">2</span>
-                          <span className="text-[9px] font-bold text-slate-600 dark:text-slate-400">نقره</span>
+                          <span className="text-xl font-black text-slate-600 dark:text-slate-300">۲</span>
                         </div>
                       </div>
                     ) : (
@@ -505,18 +525,38 @@ export default function LeaderboardPage() {
                           </span>
                         </div>
 
-                        <span className="text-xs font-black text-default text-center truncate max-w-full mt-1.5">
-                          {top1.full_name.split(' ')[0]}
+                        {/* Full Name */}
+                        <span className="text-xs font-black text-default text-center leading-tight line-clamp-2 px-1 mt-1">
+                          {top1.full_name}
                         </span>
-                        <div className="flex items-center gap-0.5 text-xs font-black text-[#F8A41D] mt-0.5">
+
+                        {/* Department & Level */}
+                        <div className="mt-1 flex flex-wrap items-center justify-center gap-0.5 max-w-full">
+                          {top1.departments && top1.departments.length > 0 ? (
+                            top1.departments.slice(0, 1).map((d) => (
+                              <span
+                                key={d.department}
+                                className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.2 text-[9px] font-bold ${
+                                  DEPARTMENTS[d.department]?.badgeClass || 'bg-surface-2 text-muted'
+                                }`}
+                              >
+                                <span>{DEPARTMENTS[d.department]?.label || d.department}</span>
+                                <span className="opacity-85 font-mono">({d.level})</span>
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[9px] text-muted/70 font-medium">عمومی</span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-0.5 text-xs font-black text-[#F8A41D] mt-1">
                           <Zap className="h-3.5 w-3.5 text-[#F8A41D] shrink-0" />
                           <span>{top1.xp_total.toLocaleString('fa-IR')}</span>
                         </div>
 
                         {/* Podium Step 1 */}
                         <div className="w-full mt-2 h-24 rounded-t-xl bg-gradient-to-t from-amber-500/20 to-amber-500/10 dark:from-amber-500/30 dark:to-amber-500/20 border-t-2 border-x-2 border-[#F8A41D] flex flex-col items-center justify-center shadow-xs">
-                          <span className="text-xl font-black text-[#F8A41D]">1</span>
-                          <span className="text-[10px] font-black text-[#F8A41D]">طلا</span>
+                          <span className="text-2xl font-black text-[#F8A41D]">۱</span>
                         </div>
                       </div>
                     ) : (
@@ -542,18 +582,38 @@ export default function LeaderboardPage() {
                           </span>
                         </div>
 
-                        <span className="text-xs font-black text-default text-center truncate max-w-full mt-1.5">
-                          {top3.full_name.split(' ')[0]}
+                        {/* Full Name */}
+                        <span className="text-[11px] font-black text-default text-center leading-tight line-clamp-2 px-1 mt-1">
+                          {top3.full_name}
                         </span>
-                        <div className="flex items-center gap-0.5 text-[11px] font-extrabold text-[#F8A41D] mt-0.5">
+
+                        {/* Department & Level */}
+                        <div className="mt-1 flex flex-wrap items-center justify-center gap-0.5 max-w-full">
+                          {top3.departments && top3.departments.length > 0 ? (
+                            top3.departments.slice(0, 1).map((d) => (
+                              <span
+                                key={d.department}
+                                className={`inline-flex items-center gap-0.5 rounded px-1 py-0.2 text-[9px] font-bold ${
+                                  DEPARTMENTS[d.department]?.badgeClass || 'bg-surface-2 text-muted'
+                                }`}
+                              >
+                                <span>{DEPARTMENTS[d.department]?.label || d.department}</span>
+                                <span className="opacity-85 font-mono">({d.level})</span>
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-[9px] text-muted/70 font-medium">عمومی</span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-0.5 text-[11px] font-extrabold text-[#F8A41D] mt-1">
                           <Zap className="h-3 w-3 text-[#F8A41D] shrink-0" />
                           <span>{top3.xp_total.toLocaleString('fa-IR')}</span>
                         </div>
 
                         {/* Podium Step 3 */}
                         <div className="w-full mt-2 h-14 rounded-t-xl bg-gradient-to-t from-amber-900/15 to-amber-800/10 dark:from-amber-950 dark:to-amber-900/30 border-t-2 border-x-2 border-amber-700/40 flex flex-col items-center justify-center shadow-xs">
-                          <span className="text-sm font-black text-amber-800 dark:text-amber-400">3</span>
-                          <span className="text-[9px] font-bold text-amber-800 dark:text-amber-400">برنز</span>
+                          <span className="text-lg font-black text-amber-800 dark:text-amber-400">۳</span>
                         </div>
                       </div>
                     ) : (
