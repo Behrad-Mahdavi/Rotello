@@ -22,21 +22,32 @@ export async function GET() {
       return NextResponse.json({ error: 'Only admins can access this resource' }, { status: 403 })
     }
 
-    const adminClient = createAdminClient()
+    let profilesData: any[] = []
+    let authUsers: any[] = []
 
-    // Fetch both profiles from DB and auth users from Supabase Auth
-    const [profilesRes, usersRes] = await Promise.all([
-      adminClient.from('profiles').select('*').order('created_at', { ascending: false }),
-      adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 }),
-    ])
+    try {
+      const adminClient = createAdminClient()
+      const [profilesRes, usersRes] = await Promise.all([
+        adminClient.from('profiles').select('*').order('created_at', { ascending: false }),
+        adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 }).catch(() => ({ data: { users: [] } })),
+      ])
 
-    if (profilesRes.error) {
-      return NextResponse.json({ error: profilesRes.error.message }, { status: 500 })
+      if (profilesRes.data) {
+        profilesData = profilesRes.data
+      }
+      if (usersRes.data?.users) {
+        authUsers = usersRes.data.users
+      }
+    } catch (adminErr) {
+      console.warn('Admin client fallback to standard supabase client:', adminErr)
+      // Fallback to standard client
+      const { data } = await supabase.from('profiles').select('*').order('created_at', { ascending: false })
+      if (data) profilesData = data
     }
 
     const authUsersMap = new Map<string, { email?: string; role?: Role; departments?: MemberDepartment[] }>()
-    if (usersRes.data?.users) {
-      for (const u of usersRes.data.users) {
+    if (authUsers.length > 0) {
+      for (const u of authUsers) {
         authUsersMap.set(u.id, {
           email: u.email,
           role: (u.user_metadata?.role as Role) || undefined,
@@ -45,7 +56,7 @@ export async function GET() {
       }
     }
 
-    const enrichedMembers = (profilesRes.data || []).map((p) => {
+    const enrichedMembers = profilesData.map((p) => {
       const authInfo = authUsersMap.get(p.id)
       // Prioritize auth metadata for role if DB check constraint hasn't been updated yet
       const role: Role = (authInfo?.role || p.role || 'member') as Role

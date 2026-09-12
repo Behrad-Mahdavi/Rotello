@@ -68,8 +68,10 @@ export default function AdminMembersPage() {
 
       const [profRes, membersRes, assignRes] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
-        fetch('/api/admin/members').then((r) => r.json()),
-        supabase.from('task_assignees').select('user_id, tasks(id, title, status, deadline, xp_value, priority, project_id, projects(name))'),
+        fetch('/api/admin/members')
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
+        supabase.from('task_assignees').select('user_id, tasks(id, title, status, deadline, xp_value, priority, project_id, projects(name))').catch(() => ({ data: [] })),
       ])
 
       const prof = profRes.data
@@ -87,7 +89,7 @@ export default function AdminMembersPage() {
         if (data) setMembers(data)
       }
 
-      if (assignRes.data) setAssignments(assignRes.data as unknown as MemberAssignment[])
+      if (assignRes?.data) setAssignments(assignRes.data as unknown as MemberAssignment[])
     } catch (err) {
       console.error('Error loading members:', err)
     } finally {
@@ -101,8 +103,8 @@ export default function AdminMembersPage() {
 
   async function reload() {
     try {
-      const res = await fetch('/api/admin/members')
-      const data = await res.json()
+      const res = await fetch('/api/admin/members').catch(() => null)
+      const data = res && res.ok ? await res.json().catch(() => null) : null
       if (data?.members) {
         setMembers(data.members)
       } else {

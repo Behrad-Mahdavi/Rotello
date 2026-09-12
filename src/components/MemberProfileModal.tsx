@@ -112,8 +112,30 @@ export default function MemberProfileModal({
   // Sub-modal for admin reward / penalty
   const [xpModalOpen, setXpModalOpen] = useState(false)
   const [xpModalTab, setXpModalTab] = useState<'reward' | 'penalty'>('reward')
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   const supabase = createClient()
+
+  useEffect(() => {
+    const cached = getCachedProfile()
+    if (cached) {
+      if (cached.role === 'admin') setSessionAdmin(true)
+      if (cached.id) setSessionUserId(cached.id)
+    }
+    async function checkSession() {
+      try {
+        const { data } = await supabase.auth.getSession()
+        const u = data?.session?.user
+        if (u) {
+          setSessionUserId(u.id)
+          if (u.user_metadata?.role === 'admin') setSessionAdmin(true)
+        }
+      } catch {
+        // silent fallback
+      }
+    }
+    checkSession()
+  }, [])
 
   useEffect(() => {
     if (!isOpen || !userId) {
@@ -218,34 +240,12 @@ export default function MemberProfileModal({
       })
   }
 
-  useEffect(() => {
-    const cached = getCachedProfile()
-    if (cached) {
-      if (cached.role === 'admin') setSessionAdmin(true)
-      if (cached.id) setSessionUserId(cached.id)
-    }
-    async function checkSession() {
-      try {
-        const { data } = await supabase.auth.getSession()
-        const u = data?.session?.user
-        if (u) {
-          setSessionUserId(u.id)
-          if (u.user_metadata?.role === 'admin') setSessionAdmin(true)
-        }
-      } catch {
-        // silent fallback
-      }
-    }
-    checkSession()
-  }, [])
-
   const isUserAdmin = Boolean(
     isAdmin ||
     sessionAdmin ||
     currentProfile?.role === 'admin'
   )
 
-  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const canEditAvatar = Boolean(
     profile && (
       isUserAdmin ||
