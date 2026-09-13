@@ -8,6 +8,7 @@ import AppHeader from '@/components/AppHeader'
 import MemberProfileModal from '@/components/MemberProfileModal'
 import UserAvatar from '@/components/UserAvatar'
 import { DEPARTMENTS, type DepartmentKey } from '@/constants/departments'
+import { PROJECT_COLORS, extractProjectColorKey } from '@/constants/projectColors'
 import type { Profile, Task, Project } from '@/utils/database.types'
 import {
   Crown,
@@ -56,6 +57,11 @@ const PROJECT_COLOR_PALETTES = [
 ]
 
 function getProjectColor(project: Project, index: number) {
+  const chosen = extractProjectColorKey(project.description)
+  if (chosen && chosen in PROJECT_COLORS) {
+    const c = PROJECT_COLORS[chosen]
+    return { gradient: c.badge, text: c.bgLight, dot: c.dot }
+  }
   if (project.department === 'engineers') {
     return { gradient: 'from-emerald-500 to-teal-600', text: 'text-emerald-500 dark:text-emerald-400', dot: '#10b981' }
   }

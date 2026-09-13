@@ -138,11 +138,16 @@ export default function AppHeader({ profile: propProfile }: AppHeaderProps) {
             />
           </div>
           <div className="flex flex-col items-start justify-center">
-            <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-default group-hover:text-action transition-colors leading-tight">
-              روتلو
-            </h1>
-            <span className="inline-flex items-center rounded-full badge-club px-2 py-0.5 text-[9px] sm:text-[10px] font-black tracking-wide transition-all mt-0.5">
-              باشگاه کسب‌وکار
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <h1 className="text-sm sm:text-base font-black tracking-tight text-default group-hover:text-action transition-colors leading-none">
+                روتلو
+              </h1>
+              <span className="inline-flex items-center rounded-full badge-club px-2 py-0.5 text-[9px] sm:text-[10px] font-black tracking-wide shadow-2xs">
+                باشگاه کسب‌وکار
+              </span>
+            </div>
+            <span className="text-[10px] sm:text-[11px] font-medium text-muted tracking-tight mt-0.5">
+              مدیریت پروژه‌ها و کارها
             </span>
           </div>
         </div>

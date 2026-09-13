@@ -8,11 +8,18 @@ import PersianDatePicker from '@/components/PersianDatePicker'
 import { formatToPersianDate } from '@/utils/jalaali'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import { DEPARTMENTS, DEPARTMENT_KEYS, type DepartmentKey } from '@/constants/departments'
+import {
+  PROJECT_COLORS,
+  PROJECT_COLOR_KEYS,
+  type ProjectColorKey,
+  getProjectColor,
+  cleanProjectDescription,
+} from '@/constants/projectColors'
 import type { Project, Profile } from '@/utils/database.types'
 import EditProjectModal from '@/components/EditProjectModal'
 import DeleteProjectModal from '@/components/DeleteProjectModal'
 import ProjectMembersModal from '@/components/ProjectMembersModal'
-import { Zap, Users } from 'lucide-react'
+import { Zap, Users, Globe, Building2, Check, Loader2, Palette } from 'lucide-react'
 
 export default function AdminProjectsPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -27,11 +34,18 @@ export default function AdminProjectsPage() {
   const [description, setDescription] = useState('')
   const [deadline, setDeadline] = useState('')
   const [departments, setDepartments] = useState<DepartmentKey[]>([])
+  const [color, setColor] = useState<ProjectColorKey>('emerald')
   const [error, setError] = useState('')
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null)
   const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null)
+  const [navigatingProjectId, setNavigatingProjectId] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+
+  const handleOpenProject = (projectId: string) => {
+    setNavigatingProjectId(projectId)
+    router.push(`/projects/${projectId}/board`)
+  }
 
   useEffect(() => {
     async function load() {
@@ -95,9 +109,17 @@ export default function AdminProjectsPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setError('Not authenticated'); setLoading(false); return }
 
+    let finalDesc = description.trim()
+    if (color) {
+      finalDesc = finalDesc ? `${finalDesc} [COLOR:${color}]` : `[COLOR:${color}]`
+    }
+    if (departments.length > 0) {
+      finalDesc = `${finalDesc} [DEPS:${departments.join(',')}]`
+    }
+
     const insertData: Record<string, unknown> = {
       name,
-      description: description || null,
+      description: finalDesc || null,
       deadline: deadline || null,
       created_by: user.id,
       department: departments[0] || null,
@@ -125,7 +147,7 @@ export default function AdminProjectsPage() {
       }
     }
 
-    setName(''); setDescription(''); setDeadline(''); setDepartments([]); setShowForm(false)
+    setName(''); setDescription(''); setDeadline(''); setDepartments([]); setColor('emerald'); setShowForm(false)
     await reload()
     setLoading(false)
   }
@@ -178,9 +200,92 @@ export default function AdminProjectsPage() {
                   <PersianDatePicker value={deadline} onChange={setDeadline} />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-subtle mb-1.5">دپارتمان‌های مربوطه (امکان انتخاب همزمان چند دپارتمان)</label>
-                <div className="grid grid-cols-3 gap-2">
+
+              {/* Project Accent Color */}
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Palette className="w-4 h-4 text-action" />
+                    <label className="text-xs font-semibold text-subtle">رنگ شاخص پروژه</label>
+                  </div>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border border-border bg-surface-2 text-default flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: PROJECT_COLORS[color].hex }} />
+                    <span>{PROJECT_COLORS[color].label}</span>
+                  </span>
+                </div>
+                <div className="grid grid-cols-6 gap-2 pt-0.5">
+                  {PROJECT_COLOR_KEYS.map((key) => {
+                    const conf = PROJECT_COLORS[key]
+                    const isSelected = color === key
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setColor(key)}
+                        title={conf.label}
+                        className={`flex flex-col items-center justify-center p-1.5 rounded-xl border transition-all cursor-pointer touch-manipulation min-h-[44px] ${
+                          isSelected
+                            ? `border-default/40 bg-surface ring-2 ring-offset-2 ${conf.ring} scale-105 shadow-xs`
+                            : 'border-border bg-surface-2/60 hover:border-border-strong hover:bg-surface hover:scale-[1.02]'
+                        }`}
+                      >
+                        <div className={`h-5 w-5 rounded-lg bg-gradient-to-br ${conf.badge} flex items-center justify-center text-white shadow-2xs`}>
+                          {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                        </div>
+                        <span className="text-[9px] font-medium text-muted mt-0.5 truncate max-w-full">
+                          {conf.label.split(' ')[0]}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              {/* Department Selection Section */}
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-action" />
+                    <label className="text-xs font-semibold text-subtle">دپارتمان‌های مسئول پروژه</label>
+                  </div>
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border transition-colors ${
+                    departments.length === 0
+                      ? 'border-border bg-surface-2 text-muted'
+                      : 'border-action/40 bg-action/10 text-action'
+                  }`}>
+                    {departments.length === 0 ? 'پروژه عمومی' : `${departments.length} از ۳ دپارتمان`}
+                  </span>
+                </div>
+
+                {/* General / Public Option */}
+                <button
+                  type="button"
+                  onClick={() => setDepartments([])}
+                  className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-right transition-all cursor-pointer touch-manipulation min-h-[46px] ${
+                    departments.length === 0
+                      ? 'border-action/60 bg-action/10 text-default ring-2 ring-offset-1 ring-action/40 shadow-xs'
+                      : 'border-border bg-surface-2/50 text-muted hover:border-border-strong hover:text-default'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border transition-all ${
+                      departments.length === 0 ? 'border-action/40 bg-action text-white' : 'border-border bg-surface text-muted'
+                    }`}>
+                      <Globe className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-default">پروژه عمومی (همه دپارتمان‌ها)</span>
+                      <p className="text-[10px] text-muted truncate mt-0.5">دسترسی آزاد برای تمام اعضا بدون تفکیک دپارتمانی</p>
+                    </div>
+                  </div>
+                  <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border mr-2 ${
+                    departments.length === 0 ? 'border-action bg-action text-white' : 'border-border bg-surface'
+                  }`}>
+                    {departments.length === 0 && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                  </div>
+                </button>
+
+                {/* Specific Department Toggle Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
                   {DEPARTMENT_KEYS.map((key) => {
                     const dep = DEPARTMENTS[key]
                     const isSelected = departments.includes(key)
@@ -193,24 +298,28 @@ export default function AdminProjectsPage() {
                             prev.includes(key) ? prev.filter((d) => d !== key) : [...prev, key]
                           )
                         }}
-                        className={`flex flex-col items-center justify-center p-2 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        className={`flex items-center sm:flex-col justify-between sm:justify-center p-2.5 sm:p-2 rounded-xl border text-right sm:text-center transition-all cursor-pointer touch-manipulation min-h-[46px] ${
                           isSelected
-                            ? `${dep.badgeClass} ring-2 ring-offset-1 ring-action/50 shadow-xs scale-[1.02]`
+                            ? `${dep.badgeClass} ring-2 ring-offset-1 ring-action/50 shadow-xs scale-[1.01]`
                             : 'border-border bg-surface-2/60 text-muted hover:border-border-strong hover:text-default'
                         }`}
                       >
-                        <div className="flex items-center gap-1.5">
-                          <span className={`h-2 w-2 rounded-full ${isSelected ? 'bg-current' : 'bg-muted/40'}`} />
-                          <span>{dep.label}</span>
+                        <div className="flex items-center sm:flex-col gap-2 sm:gap-1 min-w-0">
+                          <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: dep.dotColor }} />
+                          <div className="min-w-0">
+                            <span className="block text-xs font-bold truncate">{dep.label}</span>
+                            <span className="block text-[10px] font-normal opacity-75 truncate">{dep.shortLabel}</span>
+                          </div>
                         </div>
-                        <span className="text-[10px] font-normal opacity-80 mt-0.5">{dep.shortLabel}</span>
+                        <div className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-md border sm:mt-1 transition-all ${
+                          isSelected ? 'border-current bg-current/20 text-current' : 'border-border bg-surface text-transparent'
+                        }`}>
+                          <Check className="h-2.5 w-2.5 stroke-[3]" />
+                        </div>
                       </button>
                     )
                   })}
                 </div>
-                {departments.length === 0 && (
-                  <p className="text-[11px] text-muted mt-1.5">بدون دپارتمان خاص (پروژه عمومی برای همه)</p>
-                )}
               </div>
               {error && <div className="rounded-lg bg-danger-subtle px-3 py-2 text-sm text-danger">{error}</div>}
               <button type="submit" disabled={loading}
@@ -223,25 +332,27 @@ export default function AdminProjectsPage() {
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {projects.map((project, i) => {
-            const gradients = [
-              'from-emerald-500 to-teal-600',
-              'from-rose-500 to-pink-600',
-              'from-amber-500 to-orange-600',
-              'from-violet-500 to-purple-600',
-              'from-teal-500 to-cyan-600',
-              'from-orange-500 to-red-600',
-            ]
-            const g = gradients[i % gradients.length]
+            const colorConfig = getProjectColor(project.description, i)
             const assignedDepts: DepartmentKey[] = projectDepartmentsMap[project.id] ||
               (project.department && (project.department in DEPARTMENTS) ? [project.department as DepartmentKey] : [])
 
             return (
-              <div key={project.id} className="group relative overflow-hidden rounded-2xl border border-border bg-surface pt-0 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg hover:border-border-subtle">
-                <div className={`h-2 w-full bg-gradient-to-r ${g}`} />
+              <div
+                key={project.id}
+                onClick={() => handleOpenProject(project.id)}
+                onTouchStart={() => router.prefetch(`/projects/${project.id}/board`)}
+                onMouseEnter={() => router.prefetch(`/projects/${project.id}/board`)}
+                className={`group relative overflow-hidden rounded-2xl border bg-surface pt-0 transition-all duration-100 touch-manipulation select-none cursor-pointer ${
+                  navigatingProjectId === project.id
+                    ? 'border-action ring-2 ring-action ring-offset-2 bg-action/[0.03] scale-[0.99] shadow-none'
+                    : 'border-border shadow-[2.75px_2.75px_0_#202A5A] dark:shadow-[2.75px_2.75px_0_#59BBAF] hover:-translate-y-1 hover:shadow-[3.75px_3.75px_0_#202A5A] dark:hover:shadow-[3.75px_3.75px_0_#59BBAF] hover:border-action/50 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none'
+                }`}
+              >
+                <div className={`h-2 w-full bg-gradient-to-r ${colorConfig.bar}`} />
                 <div className="p-5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${g} text-white text-base font-bold shadow-sm`}>
+                      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${colorConfig.badge} text-white text-base font-bold shadow-sm`}>
                         {project.name.charAt(0)}
                       </span>
                       <div className="min-w-0">
@@ -268,7 +379,7 @@ export default function AdminProjectsPage() {
                     )}
                   </div>
                   <p className="mt-3 line-clamp-2 min-h-[2.5rem] text-xs text-muted sm:text-sm leading-relaxed">
-                    {(project.description || '').replace(/\s*\[DEPS:[^\]]*\]/g, '').trim() || 'بدون توضیحات'}
+                    {cleanProjectDescription(project.description) || 'بدون توضیحات'}
                   </p>
                   {project.deadline && (
                     <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted">
@@ -280,9 +391,21 @@ export default function AdminProjectsPage() {
                   )}
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => router.push(`/projects/${project.id}/board`)}
-                        className="rounded-xl bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-400 transition-colors hover:bg-emerald-600 hover:text-white cursor-pointer active:scale-95 shadow-sm">
-                        مشاهده بورد ←
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleOpenProject(project.id)
+                        }}
+                        className="rounded-xl bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-500 transition-colors hover:bg-emerald-600 hover:text-white cursor-pointer active:scale-95 shadow-sm flex items-center gap-1.5"
+                      >
+                        {navigatingProjectId === project.id ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-500" />
+                            <span>ورود...</span>
+                          </>
+                        ) : (
+                          <span>مشاهده بورد ←</span>
+                        )}
                       </button>
                       <span className="inline-flex items-center gap-1 rounded-lg border border-[#F8A41D]/30 bg-[#FEF6E8] dark:bg-[#57390A]/40 px-2 py-1 text-[11px] font-black text-[#BA7B16] dark:text-[#fde047]">
                         <Zap className="h-3 w-3 text-[#F8A41D]" />
@@ -291,7 +414,10 @@ export default function AdminProjectsPage() {
                     </div>
                     <div className="flex items-center gap-1.5">
                       <button
-                        onClick={() => setProjectForMembers(project)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setProjectForMembers(project)
+                        }}
                         className="rounded-xl bg-action/10 hover:bg-action hover:text-white border border-action/30 px-2.5 py-1.5 text-xs font-semibold text-action transition-colors cursor-pointer active:scale-95 flex items-center gap-1"
                         title="مدیریت اعضای پروژه"
                       >
@@ -299,14 +425,20 @@ export default function AdminProjectsPage() {
                         <span>اعضا ({projectMembersMap[project.id]?.length || 0})</span>
                       </button>
                       <button
-                        onClick={() => setProjectToEdit(project)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setProjectToEdit(project)
+                        }}
                         className="rounded-xl bg-surface-2 hover:bg-accent/15 hover:text-accent border border-border px-2.5 py-1.5 text-xs font-medium text-default transition-colors cursor-pointer active:scale-95"
                         title="ویرایش پروژه"
                       >
                         ویرایش
                       </button>
                       <button
-                        onClick={() => setProjectToDelete({ id: project.id, name: project.name })}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setProjectToDelete({ id: project.id, name: project.name })
+                        }}
                         className="rounded-xl bg-rose-500/10 px-2.5 py-1.5 text-xs font-medium text-rose-400 transition-colors hover:bg-rose-600 hover:text-white cursor-pointer active:scale-95"
                         title="حذف پروژه"
                       >
