@@ -3,10 +3,21 @@
 import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import PersianDatePicker from './PersianDatePicker'
+import UserAvatar from './UserAvatar'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import type { Task, Profile, TaskPriority } from '@/utils/database.types'
-import { X, Check } from 'lucide-react'
-
+import {
+  X,
+  Check,
+  Plus,
+  Zap,
+  Users,
+  CheckSquare,
+  AlertTriangle,
+  Loader2,
+  Sparkles,
+  Trash2,
+} from 'lucide-react'
 
 interface CreateTaskModalProps {
   projectId: string
@@ -15,7 +26,31 @@ interface CreateTaskModalProps {
   onOpenMembersModal?: () => void
 }
 
-interface CL { title: string; items: string[] }
+interface CL {
+  title: string
+  items: string[]
+}
+
+const PRIORITY_CONFIG: Record<TaskPriority, { label: string; bg: string; text: string; border: string }> = {
+  normal: {
+    label: 'عادی',
+    bg: 'bg-[#202A5A]/10 text-[#202A5A] dark:bg-blue-500/15 dark:text-blue-300',
+    text: 'text-[#202A5A] dark:text-blue-300',
+    border: 'border-[#202A5A]/20 dark:border-blue-500/30',
+  },
+  important: {
+    label: 'مهم',
+    bg: 'bg-[#FEF6E8] text-[#B45309] dark:bg-[#57390A]/40 dark:text-amber-300',
+    text: 'text-[#B45309] dark:text-amber-300',
+    border: 'border-[#F8A41D]/40',
+  },
+  urgent: {
+    label: 'فوری',
+    bg: 'bg-rose-500/15 text-rose-600 dark:text-rose-400',
+    text: 'text-rose-600 dark:text-rose-400',
+    border: 'border-rose-500/40',
+  },
+}
 
 export default function CreateTaskModal({ projectId, onClose, onTaskCreated, onOpenMembersModal }: CreateTaskModalProps) {
   useBodyScrollLock(true)
@@ -67,98 +102,246 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated, onO
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        if (showDropdown) {
+          setShowDropdown(false)
+        } else {
+          onClose()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose, showDropdown])
+
   const addCL = () => setChecklists([...checklists, { title: '', items: [''] }])
   const rmCL = (i: number) => setChecklists(checklists.filter((_, idx) => idx !== i))
-  const updCL = (i: number, v: string) => { const c = [...checklists]; c[i] = { ...c[i], title: v }; setChecklists(c) }
-  const addItem = (ci: number) => { const c = [...checklists]; c[ci].items.push(''); setChecklists(c) }
-  const updItem = (ci: number, ii: number, v: string) => { const c = [...checklists]; c[ci].items[ii] = v; setChecklists(c) }
-  const rmItem = (ci: number, ii: number) => { const c = [...checklists]; c[ci].items = c[ci].items.filter((_, idx) => idx !== ii); setChecklists(c) }
-  const toggle = (id: string) => setSelectedMembers((p) => p.includes(id) ? p.filter((m) => m !== id) : [...p, id])
+  const updCL = (i: number, v: string) => {
+    const c = [...checklists]
+    c[i] = { ...c[i], title: v }
+    setChecklists(c)
+  }
+  const addItem = (ci: number) => {
+    const c = [...checklists]
+    c[ci].items.push('')
+    setChecklists(c)
+  }
+  const updItem = (ci: number, ii: number, v: string) => {
+    const c = [...checklists]
+    c[ci].items[ii] = v
+    setChecklists(c)
+  }
+  const rmItem = (ci: number, ii: number) => {
+    const c = [...checklists]
+    c[ci].items = c[ci].items.filter((_, idx) => idx !== ii)
+    setChecklists(c)
+  }
+  const toggleMember = (id: string) =>
+    setSelectedMembers((p) => (p.includes(id) ? p.filter((m) => m !== id) : [...p, id]))
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true); setError('')
-    if (selectedMembers.length === 0) { setError('حداقل یک مسئول انتخاب کنید'); setLoading(false); return }
+    if (!title.trim()) {
+      setError('عنوان تسک الزامی است.')
+      return
+    }
+    if (selectedMembers.length === 0) {
+      setError('حداقل یک مسئول برای تسک انتخاب کنید.')
+      return
+    }
+
+    setLoading(true)
+    setError('')
 
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setError('Not authenticated'); setLoading(false); return }
-    const { data: task, error: err } = await supabase.from('tasks').insert({ project_id: projectId, title, description, deadline: deadline || null, priority, xp_value: xpValue, created_by: user.id, status: 'backlog' }).select().single()
-    if (err) { setError(err.message); setLoading(false); return }
+    if (!user) {
+      setError('عدم احراز هویت. لطفاً مجدداً وارد شوید.')
+      setLoading(false)
+      return
+    }
 
-    await supabase.from('task_assignees').insert(selectedMembers.map((uid) => ({ task_id: task.id, user_id: uid })))
+    const { data: task, error: err } = await supabase
+      .from('tasks')
+      .insert({
+        project_id: projectId,
+        title: title.trim(),
+        description: description.trim() || null,
+        deadline: deadline || null,
+        priority,
+        xp_value: Math.max(0, Number(xpValue) || 0),
+        created_by: user.id,
+        status: 'backlog',
+      })
+      .select()
+      .single()
 
+    if (err) {
+      setError(err.message || 'خطا در ثبت تسک')
+      setLoading(false)
+      return
+    }
+
+    // Insert assignees
+    await supabase
+      .from('task_assignees')
+      .insert(selectedMembers.map((uid) => ({ task_id: task.id, user_id: uid })))
+
+    // Insert checklists
     for (const cl of checklists) {
       if (!cl.title.trim()) continue
-      const { data: ch } = await supabase.from('checklists').insert({ task_id: task.id, title: cl.title }).select().single()
+      const { data: ch } = await supabase
+        .from('checklists')
+        .insert({ task_id: task.id, title: cl.title.trim() })
+        .select()
+        .single()
       if (!ch) continue
-      const items = cl.items.filter((x) => x.trim()).map((content, idx) => ({ checklist_id: ch.id, content, sort_order: idx }))
-      if (items.length) await supabase.from('checklist_items').insert(items)
+      const validItems = cl.items.filter((x) => x.trim()).map((content, idx) => ({
+        checklist_id: ch.id,
+        content: content.trim(),
+        sort_order: idx,
+      }))
+      if (validItems.length > 0) {
+        await supabase.from('checklist_items').insert(validItems)
+      }
     }
 
     onTaskCreated(task)
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full overflow-y-auto overscroll-contain rounded-t-2xl border border-border bg-surface shadow-lg sm:max-h-[85vh] sm:max-w-lg sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+      dir="rtl"
+    >
+      <div
+        className="w-full max-w-xl max-h-[92vh] sm:max-h-[88vh] overflow-hidden rounded-t-3xl sm:rounded-3xl border-[1.5px] border-border bg-surface shadow-[4px_4px_0_#202A5A] dark:shadow-[4px_4px_0_#59BBAF] flex flex-col text-right animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Mobile Pull Handle */}
-        <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-border-strong/60 sm:hidden" />
+        <div className="mx-auto mt-2.5 h-1.5 w-12 rounded-full bg-border-strong/60 sm:hidden" />
 
-        <div className="sticky top-0 z-10 border-b border-border bg-surface px-4 py-3 sm:px-5 sm:py-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-default">تسک جدید</h2>
-            <button onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-2 hover:text-default cursor-pointer">
-              <X className="w-5 h-5" />
-            </button>
+        {/* Modal Header */}
+        <div className="flex items-center justify-between border-b border-border/80 bg-surface px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-action/15 text-action border border-action/30 shadow-xs">
+              <Plus className="w-5 h-5 text-action" />
+            </div>
+            <div>
+              <h2 className="text-base font-black text-default">تعریف تسک جدید</h2>
+              <p className="text-xs text-muted font-medium mt-0.5">مشخصات، مسئولین، امتیاز و چک‌لیست تسک</p>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl p-1.5 text-muted hover:bg-surface-2 hover:text-default transition cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 p-4 sm:p-5" dir="rtl">
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto overscroll-contain flex-1">
+          {error && (
+            <div className="flex items-center gap-2 rounded-xl bg-rose-500/10 border border-rose-500/25 p-3 text-xs font-bold text-rose-500">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Title */}
           <div>
-            <label className="block text-xs font-medium text-muted">عنوان تسک</label>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required
-              className="mt-1.5 block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors placeholder:text-muted focus:border-action/50 focus:bg-surface focus:outline-none" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-muted">توضیحات</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} required
-              className="mt-1.5 block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors placeholder:text-muted focus:border-action/50 focus:bg-surface focus:outline-none" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-muted">مقدار XP</label>
-            <input type="number" value={xpValue} onChange={(e) => setXpValue(Number(e.target.value))} min={0} required
-              className="mt-1.5 block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors focus:border-action/50 focus:bg-surface focus:outline-none" />
+            <label className="block text-xs font-bold text-default mb-1.5">
+              عنوان تسک <span className="text-rose-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              placeholder="عنوان تسک را وارد کنید..."
+              className="w-full rounded-xl border border-border bg-surface-2/60 px-3.5 py-2.5 text-sm font-semibold text-default placeholder:text-muted transition-all focus:border-action focus:bg-surface focus:outline-none"
+              autoFocus
+            />
           </div>
 
-          <PersianDatePicker
-            label="ددلاین (تقویم شمسی)"
-            value={deadline}
-            onChange={setDeadline}
-            placeholder="انتخاب موعد تحویل..."
-          />
-
+          {/* Description */}
           <div>
-            <label className="block text-xs font-medium text-muted mb-2">اولویت</label>
-            <div className="flex gap-1.5">
-              {(['normal', 'important', 'urgent'] as TaskPriority[]).map((p) => (
-                <button key={p} type="button" onClick={() => setPriority(p)}
-                  className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                    priority === p
-                      ? p === 'urgent' ? 'bg-rose-500/20 text-rose-300 ring-1 ring-rose-500/40' :
-                        p === 'important' ? 'bg-orange-500/20 text-orange-300 ring-1 ring-orange-500/40' :
-                        'bg-sky-500/20 text-sky-300 ring-1 ring-sky-500/40'
-                      : 'border border-border bg-surface-2 text-subtle hover:bg-surface'
-                  }`}>
-                  {p === 'normal' ? 'عادی' : p === 'important' ? 'مهم' : 'فوری'}
-                </button>
-              ))}
+            <label className="block text-xs font-bold text-default mb-1.5">
+              توضیحات و نیازمندی‌های تسک
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              placeholder="شرح جزئیات، راهنمای انجام، یا استانداردهای مورد انتظار..."
+              className="w-full rounded-xl border border-border bg-surface-2/60 px-3.5 py-2.5 text-sm font-medium text-default placeholder:text-muted transition-all focus:border-action focus:bg-surface focus:outline-none resize-none"
+            />
+          </div>
+
+          {/* XP & Deadline Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-default mb-1.5 flex items-center gap-1">
+                <Zap className="h-3.5 w-3.5 text-[#F8A41D]" />
+                <span>امتیاز تسک (XP) <span className="text-rose-500">*</span></span>
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={xpValue}
+                onChange={(e) => setXpValue(Number(e.target.value))}
+                required
+                className="w-full rounded-xl border border-border bg-surface-2/60 px-3.5 py-2 text-sm font-bold text-default focus:border-action focus:bg-surface focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <PersianDatePicker
+                label="موعد تحویل (ددلاین)"
+                value={deadline}
+                onChange={setDeadline}
+                placeholder="انتخاب تاریخ موعد..."
+              />
             </div>
           </div>
 
+          {/* Priority Segmented Control */}
+          <div>
+            <label className="block text-xs font-bold text-default mb-1.5">سطح فوریت</label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['normal', 'important', 'urgent'] as TaskPriority[]).map((p) => {
+                const isSelected = priority === p
+                const conf = PRIORITY_CONFIG[p]
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPriority(p)}
+                    className={`flex items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-bold transition-all cursor-pointer ${
+                      isSelected
+                        ? `${conf.bg} ${conf.border} ring-2 ring-offset-1 ring-action/40 shadow-xs font-black`
+                        : 'border-border bg-surface-2/50 text-muted hover:text-default hover:bg-surface-2'
+                    }`}
+                  >
+                    {p === 'urgent' && <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />}
+                    {p === 'important' && <Sparkles className="h-3.5 w-3.5 text-amber-500" />}
+                    <span>{conf.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Project Member Assignees Multi-Picker */}
           <div ref={searchRef} className="relative">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-bold text-default">
-                مسئولین تسک <span className="text-muted font-normal">(صرفاً اعضای این پروژه)</span>
+              <label className="block text-xs font-bold text-default flex items-center gap-1.5">
+                <Users className="h-4 w-4 text-action" />
+                <span>مسئولین تسک <span className="text-rose-500">*</span></span>
               </label>
               <span className="text-[11px] text-muted">
                 {members.length} عضو در پروژه
@@ -166,58 +349,75 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated, onO
             </div>
 
             {loadingMembers ? (
-              <div className="rounded-lg border border-border bg-surface-2 p-2.5 text-center text-xs text-muted">
-                در حال دریافت اعضای پروژه...
+              <div className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-2/40 p-3 text-xs text-muted">
+                <Loader2 className="h-4 w-4 animate-spin text-action" />
+                <span>در حال دریافت اعضای پروژه...</span>
               </div>
             ) : members.length === 0 ? (
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-600 dark:text-amber-400 space-y-2">
-                <p className="font-semibold">
-                  ⚠️ هیچ عضوی در این پروژه ثبت نشده است.
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-700 dark:text-amber-300 space-y-2">
+                <p className="font-bold flex items-center gap-1.5">
+                  <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                  <span>هیچ عضوی در این پروژه ثبت نشده است.</span>
                 </p>
                 <p className="text-[11px] leading-relaxed opacity-90">
-                  تسک‌های هر پروژه فقط برای اعضای همان پروژه قابل تعریف هستند. لطفاً ابتدا اعضای پروژه را تعیین کنید.
+                  تسک‌های هر پروژه فقط به اعضای همان پروژه اختصاص می‌یابند. ابتدا اعضای پروژه را مشخص کنید.
                 </p>
                 {onOpenMembersModal && (
                   <button
                     type="button"
                     onClick={onOpenMembersModal}
-                    className="inline-flex items-center gap-1 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-amber-400 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-amber-400 transition-all cursor-pointer shadow-xs"
                   >
-                    افزودن اعضا به این پروژه
+                    <Users className="h-3.5 w-3.5" />
+                    <span>افزودن اعضا به این پروژه</span>
                   </button>
                 )}
               </div>
             ) : (
               <>
+                {/* Selected members chips */}
                 {selectedMembers.length > 0 && (
                   <div className="mb-2 flex flex-wrap gap-1.5">
                     {selectedMembers.map((uid) => {
                       const m = members.find((mm) => mm.id === uid)
                       if (!m) return null
                       return (
-                        <span key={uid} className="inline-flex items-center gap-1 rounded-lg bg-action/15 border border-action/30 px-2.5 py-1 text-xs font-medium text-action">
-                          {m.full_name}
-                          <button type="button" onClick={() => toggle(uid)} className="mr-0.5 text-action/60 hover:text-action cursor-pointer">
-                            <X className="w-3.5 h-3.5" />
+                        <span
+                          key={uid}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-action/30 bg-action/10 px-2.5 py-1 text-xs font-semibold text-action"
+                        >
+                          <UserAvatar src={m.avatar_url} name={m.full_name} role={m.role} size="xs" shape="circle" />
+                          <span>{m.full_name}</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleMember(uid)}
+                            className="text-action/70 hover:text-rose-500 cursor-pointer p-0.5"
+                          >
+                            <X className="w-3 h-3" />
                           </button>
                         </span>
                       )
                     })}
                   </div>
                 )}
+
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setShowDropdown(true) }}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    setShowDropdown(true)
+                  }}
                   onFocus={() => setShowDropdown(true)}
-                  placeholder="انتخاب یا جستجو در اعضای پروژه..."
-                  className="mt-1 block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors placeholder:text-muted focus:border-action/50 focus:bg-surface focus:outline-none"
+                  placeholder="جستجو و انتخاب مسئول از بین اعضای پروژه..."
+                  className="w-full rounded-xl border border-border bg-surface-2/60 px-3.5 py-2.5 text-xs font-medium text-default placeholder:text-muted focus:border-action focus:bg-surface focus:outline-none"
                 />
+
                 {showDropdown && (
-                  <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border bg-surface shadow-lg py-1">
+                  <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-border bg-surface shadow-xl py-1">
                     {filteredMembers.length === 0 ? (
-                      <div className="p-2.5 text-center text-xs text-muted">
-                        عضوی از این پروژه با این نام یافت نشد.
+                      <div className="p-3 text-center text-xs text-muted">
+                        عضوی با این نام در پروژه یافت نشد.
                       </div>
                     ) : (
                       filteredMembers.map((m) => {
@@ -226,20 +426,22 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated, onO
                           <button
                             key={m.id}
                             type="button"
-                            onClick={() => { toggle(m.id); setSearchQuery('') }}
+                            onClick={() => {
+                              toggleMember(m.id)
+                              setSearchQuery('')
+                            }}
                             className={`flex w-full items-center justify-between px-3 py-2 text-xs transition-colors cursor-pointer ${
                               isSelected ? 'bg-action/10 text-action font-bold' : 'text-default hover:bg-surface-2'
                             }`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white bg-gradient-to-br from-[#59BBAF] to-[#202A5A] overflow-hidden">
-                                {m.avatar_url ? (
-                                  <img src={m.avatar_url} alt="" className="h-full w-full object-cover" />
-                                ) : (
-                                  m.full_name.charAt(0)
-                                )}
-                              </span>
-                              <span className="truncate">{m.full_name}</span>
+                              <UserAvatar src={m.avatar_url} name={m.full_name} role={m.role} size="sm" shape="circle" />
+                              <div className="min-w-0">
+                                <div className="truncate font-semibold text-default">{m.full_name}</div>
+                                <div className="text-[10px] text-muted truncate">
+                                  {m.role === 'admin' ? 'راهبر' : m.role === 'mentor' ? 'منتور' : 'عضو باشگاه'}
+                                </div>
+                              </div>
                             </div>
                             {isSelected && <Check className="w-4 h-4 text-action shrink-0" />}
                           </button>
@@ -252,38 +454,103 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated, onO
             )}
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-xs font-medium text-muted">چک‌لیست‌ها</label>
-              <button type="button" onClick={addCL} className="text-xs font-medium text-action hover:text-action-hover">+ افزودن چک‌لیست</button>
+          {/* Checklists Section */}
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-default flex items-center gap-1.5">
+                <CheckSquare className="h-4 w-4 text-action" />
+                <span>چک‌لیست‌های تسک (اختیاری)</span>
+              </label>
+              <button
+                type="button"
+                onClick={addCL}
+                className="text-xs font-bold text-action hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>افزودن چک‌لیست</span>
+              </button>
             </div>
+
             {checklists.map((cl, ci) => (
-              <div key={ci} className="mb-2 rounded-lg border border-border bg-surface-2 p-3">
+              <div key={ci} className="rounded-2xl border border-border/80 bg-surface-2/40 p-3 space-y-2">
                 <div className="flex items-center gap-2">
-                  <input type="text" value={cl.title} onChange={(e) => updCL(ci, e.target.value)} placeholder="عنوان چک‌لیست"
-                    className="flex-1 rounded border border-border bg-surface px-2 py-1.5 text-xs focus:border-action/50 focus:outline-none" />
-                  <button type="button" onClick={() => rmCL(ci)} className="text-danger/60 hover:text-danger text-xs">حذف</button>
+                  <input
+                    type="text"
+                    value={cl.title}
+                    onChange={(e) => updCL(ci, e.target.value)}
+                    placeholder="عنوان چک‌لیست (مثلا: مراحل تست یا تحویل)..."
+                    className="flex-1 rounded-xl border border-border bg-surface px-3 py-1.5 text-xs font-semibold focus:border-action focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => rmCL(ci)}
+                    className="p-1.5 text-muted hover:text-rose-500 rounded-lg transition cursor-pointer"
+                    title="حذف این چک‌لیست"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-                {cl.items.map((item, ii) => (
-                  <div key={ii} className="mt-1.5 flex items-center gap-2">
-                    <input type="text" value={item} onChange={(e) => updItem(ci, ii, e.target.value)} placeholder="آیتم"
-                      className="flex-1 rounded border border-border bg-surface px-2 py-1.5 text-xs focus:border-action/50 focus:outline-none" />
-                    <button type="button" onClick={() => rmItem(ci, ii)} className="text-muted hover:text-danger cursor-pointer">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-                <button type="button" onClick={() => addItem(ci)} className="mt-1.5 text-xs text-action hover:text-action-hover">+ آیتم</button>
+
+                <div className="space-y-1.5 pr-2 border-r-2 border-border/60">
+                  {cl.items.map((item, ii) => (
+                    <div key={ii} className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-muted/40 shrink-0" />
+                      <input
+                        type="text"
+                        value={item}
+                        onChange={(e) => updItem(ci, ii, e.target.value)}
+                        placeholder="آیتم چک‌لیست..."
+                        className="flex-1 rounded-lg border border-border/70 bg-surface px-2.5 py-1.5 text-xs focus:border-action focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => rmItem(ci, ii)}
+                        className="p-1 text-muted hover:text-rose-500 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => addItem(ci)}
+                    className="text-[11px] font-bold text-action hover:underline pt-1 inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="h-3 w-3" />
+                    <span>افزودن آیتم جدید</span>
+                  </button>
+                </div>
               </div>
             ))}
           </div>
 
-          {error && <div className="rounded-lg bg-danger-subtle px-3 py-2 text-sm text-danger">{error}</div>}
-
-          <button type="submit" disabled={loading}
-            className="w-full rounded-lg bg-action px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-action-hover disabled:opacity-50 shadow-sm">
-            {loading ? 'در حال ساخت...' : 'ساخت تسک'}
-          </button>
+          {/* Form Actions */}
+          <div className="flex items-center gap-2.5 pt-4 border-t border-border mt-5">
+            <button
+              type="submit"
+              disabled={loading}
+              className="rokad-btn-primary flex-1 py-2.5 text-xs sm:text-sm font-bold justify-center disabled:opacity-50 cursor-pointer"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>در حال ایجاد تسک...</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  <span>ایجاد و ثبت تسک</span>
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-border bg-surface-2 px-4 py-2.5 text-xs sm:text-sm font-bold text-muted hover:text-default transition cursor-pointer"
+            >
+              انصراف
+            </button>
+          </div>
         </form>
       </div>
     </div>

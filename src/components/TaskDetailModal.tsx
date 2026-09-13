@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { createClient } from '@/utils/supabase/client'
 
 import MemberProfileModal from './MemberProfileModal'
@@ -8,9 +8,28 @@ import PersianDatePicker from './PersianDatePicker'
 import UserAvatar from './UserAvatar'
 import { formatToPersianDate } from '@/utils/jalaali'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
-import type { Task, Profile, Checklist, ChecklistItem, TaskReport } from '@/utils/database.types'
-import { X } from 'lucide-react'
-
+import type { Task, Profile, Checklist, ChecklistItem, TaskReport, TaskPriority, TaskStatus } from '@/utils/database.types'
+import {
+  X,
+  Pencil,
+  Trash2,
+  Zap,
+  Calendar,
+  Users,
+  CheckSquare,
+  MessageSquare,
+  Send,
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Clock,
+  CircleDot,
+  Archive,
+  Check,
+  Loader2,
+  FileText,
+  Sparkles,
+} from 'lucide-react'
 
 interface TaskDetailModalProps {
   taskId: string
@@ -21,7 +40,74 @@ interface TaskDetailModalProps {
 }
 
 type WithItems = Checklist & { items: ChecklistItem[] }
-type WithAuthor = TaskReport & { author: { full_name: string } }
+type WithAuthor = TaskReport & { author: { full_name: string; avatar_url?: string | null; role?: string } }
+
+const STATUS_CONFIG: Record<TaskStatus, { label: string; bg: string; text: string; border: string; icon: typeof CheckCircle2 }> = {
+  backlog: {
+    label: 'بک‌لاگ',
+    bg: 'bg-slate-500/10 dark:bg-slate-500/20',
+    text: 'text-slate-600 dark:text-slate-400',
+    border: 'border-slate-400/30',
+    icon: Archive,
+  },
+  todo: {
+    label: 'در صف انجام',
+    bg: 'bg-[#202A5A]/10 dark:bg-blue-500/20',
+    text: 'text-[#202A5A] dark:text-blue-400',
+    border: 'border-[#202A5A]/30 dark:border-blue-500/40',
+    icon: CircleDot,
+  },
+  in_progress: {
+    label: 'در حال انجام',
+    bg: 'bg-[#4DA59A]/15 dark:bg-[#59BBAF]/20',
+    text: 'text-[#2E7A71] dark:text-[#59BBAF]',
+    border: 'border-[#59BBAF]/40',
+    icon: Clock,
+  },
+  review: {
+    label: 'در حال بازبینی',
+    bg: 'bg-[#F8A41D]/15 dark:bg-[#F8A41D]/20',
+    text: 'text-[#B45309] dark:text-[#fde047]',
+    border: 'border-[#F8A41D]/40',
+    icon: Clock,
+  },
+  done: {
+    label: 'تکمیل‌شده',
+    bg: 'bg-emerald-500/15 dark:bg-emerald-500/20',
+    text: 'text-emerald-600 dark:text-emerald-400',
+    border: 'border-emerald-500/40',
+    icon: CheckCircle2,
+  },
+}
+
+const PRIORITY_CONFIG: Record<TaskPriority, { label: string; bg: string; text: string; border: string }> = {
+  normal: {
+    label: 'عادی',
+    bg: 'bg-[#202A5A]/10 text-[#202A5A] dark:bg-blue-500/15 dark:text-blue-300',
+    text: 'text-[#202A5A] dark:text-blue-300',
+    border: 'border-[#202A5A]/20 dark:border-blue-500/30',
+  },
+  important: {
+    label: 'مهم',
+    bg: 'bg-[#FEF6E8] text-[#B45309] dark:bg-[#57390A]/40 dark:text-amber-300',
+    text: 'text-[#B45309] dark:text-amber-300',
+    border: 'border-[#F8A41D]/40',
+  },
+  urgent: {
+    label: 'فوری',
+    bg: 'bg-rose-500/15 text-rose-600 dark:text-rose-400',
+    text: 'text-rose-600 dark:text-rose-400',
+    border: 'border-rose-500/40',
+  },
+}
+
+const NEXT_STATUS: Record<TaskStatus, TaskStatus | null> = {
+  backlog: 'todo',
+  todo: 'in_progress',
+  in_progress: 'review',
+  review: 'done',
+  done: null,
+}
 
 export default function TaskDetailModal({ taskId, onClose, profile, onTaskDeleted, onTaskUpdated }: TaskDetailModalProps) {
   useBodyScrollLock(true)
@@ -35,20 +121,22 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
   const [error, setError] = useState('')
   const [selectedMemberProfileId, setSelectedMemberProfileId] = useState<string | null>(null)
 
-
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [editXpValue, setEditXpValue] = useState(0)
   const [editDeadline, setEditDeadline] = useState('')
-  const [editPriority, setEditPriority] = useState<Task['priority']>('normal')
+  const [editPriority, setEditPriority] = useState<TaskPriority>('normal')
   const [editAssigneeIds, setEditAssigneeIds] = useState<string[]>([])
   const [allMembers, setAllMembers] = useState<Profile[]>([])
   const [memberSearch, setMemberSearch] = useState('')
   const [memberDropdownOpen, setMemberDropdownOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [movingStatus, setMovingStatus] = useState(false)
+  const [submittingReport, setSubmittingReport] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+
   const memberDropdownRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
@@ -57,7 +145,7 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
       const [tRes, clsRes, rptsRes, aaRes] = await Promise.all([
         supabase.from('tasks').select('*').eq('id', taskId).single(),
         supabase.from('checklists').select('*, items:checklist_items(*)').eq('task_id', taskId).order('sort_order'),
-        supabase.from('task_reports').select('*, author:profiles(full_name)').eq('task_id', taskId).order('created_at', { ascending: true }),
+        supabase.from('task_reports').select('*, author:profiles(full_name, avatar_url, role)').eq('task_id', taskId).order('created_at', { ascending: true }),
         supabase.from('task_assignees').select('user_id, profile:profiles(*)').eq('task_id', taskId),
       ])
       const t = tRes.data
@@ -109,6 +197,24 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        if (selectedMemberProfileId) {
+          setSelectedMemberProfileId(null)
+        } else if (showDeleteConfirm) {
+          setShowDeleteConfirm(false)
+        } else if (memberDropdownOpen) {
+          setMemberDropdownOpen(false)
+        } else {
+          onClose()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClose, selectedMemberProfileId, showDeleteConfirm, memberDropdownOpen])
+
   function startEditing() {
     if (!task) return
     setEditTitle(task.title)
@@ -152,7 +258,14 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
     if (profs) setAssignees(profs as unknown as Profile[])
     setIsAssignee(editAssigneeIds.includes(profile.id))
 
-    const updated: Task = { ...task, title: editTitle.trim(), description: editDescription.trim() || null, xp_value: editXpValue, deadline: editDeadline || null, priority: editPriority }
+    const updated: Task = {
+      ...task,
+      title: editTitle.trim(),
+      description: editDescription.trim() || null,
+      xp_value: editXpValue,
+      deadline: editDeadline || null,
+      priority: editPriority,
+    }
     setTask(updated)
     onTaskUpdated?.(updated)
     setIsEditing(false)
@@ -173,67 +286,34 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
 
   async function handleAddReport(e: React.FormEvent) {
     e.preventDefault()
-    if (!reportContent.trim()) return
-    const { data, error: err } = await supabase.from('task_reports').insert({ task_id: taskId, author_id: profile.id, content: reportContent })
-      .select('*, author:profiles(full_name)').single()
+    if (!reportContent.trim() || submittingReport) return
+    setSubmittingReport(true)
+    const { data, error: err } = await supabase.from('task_reports').insert({
+      task_id: taskId,
+      author_id: profile.id,
+      content: reportContent.trim(),
+    }).select('*, author:profiles(full_name, avatar_url, role)').single()
+
+    setSubmittingReport(false)
     if (err) { setError(err.message); return }
     setReports((prev) => [...prev, data as unknown as WithAuthor])
     setReportContent('')
   }
 
-  if (loading) return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="rounded-lg bg-surface p-8 text-sm text-muted shadow-lg">...</div>
-    </div>
-  )
-  if (!task) return null
-
   const canEdit = profile.role === 'admin'
-  const STATUS_BADGE: Record<string, string> = {
-    backlog: 'bg-gray-500/10 text-gray-400',
-    todo: 'bg-slate-500/10 text-slate-400',
-    in_progress: 'bg-emerald-500/10 text-emerald-400',
-    review: 'bg-amber-500/10 text-amber-400',
-    done: 'bg-teal-500/10 text-teal-400',
-  }
-  const PRIORITY_BADGE: Record<string, string> = {
-    normal: 'bg-sky-500/10 text-sky-400',
-    important: 'bg-orange-500/10 text-orange-400',
-    urgent: 'bg-rose-500/10 text-rose-400',
-  }
-  const PRIORITY_LABEL: Record<string, string> = {
-    normal: 'عادی',
-    important: 'مهم',
-    urgent: 'فوری',
-  }
-
-  const STATUS_LABEL: Record<string, string> = {
-    backlog: 'بک‌لاگ',
-    todo: 'در صف انجام',
-    in_progress: 'در حال انجام',
-    review: 'در حال بازبینی',
-    done: 'تکمیل‌شده',
-  }
-
-  const NEXT_STATUS: Record<string, string | null> = {
-    backlog: 'todo',
-    todo: 'in_progress',
-    in_progress: 'review',
-    review: profile?.role === 'admin' ? 'done' : null,
-    done: null,
-  }
 
   async function handleMoveStatus() {
-    const next = NEXT_STATUS[task!.status]
+    if (!task || movingStatus) return
+    const next = NEXT_STATUS[task.status]
     if (!next) return
+    setMovingStatus(true)
     const { error: err } = await supabase.rpc('move_task_status', { p_task_id: taskId, p_new_status: next })
+    setMovingStatus(false)
     if (err) { setError(err.message); return }
-    setTask((prev) => prev ? { ...prev, status: next as Task['status'] } : prev)
+    const updated = { ...task, status: next as TaskStatus }
+    setTask(updated)
+    onTaskUpdated?.(updated)
     setError('')
-  }
-
-  function handleDeleteTask() {
-    setShowDeleteConfirm(true)
   }
 
   async function confirmDeleteTask() {
@@ -246,173 +326,286 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
     onClose()
   }
 
+  // Checklist total metrics
+  const checklistStats = useMemo(() => {
+    let total = 0
+    let done = 0
+    for (const cl of checklists) {
+      for (const item of cl.items) {
+        total++
+        if (item.is_done) done++
+      }
+    }
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0
+    return { total, done, pct }
+  }, [checklists])
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" dir="rtl">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-surface p-8 shadow-xl">
+          <Loader2 className="h-7 w-7 animate-spin text-action" />
+          <span className="text-xs font-bold text-muted">در حال بارگذاری تسک...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (!task) return null
+
+  const statusConf = STATUS_CONFIG[task.status] || STATUS_CONFIG.backlog
+  const priorityConf = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.normal
+  const nextStatus = NEXT_STATUS[task.status]
+  const canMoveStatus = canEdit || (profile.role === 'member' && task.status !== 'review')
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full overflow-y-auto overscroll-contain rounded-t-2xl border border-border bg-surface shadow-lg sm:max-h-[85vh] sm:max-w-xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+      dir="rtl"
+    >
+      <div
+        className="w-full max-w-2xl max-h-[92vh] sm:max-h-[88vh] overflow-hidden rounded-t-3xl sm:rounded-3xl border-[1.5px] border-border bg-surface shadow-[4px_4px_0_#202A5A] dark:shadow-[4px_4px_0_#59BBAF] flex flex-col text-right animate-in zoom-in-95 duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Mobile Pull Handle */}
-        <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-border-strong/60 sm:hidden" />
+        <div className="mx-auto mt-2.5 h-1.5 w-12 rounded-full bg-border-strong/60 sm:hidden" />
 
-        <div className="sticky top-0 z-10 border-b border-border bg-surface px-4 py-3 sm:px-5 sm:py-4">
-          <div className="flex items-start justify-between">
-            <div className="flex-1 min-w-0">
+        {/* Modal Header */}
+        <div className="border-b border-border/80 bg-surface px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
               {isEditing ? (
-                <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
-                  placeholder="عنوان تسک"
-                  className="w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm font-semibold text-default transition-colors placeholder:text-muted focus:border-action/50 focus:outline-none" />
+                <div>
+                  <label className="block text-xs font-bold text-muted mb-1">عنوان تسک <span className="text-rose-500">*</span></label>
+                  <input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder="عنوان تسک..."
+                    className="w-full rounded-xl border border-border bg-surface-2/70 px-3.5 py-2 text-sm sm:text-base font-bold text-default transition-all placeholder:text-muted focus:border-action focus:bg-surface focus:outline-none"
+                    autoFocus
+                  />
+                </div>
               ) : (
-                <h2 className="text-sm font-semibold text-default sm:text-base">{task.title}</h2>
-              )}
-              {!isEditing && (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[task.status]}`}>
-                  {STATUS_LABEL[task.status]}
-                </span>
-                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${PRIORITY_BADGE[task.priority]}`}>
-                  {PRIORITY_LABEL[task.priority]}
-                </span>
-                {task.deadline && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-action/10 px-2 py-0.5 text-xs font-medium text-action">
-                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {formatToPersianDate(task.deadline)}
-                  </span>
-                )}
-                {task.xp_value > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-400">
-                    <svg className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    {task.xp_value} XP
-                  </span>
-                )}
-                {(() => {
-                  const next = NEXT_STATUS[task.status]
-                  if (!next) return null
-                  const canAct = canEdit || (profile.role === 'member' && task.status !== 'review')
-                  if (!canAct) return null
-                  return (
-                    <button onClick={handleMoveStatus}
-                      className="inline-flex items-center gap-1 rounded-full bg-action/10 px-2.5 py-0.5 text-xs font-medium text-action transition-colors hover:bg-action/20">
-                      انتقال به {STATUS_LABEL[next]}
-                    </button>
-                  )
-                })()}
-              </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-0.5 text-xs font-bold ${statusConf.bg} ${statusConf.text} ${statusConf.border}`}>
+                      <statusConf.icon className="h-3.5 w-3.5" />
+                      <span>{statusConf.label}</span>
+                    </span>
+                    <span className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-[11px] font-bold ${priorityConf.bg} ${priorityConf.border}`}>
+                      {priorityConf.label}
+                    </span>
+                  </div>
+                  <h2 className="text-base sm:text-lg font-black text-default leading-snug break-words pt-0.5">
+                    {task.title}
+                  </h2>
+                </div>
               )}
             </div>
+
+            {/* Header Action Buttons */}
             <div className="flex items-center gap-1.5 shrink-0">
               {canEdit && !isEditing && (
-                <button onClick={startEditing}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-2 hover:text-default"
-                  title="ویرایش تسک"
+                <button
+                  onClick={startEditing}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface text-muted transition-colors hover:bg-surface-2 hover:text-default hover:border-action/40 cursor-pointer shadow-2xs"
+                  title="ویرایش مشخصات تسک"
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                  </svg>
+                  <Pencil className="h-4 w-4" />
                 </button>
               )}
-              {canEdit && (
-                <button onClick={handleDeleteTask}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-danger/60 transition-colors hover:bg-danger-subtle hover:text-danger"
+              {canEdit && !isEditing && (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-surface text-rose-500 transition-colors hover:bg-rose-500/10 hover:border-rose-500/40 cursor-pointer shadow-2xs"
                   title="حذف تسک"
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                  </svg>
+                  <Trash2 className="h-4 w-4" />
                 </button>
               )}
-              <button onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-2 hover:text-default cursor-pointer">
+              <button
+                onClick={onClose}
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface-2 hover:text-default cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
           </div>
+
+          {/* Quick Meta Info Ribbon (View Mode Only) */}
+          {!isEditing && (
+            <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2.5 pt-3 border-t border-border/60">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* XP Badge */}
+                <div className="inline-flex items-center gap-1 rounded-xl bg-[#FEF6E8] dark:bg-[#57390A]/40 border border-[#F8A41D]/35 px-2.5 py-1 text-xs font-black text-[#BA7B16] dark:text-[#fde047] shadow-2xs">
+                  <Zap className="h-3.5 w-3.5 text-[#F8A41D]" />
+                  <span>{(task.xp_value || 0).toLocaleString('fa-IR')} XP</span>
+                </div>
+
+                {/* Deadline Badge */}
+                {task.deadline && (
+                  <div className="inline-flex items-center gap-1.5 rounded-xl border border-border/80 bg-surface-2/60 px-2.5 py-1 text-xs font-semibold text-muted shadow-2xs">
+                    <Calendar className="h-3.5 w-3.5 text-muted" />
+                    <span>مهلت: {formatToPersianDate(task.deadline)}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Status Transition Action Button */}
+              {nextStatus && canMoveStatus && (
+                <button
+                  onClick={handleMoveStatus}
+                  disabled={movingStatus}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-action px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-action-hover active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  {movingStatus ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <span>انتقال به {STATUS_CONFIG[nextStatus].label}</span>
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="space-y-5 p-4 sm:space-y-6 sm:p-5">
-          {isEditing && (
+        {/* Modal Scrollable Body */}
+        <div className="p-4 sm:p-6 space-y-5 overflow-y-auto overscroll-contain flex-1">
+          {error && (
+            <div className="flex items-center gap-2 rounded-xl bg-rose-500/10 border border-rose-500/25 px-3 py-2.5 text-xs font-bold text-rose-500">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* EDIT MODE FORM */}
+          {isEditing ? (
             <div className="space-y-4">
               <div>
-                <h4 className="mb-1.5 text-xs font-semibold text-muted">توضیحات تسک</h4>
-                <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)}
-                  placeholder="توضیحات تسک..."
+                <label className="block text-xs font-bold text-default mb-1.5">توضیحات تسک</label>
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="شرح جزئیات، نیازمندی‌ها و نکات اجرایی تسک..."
                   rows={3}
-                  className="block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors placeholder:text-muted focus:border-action/50 focus:bg-surface focus:outline-none" />
+                  className="w-full rounded-xl border border-border bg-surface-2/60 px-3.5 py-2.5 text-sm font-medium text-default placeholder:text-muted transition-all focus:border-action focus:bg-surface focus:outline-none resize-none"
+                />
               </div>
 
-              <div>
-                <h4 className="mb-1.5 text-xs font-semibold text-muted">میزان XP</h4>
-                <input type="number" min={0} value={editXpValue} onChange={(e) => setEditXpValue(Math.max(0, Number(e.target.value)))}
-                  className="block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors focus:border-action/50 focus:bg-surface focus:outline-none" />
-              </div>
+              {/* Two columns: XP and Deadline */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-default mb-1.5 flex items-center gap-1">
+                    <Zap className="h-3.5 w-3.5 text-[#F8A41D]" />
+                    <span>میزان امتیاز (XP)</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={editXpValue}
+                    onChange={(e) => setEditXpValue(Math.max(0, Number(e.target.value)))}
+                    className="w-full rounded-xl border border-border bg-surface-2/60 px-3.5 py-2 text-sm font-bold text-default focus:border-action focus:bg-surface focus:outline-none"
+                  />
+                </div>
 
-              <PersianDatePicker
-                label="ددلاین (تقویم شمسی)"
-                value={editDeadline}
-                onChange={setEditDeadline}
-                placeholder="انتخاب موعد تحویل..."
-              />
-
-              <div>
-                <h4 className="mb-1.5 text-xs font-semibold text-muted">سطح فوریت</h4>
-                <div className="flex gap-2">
-                  {(['normal', 'important', 'urgent'] as const).map((p) => (
-                    <button key={p} type="button" onClick={() => setEditPriority(p)}
-                      className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${editPriority === p ? `${PRIORITY_BADGE[p]} border-current` : 'border-border text-muted hover:bg-surface-2'}`}>
-                      {PRIORITY_LABEL[p]}
-                    </button>
-                  ))}
+                <div>
+                  <PersianDatePicker
+                    label="مهلت انجام (تقویم شمسی)"
+                    value={editDeadline}
+                    onChange={setEditDeadline}
+                    placeholder="انتخاب موعد تحویل..."
+                  />
                 </div>
               </div>
 
+              {/* Priority Segmented Control */}
+              <div>
+                <label className="block text-xs font-bold text-default mb-1.5">سطح فوریت</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['normal', 'important', 'urgent'] as const).map((p) => {
+                    const isSelected = editPriority === p
+                    const conf = PRIORITY_CONFIG[p]
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setEditPriority(p)}
+                        className={`flex items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? `${conf.bg} ${conf.border} ring-2 ring-offset-1 ring-action/40 shadow-xs font-black`
+                            : 'border-border bg-surface-2/50 text-muted hover:text-default hover:bg-surface-2'
+                        }`}
+                      >
+                        {p === 'urgent' && <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />}
+                        {p === 'important' && <Sparkles className="h-3.5 w-3.5 text-amber-500" />}
+                        <span>{conf.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Member Assignees Multi-Picker */}
               <div ref={memberDropdownRef}>
                 <div className="flex items-center justify-between mb-1.5">
-                  <h4 className="text-xs font-semibold text-muted">
-                    مسئولین تسک <span className="text-[11px] font-normal">(صرفاً اعضای این پروژه)</span>
-                  </h4>
+                  <label className="text-xs font-bold text-default flex items-center gap-1.5">
+                    <Users className="h-4 w-4 text-action" />
+                    <span>مسئولین تسک</span>
+                  </label>
                   <span className="text-[11px] text-muted">{allMembers.length} عضو در پروژه</span>
                 </div>
+
+                {/* Selected assignees pills */}
                 {editAssigneeIds.length > 0 && (
                   <div className="mb-2 flex flex-wrap gap-1.5">
                     {allMembers.filter((m) => editAssigneeIds.includes(m.id)).map((m) => (
-                      <span key={m.id}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-action-subtle px-2.5 py-1 text-xs font-medium text-action">
-                        <UserAvatar
-                          src={m.avatar_url}
-                          name={m.full_name}
-                          role={m.role}
-                          size="xs"
-                          shape="circle"
-                        />
-                        {m.full_name}
-                        <button type="button" onClick={() => setEditAssigneeIds((prev) => prev.filter((id) => id !== m.id))}
-                          className="text-action/60 transition-colors hover:text-danger" aria-label="حذف">
-                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      <span
+                        key={m.id}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-action/30 bg-action/10 px-2.5 py-1 text-xs font-semibold text-action"
+                      >
+                        <UserAvatar src={m.avatar_url} name={m.full_name} role={m.role} size="xs" shape="circle" />
+                        <span>{m.full_name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setEditAssigneeIds((prev) => prev.filter((id) => id !== m.id))}
+                          className="text-action/70 hover:text-rose-500 cursor-pointer"
+                        >
+                          <X className="h-3 w-3" />
                         </button>
                       </span>
                     ))}
                   </div>
                 )}
+
                 <div className="relative">
-                  <input value={memberSearch} onChange={(e) => { setMemberSearch(e.target.value); setMemberDropdownOpen(true) }}
+                  <input
+                    value={memberSearch}
+                    onChange={(e) => { setMemberSearch(e.target.value); setMemberDropdownOpen(true) }}
                     onFocus={() => setMemberDropdownOpen(true)}
-                    placeholder="انتخاب یا جستجو در اعضای پروژه..."
-                    className="block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors placeholder:text-muted focus:border-action/50 focus:bg-surface focus:outline-none" />
+                    placeholder="جستجو و انتخاب مسئول از بین اعضای پروژه..."
+                    className="w-full rounded-xl border border-border bg-surface-2/60 px-3.5 py-2 text-xs font-medium text-default placeholder:text-muted focus:border-action focus:bg-surface focus:outline-none"
+                  />
                   {memberDropdownOpen && (
-                    <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border bg-surface-2 shadow-lg">
+                    <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-border bg-surface shadow-xl py-1">
                       {allMembers.filter((m) => !editAssigneeIds.includes(m.id) && m.full_name.toLowerCase().includes(memberSearch.toLowerCase())).length === 0 ? (
-                        <p className="px-3 py-2 text-xs text-muted">عضوی یافت نشد.</p>
+                        <p className="px-3 py-2.5 text-center text-xs text-muted">کاربری برای افزودن یافت نشد.</p>
                       ) : (
                         allMembers.filter((m) => !editAssigneeIds.includes(m.id) && m.full_name.toLowerCase().includes(memberSearch.toLowerCase())).map((m) => (
-                          <button key={m.id} type="button" onClick={() => setEditAssigneeIds((prev) => [...prev, m.id])}
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-default transition-colors hover:bg-surface">
-                            <UserAvatar
-                              src={m.avatar_url}
-                              name={m.full_name}
-                              role={m.role}
-                              size="sm"
-                              shape="circle"
-                            />
-                            {m.full_name}
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setEditAssigneeIds((prev) => [...prev, m.id])}
+                            className="flex w-full items-center justify-between px-3 py-2 text-xs text-default hover:bg-surface-2 transition-colors cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <UserAvatar src={m.avatar_url} name={m.full_name} role={m.role} size="sm" shape="circle" />
+                              <span className="font-semibold">{m.full_name}</span>
+                            </div>
+                            <span className="text-[10px] text-action font-bold">+ افزودن</span>
                           </button>
                         ))
                       )}
@@ -421,138 +614,269 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 border-t border-border pt-3">
-                <button onClick={handleSave} disabled={saving}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-action px-4 py-2 text-xs font-medium text-white shadow-sm transition-all hover:bg-action-hover disabled:opacity-50">
+              {/* Edit Form Actions */}
+              <div className="flex items-center gap-2.5 pt-3 border-t border-border/80">
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="rokad-btn-primary flex-1 py-2.5 text-xs sm:text-sm font-bold justify-center disabled:opacity-50 cursor-pointer"
+                >
                   {saving ? 'در حال ذخیره...' : 'ذخیره تغییرات'}
                 </button>
-                <button onClick={() => setIsEditing(false)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-surface-2 px-4 py-2 text-xs font-medium text-muted transition-colors hover:text-default">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="rounded-xl border border-border bg-surface-2 px-4 py-2.5 text-xs sm:text-sm font-bold text-muted hover:text-default transition cursor-pointer"
+                >
                   انصراف
                 </button>
-                {error && <span className="text-xs text-danger">{error}</span>}
               </div>
             </div>
-          )}
-
-          {!isEditing && task.description && (
-            <div>
-              <h4 className="mb-1.5 text-xs font-semibold text-muted">توضیحات</h4>
-              <p className="text-sm text-default whitespace-pre-wrap leading-relaxed">{task.description}</p>
-            </div>
-          )}
-
-          {assignees.length > 0 && (
-            <div>
-              <h4 className="mb-2 text-xs font-semibold text-muted">مسئولین (برای مشاهده کارنامه کلیک کنید)</h4>
-              <div className="flex flex-wrap gap-1.5">
-                {assignees.map((a) => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    onClick={() => setSelectedMemberProfileId(a.id)}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-action-subtle px-2.5 py-1 text-xs font-medium text-action transition-all hover:bg-action/20 active:scale-95 cursor-pointer"
-                    title={`مشاهده کارنامه و تسک‌های انجام‌شده ${a.full_name}`}
-                  >
-                    <UserAvatar
-                      src={a.avatar_url}
-                      name={a.full_name}
-                      role={a.role}
-                      size="xs"
-                      shape="circle"
-                    />
-                    <span>{a.full_name}</span>
-                  </button>
-                ))}
+          ) : (
+            /* VIEW MODE DETAILS */
+            <>
+              {/* Description Section */}
+              <div className="rounded-2xl border border-border/80 bg-surface-2/30 p-4 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-default">
+                  <FileText className="h-4 w-4 text-action" />
+                  <span>توضیحات تسک</span>
+                </div>
+                <p className="text-xs sm:text-sm text-default/90 whitespace-pre-wrap leading-relaxed">
+                  {task.description || 'بدون توضیحات ثبت‌شده برای این تسک.'}
+                </p>
               </div>
-            </div>
-          )}
 
+              {/* Assignees Section */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-default">
+                    <Users className="h-4 w-4 text-action" />
+                    <span>مسئولین انجام تسک</span>
+                    <span className="rounded-full bg-surface-2 px-2 py-0.2 text-[10px] font-bold text-muted border border-border">
+                      {assignees.length.toLocaleString('fa-IR')} نفر
+                    </span>
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] text-muted">کلیک برای مشاهده کارنامه</span>
+                </div>
 
-          {checklists.length > 0 && (
-            <div>
-              <h4 className="mb-3 text-xs font-semibold text-muted">چک‌لیست‌ها</h4>
-              {checklists.map((cl) => (
-                <div key={cl.id} className="mb-3 last:mb-0">
-                  <h5 className="text-sm font-medium text-default mb-1.5">{cl.title}</h5>
-                  <div className="space-y-1">
-                    {cl.items.map((item) => {
-                      const canToggle = canEdit || isAssignee
-                      return (
-                        <label key={item.id} className={`flex items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm transition-colors ${canToggle ? 'cursor-pointer hover:bg-surface-2' : ''}`}>
-                          <input type="checkbox" checked={item.is_done}
-                            onChange={() => canToggle && toggleChecklistItem(item)}
-                            disabled={!canToggle}
-                            className="h-4 w-4 rounded text-action focus:ring-action/30 disabled:opacity-40" />
-                          <span className={`${item.is_done ? 'line-through text-muted' : 'text-default'}`}>{item.content}</span>
-                        </label>
-                      )
-                    })}
+                {assignees.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border/80 p-3 text-center text-xs text-muted">
+                    مسئولی برای این تسک تعیین نشده است.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {assignees.map((a) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => setSelectedMemberProfileId(a.id)}
+                        className="group flex items-center justify-between gap-2.5 rounded-xl border border-border/80 bg-surface p-2.5 transition-all hover:border-action/40 hover:bg-surface-2 hover:shadow-2xs active:scale-[0.99] cursor-pointer text-right"
+                        title={`مشاهده کارنامه ${a.full_name}`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <UserAvatar
+                            src={a.avatar_url}
+                            name={a.full_name}
+                            role={a.role}
+                            size="sm"
+                            shape="circle"
+                            className="ring-1 ring-border shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-default group-hover:text-action transition-colors truncate">
+                              {a.full_name}
+                            </div>
+                            <div className="text-[10px] text-muted truncate">
+                              {a.role === 'admin' ? 'راهبر' : a.role === 'mentor' ? 'منتور' : 'عضو باشگاه'}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold text-action opacity-0 group-hover:opacity-100 transition-opacity">
+                          مشاهده ←
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Checklists Section */}
+              {checklists.length > 0 && (
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-default">
+                      <CheckSquare className="h-4 w-4 text-action" />
+                      <span>چک‌لیست‌ها</span>
+                    </div>
+                    {checklistStats.total > 0 && (
+                      <span className="text-[11px] font-bold text-muted">
+                        {checklistStats.done.toLocaleString('fa-IR')} از {checklistStats.total.toLocaleString('fa-IR')} مورد ({checklistStats.pct}٪)
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Progress Bar */}
+                  {checklistStats.total > 0 && (
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2 border border-border/60">
+                      <div
+                        className="h-full bg-action transition-all duration-300 rounded-full"
+                        style={{ width: `${checklistStats.pct}%` }}
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    {checklists.map((cl) => (
+                      <div key={cl.id} className="rounded-2xl border border-border/80 bg-surface p-3 sm:p-3.5 space-y-2 shadow-2xs">
+                        <h5 className="text-xs sm:text-sm font-bold text-default">{cl.title}</h5>
+                        <div className="space-y-1.5">
+                          {cl.items.map((item) => {
+                            const canToggle = canEdit || isAssignee
+                            return (
+                              <label
+                                key={item.id}
+                                className={`flex items-center gap-2.5 rounded-xl border border-border/60 p-2 text-xs sm:text-sm transition-all select-none ${
+                                  canToggle ? 'cursor-pointer hover:bg-surface-2' : 'opacity-80'
+                                } ${item.is_done ? 'bg-surface-2/40' : 'bg-surface'}`}
+                              >
+                                <div
+                                  className={`flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                                    item.is_done ? 'bg-action border-action text-white' : 'border-border bg-surface-2/60'
+                                  }`}
+                                >
+                                  {item.is_done && <Check className="h-3 w-3 stroke-[3]" />}
+                                </div>
+                                <input
+                                  type="checkbox"
+                                  checked={item.is_done}
+                                  onChange={() => canToggle && toggleChecklistItem(item)}
+                                  disabled={!canToggle}
+                                  className="sr-only"
+                                />
+                                <span className={`flex-1 min-w-0 ${item.is_done ? 'line-through text-muted' : 'text-default font-medium'}`}>
+                                  {item.content}
+                                </span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          <div>
-            <h4 className="mb-3 text-xs font-semibold text-muted">گزارش‌ها</h4>
-            <div className="space-y-3 max-h-48 overflow-y-auto">
-              {reports.length === 0 && <p className="text-sm text-muted py-4 text-center">هنوز گزارشی ثبت نشده است.</p>}
-              {reports.map((report) => (
-                <div key={report.id} className="rounded-lg bg-surface-2 p-3.5">
-                  <div className="flex items-center justify-between text-xs text-muted">
-                    <span className="font-medium text-subtle">{report.author?.full_name || 'کاربر'}</span>
-                    <span>{new Date(report.created_at).toLocaleDateString('fa-IR')}</span>
+              {/* Reports & Activity Stream Section */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-default">
+                    <MessageSquare className="h-4 w-4 text-action" />
+                    <span>گزارش‌ها و بازخوردها</span>
+                    <span className="rounded-full bg-surface-2 px-2 py-0.2 text-[10px] font-bold text-muted border border-border">
+                      {reports.length.toLocaleString('fa-IR')}
+                    </span>
                   </div>
-                  <p className="mt-1.5 text-sm text-default whitespace-pre-wrap leading-relaxed">{report.content}</p>
                 </div>
-              ))}
-            </div>
 
-            {(isAssignee || canEdit) && (
-              <form onSubmit={handleAddReport} className="mt-3">
-                <textarea value={reportContent} onChange={(e) => setReportContent(e.target.value)}
-                  placeholder="افزودن گزارش جدید..." rows={2}
-                  className="block w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm transition-colors placeholder:text-muted focus:border-action/50 focus:bg-surface focus:outline-none" />
-                {error && <div className="mt-1.5 text-sm text-danger">{error}</div>}
-                <button type="submit" disabled={!reportContent.trim()}
-                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-action px-3.5 py-2 text-xs font-medium text-white transition-all hover:bg-action-hover disabled:opacity-50 shadow-sm">
-                  ثبت گزارش
-                </button>
-              </form>
-            )}
-          </div>
+                <div className="space-y-2.5 max-h-56 overflow-y-auto overscroll-contain pr-0.5">
+                  {reports.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-border/80 bg-surface-2/20 p-5 text-center text-xs text-muted">
+                      هنوز گزارشی برای این تسک ثبت نشده است.
+                    </div>
+                  ) : (
+                    reports.map((report) => (
+                      <div key={report.id} className="rounded-2xl border border-border/70 bg-surface-2/40 p-3 sm:p-3.5 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <UserAvatar
+                              src={report.author?.avatar_url}
+                              name={report.author?.full_name || 'کاربر'}
+                              role={report.author?.role as any}
+                              size="xs"
+                              shape="circle"
+                            />
+                            <span className="font-bold text-default text-xs">{report.author?.full_name || 'کاربر'}</span>
+                          </div>
+                          <span className="text-[10px] text-muted">{new Date(report.created_at).toLocaleDateString('fa-IR')}</span>
+                        </div>
+                        <p className="text-xs sm:text-sm text-default/90 whitespace-pre-wrap leading-relaxed pr-6">
+                          {report.content}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Add Report Form */}
+                {(isAssignee || canEdit) && (
+                  <form onSubmit={handleAddReport} className="pt-2">
+                    <div className="rounded-2xl border border-border bg-surface p-2.5 focus-within:border-action/80 transition-colors shadow-2xs">
+                      <textarea
+                        value={reportContent}
+                        onChange={(e) => setReportContent(e.target.value)}
+                        placeholder="افزودن گزارش پیشرفت یا ثبت نظر..."
+                        rows={2}
+                        className="w-full bg-transparent px-1 text-xs sm:text-sm text-default placeholder:text-muted focus:outline-none resize-none"
+                      />
+                      <div className="flex items-center justify-end pt-2 border-t border-border/60">
+                        <button
+                          type="submit"
+                          disabled={!reportContent.trim() || submittingReport}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-action px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-action-hover disabled:opacity-50 cursor-pointer active:scale-95"
+                        >
+                          {submittingReport ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <>
+                              <span>ارسال گزارش</span>
+                              <Send className="h-3 w-3" />
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowDeleteConfirm(false)}>
-          <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 shadow-2xl text-right" dir="rtl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-500/10 text-rose-500 mb-3 mx-auto">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-              </svg>
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl border-[1.5px] border-border bg-surface p-6 shadow-[4px_4px_0_#E0195B] text-right animate-in zoom-in-95 duration-150"
+            dir="rtl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500 mb-3 mx-auto border border-rose-500/20 shadow-xs">
+              <Trash2 className="h-6 w-6" />
             </div>
-            <h3 className="text-sm font-bold text-default text-center mb-2">حذف تسک</h3>
+            <h3 className="text-sm sm:text-base font-black text-default text-center mb-2">حذف تسک</h3>
             <p className="text-xs text-muted text-center mb-5 leading-relaxed">
               {task?.xp_awarded && (task?.xp_value ?? 0) > 0
-                ? `آیا از حذف این تسک اطمینان دارید؟ با حذف این تسک تکمیل‌شده، ${task.xp_value} امتیاز از اعضای منتسب به آن کسر خواهد شد.`
+                ? `آیا از حذف این تسک اطمینان دارید؟ با حذف این تسک تکمیل‌شده، ${(task.xp_value).toLocaleString('fa-IR')} امتیاز از اعضای منتسب به آن کسر خواهد شد.`
                 : 'آیا از حذف این تسک اطمینان دارید؟ این عملیات قابل بازگشت نیست.'}
             </p>
-            <div className="flex gap-2">
+            <div className="flex gap-2.5">
               <button
                 type="button"
                 disabled={isDeleting}
                 onClick={confirmDeleteTask}
-                className="flex-1 rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50 transition-colors"
+                className="flex-1 rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-rose-700 disabled:opacity-50 transition-colors shadow-xs cursor-pointer"
               >
                 {isDeleting ? 'در حال حذف...' : 'بله، حذف کن'}
               </button>
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 rounded-xl border border-border bg-surface-2 px-3 py-2 text-xs font-semibold text-default hover:bg-surface transition-colors"
+                className="flex-1 rounded-xl border border-border bg-surface-2 px-4 py-2.5 text-xs font-bold text-default hover:bg-surface transition-colors cursor-pointer"
               >
                 انصراف
               </button>
@@ -572,4 +896,3 @@ export default function TaskDetailModal({ taskId, onClose, profile, onTaskDelete
     </div>
   )
 }
-
