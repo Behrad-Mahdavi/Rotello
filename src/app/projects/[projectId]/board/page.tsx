@@ -130,13 +130,39 @@ export default function BoardPage({ params }: { params: Promise<{ projectId: str
     const { active, over } = event
     if (!over) return
     const taskId = active.id as string
-    const newStatus = over.id as TaskStatus
     const task = tasks.find((t) => t.id === taskId)
-    if (!task || task.status === newStatus) return
-    const { error: err } = await supabase.rpc('move_task_status', { p_task_id: taskId, p_new_status: newStatus })
-    if (err) { setError(err.message); return }
+    if (!task) return
+
+    // Determine target column status:
+    // If dropped on a column container, over.id is the column status
+    // If dropped on another task card, over.id is that task's id, so resolve its column status
+    const VALID_STATUSES: TaskStatus[] = ['backlog', 'todo', 'in_progress', 'review', 'done']
+    let newStatus: TaskStatus | null = null
+
+    if (VALID_STATUSES.includes(over.id as TaskStatus)) {
+      newStatus = over.id as TaskStatus
+    } else {
+      const overTask = tasks.find((t) => t.id === over.id)
+      if (overTask && VALID_STATUSES.includes(overTask.status)) {
+        newStatus = overTask.status
+      }
+    }
+
+    // If destination is not a valid status or unchanged, silently return
+    if (!newStatus || task.status === newStatus) return
+
+    const prevTasks = tasks
     setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: newStatus } : t))
     setError('')
+
+    const { error: err } = await supabase.rpc('move_task_status', { p_task_id: taskId, p_new_status: newStatus })
+    if (err) {
+      setTasks(prevTasks)
+      if (!err.message?.includes('tasks_status_check') && !err.message?.includes('check constraint')) {
+        setError(err.message)
+      }
+      return
+    }
   }
 
   function handleDragStart(event: DragStartEvent) {
