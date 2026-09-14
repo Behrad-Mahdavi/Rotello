@@ -269,7 +269,7 @@ export default function ProjectsListPage() {
                 className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border-[1.5px] bg-surface p-0 text-right transition-all duration-100 touch-manipulation select-none cursor-pointer ${
                   navigatingProjectId === project.id
                     ? 'border-action ring-2 ring-action ring-offset-2 bg-action/[0.04] scale-[0.99] shadow-none'
-                    : 'border-border shadow-[2.75px_2.75px_0_#202A5A] dark:shadow-[2.75px_2.75px_0_#59BBAF] hover:-translate-y-1 hover:shadow-[3.75px_3.75px_0_#202A5A] dark:hover:shadow-[3.75px_3.75px_0_#59BBAF] hover:border-action/50 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none'
+                    : `${colorConfig.border} shadow-[2.75px_2.75px_0_#202A5A] dark:shadow-[2.75px_2.75px_0_#59BBAF] hover:-translate-y-1 hover:shadow-[3.75px_3.75px_0_#202A5A] dark:hover:shadow-[3.75px_3.75px_0_#59BBAF] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none`
                 }`}
                 title={`ورود به بورد پروژه ${project.name}`}
               >

@@ -10,6 +10,7 @@ export interface ProjectColorConfig {
   dot: string
   ring: string
   bgLight: string
+  border: string
 }
 
 export const PROJECT_COLORS: Record<ProjectColorKey, ProjectColorConfig> = {
@@ -23,6 +24,7 @@ export const PROJECT_COLORS: Record<ProjectColorKey, ProjectColorConfig> = {
     dot: '#10b981',
     ring: 'ring-emerald-500/50',
     bgLight: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+    border: 'border-[#59BBAF] dark:border-[#59BBAF]',
   },
   indigo: {
     key: 'indigo',
@@ -34,6 +36,7 @@ export const PROJECT_COLORS: Record<ProjectColorKey, ProjectColorConfig> = {
     dot: '#2563eb',
     ring: 'ring-blue-600/50',
     bgLight: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
+    border: 'border-[#202A5A] dark:border-[#5C6BC0]',
   },
   purple: {
     key: 'purple',
@@ -45,6 +48,7 @@ export const PROJECT_COLORS: Record<ProjectColorKey, ProjectColorConfig> = {
     dot: '#8b5cf6',
     ring: 'ring-purple-600/50',
     bgLight: 'bg-purple-500/15 text-purple-600 dark:text-purple-400',
+    border: 'border-[#652D90] dark:border-[#9C4FD8]',
   },
   amber: {
     key: 'amber',
@@ -56,6 +60,7 @@ export const PROJECT_COLORS: Record<ProjectColorKey, ProjectColorConfig> = {
     dot: '#f59e0b',
     ring: 'ring-amber-500/50',
     bgLight: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+    border: 'border-[#F8A41D] dark:border-[#F8A41D]',
   },
   rose: {
     key: 'rose',
@@ -67,6 +72,7 @@ export const PROJECT_COLORS: Record<ProjectColorKey, ProjectColorConfig> = {
     dot: '#f43f5e',
     ring: 'ring-rose-500/50',
     bgLight: 'bg-rose-500/15 text-rose-600 dark:text-rose-400',
+    border: 'border-[#E0195B] dark:border-[#FB7185]',
   },
   cyan: {
     key: 'cyan',
@@ -78,6 +84,7 @@ export const PROJECT_COLORS: Record<ProjectColorKey, ProjectColorConfig> = {
     dot: '#06b6d4',
     ring: 'ring-cyan-500/50',
     bgLight: 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400',
+    border: 'border-[#0EA5E9] dark:border-[#38BDF8]',
   },
 }
 

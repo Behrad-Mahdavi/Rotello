@@ -8,14 +8,47 @@ import CreateEventModal from '@/components/CreateEventModal'
 import EditEventModal from '@/components/EditEventModal'
 import DeleteEventModal from '@/components/DeleteEventModal'
 import { formatToPersianDate } from '@/utils/jalaali'
+import { PROJECT_COLORS, extractProjectColorKey } from '@/constants/projectColors'
 import type { Profile, EventWithRelations, EventStatus, Event, Role } from '@/utils/database.types'
 
-const STATUS_MAP: Record<EventStatus, { label: string; style: string }> = {
-  planning: { label: 'در حال برنامه‌ریزی', style: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
-  ready: { label: 'آماده برگزاری', style: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  in_progress: { label: 'در حال برگزاری', style: 'bg-sky-500/10 text-sky-400 border-sky-500/20' },
-  completed: { label: 'برگزار شده', style: 'bg-teal-500/10 text-teal-400 border-teal-500/20' },
-  cancelled: { label: 'لغوشده', style: 'bg-rose-500/10 text-rose-400 border-rose-500/20' },
+interface EventStatusConfig {
+  label: string
+  style: string
+  border: string
+  bar: string
+}
+
+const STATUS_MAP: Record<EventStatus, EventStatusConfig> = {
+  planning: {
+    label: 'در حال برنامه‌ریزی',
+    style: 'bg-[#F8A41D]/15 text-[#B45309] dark:text-amber-300 border-[#F8A41D]/30',
+    border: 'border-[#F8A41D] dark:border-[#F8A41D]',
+    bar: 'from-amber-500 to-orange-500',
+  },
+  ready: {
+    label: 'آماده برگزاری',
+    style: 'bg-[#59BBAF]/15 text-[#1F413D] dark:text-emerald-300 border-[#59BBAF]/30',
+    border: 'border-[#59BBAF] dark:border-[#59BBAF]',
+    bar: 'from-emerald-500 to-teal-600',
+  },
+  in_progress: {
+    label: 'در حال برگزاری',
+    style: 'bg-[#0EA5E9]/15 text-[#0369A1] dark:text-cyan-300 border-[#0EA5E9]/30',
+    border: 'border-[#0EA5E9] dark:border-[#38BDF8]',
+    bar: 'from-sky-500 to-blue-600',
+  },
+  completed: {
+    label: 'برگزار شده',
+    style: 'bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/30',
+    border: 'border-teal-500 dark:border-teal-400',
+    bar: 'from-teal-500 to-emerald-600',
+  },
+  cancelled: {
+    label: 'لغوشده',
+    style: 'bg-[#E0195B]/15 text-[#9F1239] dark:text-rose-300 border-[#E0195B]/30',
+    border: 'border-[#E0195B] dark:border-[#FB7185]',
+    bar: 'from-rose-500 to-pink-600',
+  },
 }
 
 export default function EventsListPage() {
@@ -198,14 +231,10 @@ export default function EventsListPage() {
               const pct = totalItems > 0 ? Math.round((doneItems / totalItems) * 100) : 0
               const st = STATUS_MAP[ev.status] || STATUS_MAP.planning
 
-              const gradients = [
-                'from-emerald-500 to-teal-600',
-                'from-sky-500 to-indigo-600',
-                'from-amber-500 to-orange-600',
-                'from-rose-500 to-pink-600',
-                'from-violet-500 to-purple-600',
-              ]
-              const g = gradients[i % gradients.length]
+              const customColorKey = extractProjectColorKey(ev.description)
+              const customColor = customColorKey ? PROJECT_COLORS[customColorKey] : null
+              const borderClass = customColor ? customColor.border : st.border
+              const barGradient = customColor ? customColor.bar : st.bar
 
               const canManage = profile?.role === 'admin' || ev.lead_id === profile?.id
 
@@ -213,10 +242,10 @@ export default function EventsListPage() {
                 <div
                   key={ev.id}
                   onClick={() => router.push(`/events/${ev.id}`)}
-                  className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border-[1.5px] border-border bg-surface shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2.5px_2.5px_0_#59BBAF] transition-all duration-200 hover:-translate-y-1 hover:shadow-[3.5px_3.5px_0_#202A5A] dark:hover:shadow-[3.5px_3.5px_0_#59BBAF] hover:border-action/50 active:scale-[0.99] cursor-pointer"
+                  className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border-[1.5px] ${borderClass} bg-surface shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2.5px_2.5px_0_#59BBAF] transition-all duration-200 hover:-translate-y-1 hover:shadow-[3.5px_3.5px_0_#202A5A] dark:hover:shadow-[3.5px_3.5px_0_#59BBAF] active:scale-[0.99] cursor-pointer`}
                 >
                   {/* Top Accent Gradient Bar */}
-                  <div className={`h-1.5 w-full bg-gradient-to-r ${g}`} />
+                  <div className={`h-1.5 w-full bg-gradient-to-r ${barGradient}`} />
 
                   <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
                     {/* Top: Status & Date & Management actions */}

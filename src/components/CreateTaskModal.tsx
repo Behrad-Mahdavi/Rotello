@@ -17,7 +17,12 @@ import {
   Loader2,
   Sparkles,
   Trash2,
+  ChevronDown,
+  Search,
+  CheckCheck,
 } from 'lucide-react'
+import { toPersianDigits } from '@/utils/jalaali'
+import { DEPARTMENTS, type DepartmentKey } from '@/constants/departments'
 
 interface CreateTaskModalProps {
   projectId: string
@@ -70,9 +75,30 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated, onO
   const searchRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
-  const filteredMembers = members.filter((m) =>
-    (m.full_name || '').toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredMembers = members.filter((m) => {
+    const q = searchQuery.toLowerCase().trim()
+    if (!q) return true
+    const nameMatch = (m.full_name || '').toLowerCase().includes(q)
+    const roleMatch = (m.role === 'admin' ? 'راهبر' : m.role === 'mentor' ? 'منتور' : 'عضو').includes(q)
+    const deptMatch = (m.departments || []).some((d) => {
+      const conf = DEPARTMENTS[d.department as DepartmentKey]
+      return conf && (conf.label.toLowerCase().includes(q) || conf.shortLabel.toLowerCase().includes(q))
+    })
+    return nameMatch || roleMatch || deptMatch
+  })
+
+  const selectAllFiltered = () => {
+    const filteredIds = filteredMembers.map((m) => m.id)
+    setSelectedMembers((prev) => Array.from(new Set([...prev, ...filteredIds])))
+  }
+
+  const deselectAllFiltered = () => {
+    const filteredIds = new Set(filteredMembers.map((m) => m.id))
+    setSelectedMembers((prev) => prev.filter((id) => !filteredIds.has(id)))
+  }
+
+  const allFilteredSelected =
+    filteredMembers.length > 0 && filteredMembers.every((m) => selectedMembers.includes(m.id))
 
   useEffect(() => {
     async function load() {
@@ -375,23 +401,75 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated, onO
               </div>
             ) : (
               <>
+                {/* Interactive Select Trigger Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowDropdown((prev) => !prev)}
+                  className={`w-full flex items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs transition-all cursor-pointer select-none text-right ${
+                    showDropdown
+                      ? 'border-action ring-2 ring-action/20 bg-surface shadow-xs'
+                      : 'border-border bg-surface-2/60 hover:bg-surface-2 hover:border-action/40'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <Users className={`h-4 w-4 shrink-0 transition-colors ${selectedMembers.length > 0 ? 'text-action' : 'text-muted'}`} />
+                    {selectedMembers.length === 0 ? (
+                      <span className="text-muted font-medium">انتخاب مسئولان تسک (کلیک کنید)...</span>
+                    ) : (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="rounded-lg bg-action/15 text-action px-2 py-0.5 text-xs font-bold shrink-0">
+                          {toPersianDigits(selectedMembers.length)} نفر انتخاب شده
+                        </span>
+                        <span className="truncate font-semibold text-default text-xs max-w-[200px] sm:max-w-[280px]">
+                          {selectedMembers
+                            .map((id) => members.find((m) => m.id === id)?.full_name)
+                            .filter(Boolean)
+                            .join('، ')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0 mr-2">
+                    {selectedMembers.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedMembers([])
+                        }}
+                        className="p-1 rounded-lg text-muted hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                        title="لغو انتخاب همه"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <ChevronDown
+                      className={`h-4 w-4 text-muted transition-transform duration-200 ${
+                        showDropdown ? 'rotate-180 text-action' : ''
+                      }`}
+                    />
+                  </div>
+                </button>
+
                 {/* Selected members chips */}
                 {selectedMembers.length > 0 && (
-                  <div className="mb-2 flex flex-wrap gap-1.5">
+                  <div className="mt-2 flex flex-wrap gap-1.5">
                     {selectedMembers.map((uid) => {
                       const m = members.find((mm) => mm.id === uid)
                       if (!m) return null
                       return (
                         <span
                           key={uid}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-action/30 bg-action/10 px-2.5 py-1 text-xs font-semibold text-action"
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-action/30 bg-action/10 py-1 pr-1.5 pl-2 text-xs font-bold text-action shadow-2xs animate-in fade-in zoom-in-95 duration-100"
                         >
                           <UserAvatar src={m.avatar_url} name={m.full_name} role={m.role} size="xs" shape="circle" />
-                          <span>{m.full_name}</span>
+                          <span className="text-default">{m.full_name}</span>
                           <button
                             type="button"
                             onClick={() => toggleMember(uid)}
-                            className="text-action/70 hover:text-rose-500 cursor-pointer p-0.5"
+                            className="text-action/70 hover:text-rose-500 hover:bg-rose-500/10 rounded-md p-0.5 transition cursor-pointer"
+                            title={`حذف ${m.full_name}`}
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -401,53 +479,147 @@ export default function CreateTaskModal({ projectId, onClose, onTaskCreated, onO
                   </div>
                 )}
 
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value)
-                    setShowDropdown(true)
-                  }}
-                  onFocus={() => setShowDropdown(true)}
-                  placeholder="جستجو و انتخاب مسئول از بین اعضای پروژه..."
-                  className="w-full rounded-xl border border-border bg-surface-2/60 px-3.5 py-2.5 text-xs font-medium text-default placeholder:text-muted focus:border-action focus:bg-surface focus:outline-none"
-                />
-
+                {/* Dropdown Popup Menu */}
                 {showDropdown && (
-                  <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-border bg-surface shadow-xl py-1">
-                    {filteredMembers.length === 0 ? (
-                      <div className="p-3 text-center text-xs text-muted">
-                        عضوی با این نام در پروژه یافت نشد.
-                      </div>
-                    ) : (
-                      filteredMembers.map((m) => {
-                        const isSelected = selectedMembers.includes(m.id)
-                        return (
+                  <div className="absolute z-30 mt-1.5 w-full rounded-2xl border-[1.5px] border-border bg-surface shadow-[3px_3px_0_#202A5A] dark:shadow-[3px_3px_0_#59BBAF] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                    {/* Sticky Search & Actions Header */}
+                    <div className="sticky top-0 z-10 bg-surface border-b border-border/80 p-2.5 space-y-2">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="جستجوی نام، دپارتمان یا نقش..."
+                          className="w-full rounded-xl border border-border bg-surface-2/60 py-2 pr-8 pl-8 text-xs font-medium text-default placeholder:text-muted focus:border-action focus:bg-surface focus:outline-none"
+                          autoFocus
+                        />
+                        <Search className="absolute right-2.5 top-2.5 h-3.5 w-3.5 text-muted pointer-events-none" />
+                        {searchQuery && (
                           <button
-                            key={m.id}
                             type="button"
-                            onClick={() => {
-                              toggleMember(m.id)
-                              setSearchQuery('')
-                            }}
-                            className={`flex w-full items-center justify-between px-3 py-2 text-xs transition-colors cursor-pointer ${
-                              isSelected ? 'bg-action/10 text-action font-bold' : 'text-default hover:bg-surface-2'
-                            }`}
+                            onClick={() => setSearchQuery('')}
+                            className="absolute left-2.5 top-2.5 text-muted hover:text-default cursor-pointer p-0.5"
                           >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <UserAvatar src={m.avatar_url} name={m.full_name} role={m.role} size="sm" shape="circle" />
-                              <div className="min-w-0">
-                                <div className="truncate font-semibold text-default">{m.full_name}</div>
-                                <div className="text-[10px] text-muted truncate">
-                                  {m.role === 'admin' ? 'راهبر' : m.role === 'mentor' ? 'منتور' : 'عضو باشگاه'}
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {filteredMembers.length > 0 && (
+                        <div className="flex items-center justify-between text-[11px] px-1 pt-0.5">
+                          <button
+                            type="button"
+                            onClick={allFilteredSelected ? deselectAllFiltered : selectAllFiltered}
+                            className="font-bold text-action hover:underline inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <CheckCheck className="w-3.5 h-3.5" />
+                            <span>
+                              {allFilteredSelected
+                                ? `لغو همه (${toPersianDigits(filteredMembers.length)})`
+                                : `انتخاب همه (${toPersianDigits(filteredMembers.length)})`}
+                            </span>
+                          </button>
+
+                          <span className="text-muted font-medium">
+                            {toPersianDigits(selectedMembers.length)} از {toPersianDigits(members.length)} نفر انتخاب شده
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Scrollable Members List */}
+                    <div className="max-h-56 overflow-y-auto p-1.5 space-y-1 scrollbar-thin">
+                      {filteredMembers.length === 0 ? (
+                        <div className="py-6 text-center text-xs text-muted">
+                          عضوی با عبارت «{searchQuery}» یافت نشد.
+                        </div>
+                      ) : (
+                        filteredMembers.map((m) => {
+                          const isSelected = selectedMembers.includes(m.id)
+                          const mDeps = (m.departments || [])
+                            .map((d) => DEPARTMENTS[d.department as DepartmentKey])
+                            .filter(Boolean)
+
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => toggleMember(m.id)}
+                              className={`w-full flex items-center justify-between p-2 rounded-xl text-right transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'bg-action/10 border border-action/30'
+                                  : 'hover:bg-surface-2 border border-transparent'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                {/* Custom Checkbox */}
+                                <div
+                                  className={`flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-lg border-[1.5px] transition-colors ${
+                                    isSelected
+                                      ? 'bg-action border-action text-white shadow-2xs'
+                                      : 'border-border-strong bg-surface'
+                                  }`}
+                                >
+                                  {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                                </div>
+
+                                <UserAvatar src={m.avatar_url} name={m.full_name} role={m.role} size="sm" shape="circle" />
+
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`truncate text-xs font-bold ${isSelected ? 'text-action' : 'text-default'}`}>
+                                      {m.full_name}
+                                    </span>
+                                    {m.role === 'admin' && (
+                                      <span className="rounded bg-[#202A5A]/10 text-[#202A5A] dark:bg-blue-500/20 dark:text-blue-300 px-1.5 py-0.5 text-[9px] font-bold">
+                                        راهبر
+                                      </span>
+                                    )}
+                                    {m.role === 'mentor' && (
+                                      <span className="rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 text-[9px] font-bold">
+                                        منتور
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {mDeps.length > 0 && (
+                                    <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                                      {mDeps.map((dep, idx) => (
+                                        <span key={idx} className="text-[10px] text-muted font-medium">
+                                          {dep.shortLabel}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
-                            </div>
-                            {isSelected && <Check className="w-4 h-4 text-action shrink-0" />}
-                          </button>
-                        )
-                      })
-                    )}
+
+                              {isSelected && (
+                                <span className="text-[10px] font-bold text-action bg-action/15 px-2 py-0.5 rounded-md shrink-0">
+                                  انتخاب شد
+                                </span>
+                              )}
+                            </button>
+                          )
+                        })
+                      )}
+                    </div>
+
+                    {/* Footer Bar with Confirm Button */}
+                    <div className="p-2 bg-surface-2/60 border-t border-border/80 flex items-center justify-between">
+                      <span className="text-[11px] text-muted font-medium pr-1">
+                        {selectedMembers.length === 0
+                          ? 'هیچ عضوی انتخاب نشده'
+                          : `${toPersianDigits(selectedMembers.length)} نفر انتخاب شده`}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowDropdown(false)}
+                        className="rokad-btn-primary px-3 py-1.5 text-xs font-bold cursor-pointer"
+                      >
+                        <span>تأیید و بستن</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </>
