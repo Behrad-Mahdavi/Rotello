@@ -345,7 +345,7 @@ export default function AdminProjectsPage() {
                 className={`group relative overflow-hidden rounded-2xl border-[1.5px] bg-surface pt-0 transition-all duration-100 touch-manipulation select-none cursor-pointer ${
                   navigatingProjectId === project.id
                     ? 'border-action ring-2 ring-action ring-offset-2 bg-action/[0.03] scale-[0.99] shadow-none'
-                    : `${colorConfig.border} shadow-[2.75px_2.75px_0_#202A5A] dark:shadow-[2.75px_2.75px_0_#59BBAF] hover:-translate-y-1 hover:shadow-[3.75px_3.75px_0_#202A5A] dark:hover:shadow-[3.75px_3.75px_0_#59BBAF] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none`
+                    : `border-border ${colorConfig.shadow} hover:-translate-y-1 ${colorConfig.shadowHover} hover:border-action/40 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none`
                 }`}
               >
                 <div className={`h-2 w-full bg-gradient-to-r ${colorConfig.bar}`} />

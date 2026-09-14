@@ -11,6 +11,8 @@ export interface ProjectColorConfig {
   ring: string
   bgLight: string
   border: string
+  shadow: string
+  shadowHover: string
 }
 
 export const PROJECT_COLORS: Record<ProjectColorKey, ProjectColorConfig> = {
@@ -25,6 +27,8 @@ export const PROJECT_COLORS: Record<ProjectColorKey, ProjectColorConfig> = {
     ring: 'ring-emerald-500/50',
     bgLight: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
     border: 'border-[#59BBAF] dark:border-[#59BBAF]',
+    shadow: 'shadow-[2.75px_2.75px_0_#59BBAF]',
+    shadowHover: 'hover:shadow-[3.75px_3.75px_0_#59BBAF]',
   },
   indigo: {
     key: 'indigo',
@@ -37,6 +41,8 @@ export const PROJECT_COLORS: Record<ProjectColorKey, ProjectColorConfig> = {
     ring: 'ring-blue-600/50',
     bgLight: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
     border: 'border-[#202A5A] dark:border-[#5C6BC0]',
+    shadow: 'shadow-[2.75px_2.75px_0_#202A5A] dark:shadow-[2.75px_2.75px_0_#3F50A0]',
+    shadowHover: 'hover:shadow-[3.75px_3.75px_0_#202A5A] dark:hover:shadow-[3.75px_3.75px_0_#3F50A0]',
   },
   purple: {
     key: 'purple',
@@ -49,6 +55,8 @@ export const PROJECT_COLORS: Record<ProjectColorKey, ProjectColorConfig> = {
     ring: 'ring-purple-600/50',
     bgLight: 'bg-purple-500/15 text-purple-600 dark:text-purple-400',
     border: 'border-[#652D90] dark:border-[#9C4FD8]',
+    shadow: 'shadow-[2.75px_2.75px_0_#652D90] dark:shadow-[2.75px_2.75px_0_#8B44C4]',
+    shadowHover: 'hover:shadow-[3.75px_3.75px_0_#652D90] dark:hover:shadow-[3.75px_3.75px_0_#8B44C4]',
   },
   amber: {
     key: 'amber',
@@ -61,6 +69,8 @@ export const PROJECT_COLORS: Record<ProjectColorKey, ProjectColorConfig> = {
     ring: 'ring-amber-500/50',
     bgLight: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
     border: 'border-[#F8A41D] dark:border-[#F8A41D]',
+    shadow: 'shadow-[2.75px_2.75px_0_#F8A41D]',
+    shadowHover: 'hover:shadow-[3.75px_3.75px_0_#F8A41D]',
   },
   rose: {
     key: 'rose',
@@ -73,6 +83,8 @@ export const PROJECT_COLORS: Record<ProjectColorKey, ProjectColorConfig> = {
     ring: 'ring-rose-500/50',
     bgLight: 'bg-rose-500/15 text-rose-600 dark:text-rose-400',
     border: 'border-[#E0195B] dark:border-[#FB7185]',
+    shadow: 'shadow-[2.75px_2.75px_0_#E0195B]',
+    shadowHover: 'hover:shadow-[3.75px_3.75px_0_#E0195B]',
   },
   cyan: {
     key: 'cyan',
@@ -85,6 +97,8 @@ export const PROJECT_COLORS: Record<ProjectColorKey, ProjectColorConfig> = {
     ring: 'ring-cyan-500/50',
     bgLight: 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400',
     border: 'border-[#0EA5E9] dark:border-[#38BDF8]',
+    shadow: 'shadow-[2.75px_2.75px_0_#0EA5E9]',
+    shadowHover: 'hover:shadow-[3.75px_3.75px_0_#0EA5E9]',
   },
 }
 

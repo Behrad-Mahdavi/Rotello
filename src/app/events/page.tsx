@@ -14,40 +14,46 @@ import type { Profile, EventWithRelations, EventStatus, Event, Role } from '@/ut
 interface EventStatusConfig {
   label: string
   style: string
-  border: string
   bar: string
+  shadow: string
+  shadowHover: string
 }
 
 const STATUS_MAP: Record<EventStatus, EventStatusConfig> = {
   planning: {
     label: 'در حال برنامه‌ریزی',
     style: 'bg-[#F8A41D]/15 text-[#B45309] dark:text-amber-300 border-[#F8A41D]/30',
-    border: 'border-[#F8A41D] dark:border-[#F8A41D]',
     bar: 'from-amber-500 to-orange-500',
+    shadow: 'shadow-[2.5px_2.5px_0_#F8A41D]',
+    shadowHover: 'hover:shadow-[3.5px_3.5px_0_#F8A41D]',
   },
   ready: {
     label: 'آماده برگزاری',
     style: 'bg-[#59BBAF]/15 text-[#1F413D] dark:text-emerald-300 border-[#59BBAF]/30',
-    border: 'border-[#59BBAF] dark:border-[#59BBAF]',
     bar: 'from-emerald-500 to-teal-600',
+    shadow: 'shadow-[2.5px_2.5px_0_#59BBAF]',
+    shadowHover: 'hover:shadow-[3.5px_3.5px_0_#59BBAF]',
   },
   in_progress: {
     label: 'در حال برگزاری',
     style: 'bg-[#0EA5E9]/15 text-[#0369A1] dark:text-cyan-300 border-[#0EA5E9]/30',
-    border: 'border-[#0EA5E9] dark:border-[#38BDF8]',
     bar: 'from-sky-500 to-blue-600',
+    shadow: 'shadow-[2.5px_2.5px_0_#0EA5E9]',
+    shadowHover: 'hover:shadow-[3.5px_3.5px_0_#0EA5E9]',
   },
   completed: {
     label: 'برگزار شده',
     style: 'bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/30',
-    border: 'border-teal-500 dark:border-teal-400',
     bar: 'from-teal-500 to-emerald-600',
+    shadow: 'shadow-[2.5px_2.5px_0_#14B8A6]',
+    shadowHover: 'hover:shadow-[3.5px_3.5px_0_#14B8A6]',
   },
   cancelled: {
     label: 'لغوشده',
     style: 'bg-[#E0195B]/15 text-[#9F1239] dark:text-rose-300 border-[#E0195B]/30',
-    border: 'border-[#E0195B] dark:border-[#FB7185]',
     bar: 'from-rose-500 to-pink-600',
+    shadow: 'shadow-[2.5px_2.5px_0_#E0195B]',
+    shadowHover: 'hover:shadow-[3.5px_3.5px_0_#E0195B]',
   },
 }
 
@@ -233,8 +239,9 @@ export default function EventsListPage() {
 
               const customColorKey = extractProjectColorKey(ev.description)
               const customColor = customColorKey ? PROJECT_COLORS[customColorKey] : null
-              const borderClass = customColor ? customColor.border : st.border
               const barGradient = customColor ? customColor.bar : st.bar
+              const shadowClass = customColor ? customColor.shadow : st.shadow
+              const shadowHoverClass = customColor ? customColor.shadowHover : st.shadowHover
 
               const canManage = profile?.role === 'admin' || ev.lead_id === profile?.id
 
@@ -242,7 +249,7 @@ export default function EventsListPage() {
                 <div
                   key={ev.id}
                   onClick={() => router.push(`/events/${ev.id}`)}
-                  className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border-[1.5px] ${borderClass} bg-surface shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2.5px_2.5px_0_#59BBAF] transition-all duration-200 hover:-translate-y-1 hover:shadow-[3.5px_3.5px_0_#202A5A] dark:hover:shadow-[3.5px_3.5px_0_#59BBAF] active:scale-[0.99] cursor-pointer`}
+                  className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border-[1.5px] border-border bg-surface ${shadowClass} transition-all duration-200 hover:-translate-y-1 ${shadowHoverClass} hover:border-action/40 active:scale-[0.99] cursor-pointer`}
                 >
                   {/* Top Accent Gradient Bar */}
                   <div className={`h-1.5 w-full bg-gradient-to-r ${barGradient}`} />
