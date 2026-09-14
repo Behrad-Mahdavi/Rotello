@@ -528,22 +528,55 @@
 /* ==============================================================================
    GLOBAL SCROLLBAR & BASE
    ============================================================================== */
+/* Cross-browser standard scrollbar for Firefox & modern engines */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+/* Webkit scrollbars (Chrome, Edge, Safari, Opera) */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
 }
+
 ::-webkit-scrollbar-track {
-  background: #F1F1F1;
+  background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #C4C4C4;
-  border-radius: 4px;
+  background-color: var(--scrollbar-thumb);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.15s ease;
 }
-.dark ::-webkit-scrollbar-track {
-  background: #111827;
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
 }
-.dark ::-webkit-scrollbar-thumb {
-  background: #374151;
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Utility classes for hiding or thinning scrollbars */
+.scrollbar-none {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin !important;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 5px !important;
+  height: 5px !important;
 }
 
 body {

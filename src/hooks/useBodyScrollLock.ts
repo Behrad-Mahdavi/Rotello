@@ -5,6 +5,7 @@ import { useEffect } from 'react'
 let lockCount = 0
 let originalOverflow = ''
 let originalPaddingRight = ''
+let originalPaddingLeft = ''
 
 /**
  * Hook to lock background body scroll when a modal or overlay is open.
@@ -21,12 +22,18 @@ export function useBodyScrollLock(isLocked: boolean = true) {
 
     if (lockCount === 1) {
       const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth
+      const isRtl = document.documentElement.dir === 'rtl' || document.body.dir === 'rtl'
       originalOverflow = document.body.style.overflow
       originalPaddingRight = document.body.style.paddingRight
+      originalPaddingLeft = document.body.style.paddingLeft
 
       document.body.style.overflow = 'hidden'
       if (scrollBarWidth > 0) {
-        document.body.style.paddingRight = `${scrollBarWidth}px`
+        if (isRtl) {
+          document.body.style.paddingLeft = `${scrollBarWidth}px`
+        } else {
+          document.body.style.paddingRight = `${scrollBarWidth}px`
+        }
       }
     }
 
@@ -35,6 +42,7 @@ export function useBodyScrollLock(isLocked: boolean = true) {
       if (lockCount === 0) {
         document.body.style.overflow = originalOverflow || ''
         document.body.style.paddingRight = originalPaddingRight || ''
+        document.body.style.paddingLeft = originalPaddingLeft || ''
       }
     }
   }, [isLocked])
