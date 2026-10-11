@@ -79,8 +79,17 @@ export default function ReviewXpRequestModal({
 
   // Selected profiles
   const selectedProfiles = useMemo(() => {
-    return membersList.filter((m) => selectedUserIds.includes(m.id))
-  }, [membersList, selectedUserIds])
+    const list: Profile[] = []
+    for (const id of selectedUserIds) {
+      const found = membersList.find((m) => m.id === id)
+      if (found) {
+        list.push(found)
+      } else if (request && request.requester && request.requester.id === id) {
+        list.push(request.requester as Profile)
+      }
+    }
+    return list
+  }, [membersList, selectedUserIds, request])
 
   function toggleMember(memberId: string) {
     setSelectedUserIds((prev) => {

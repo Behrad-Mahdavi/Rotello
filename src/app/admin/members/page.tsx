@@ -174,9 +174,14 @@ export default function AdminMembersPage() {
 
   function handleRequestReviewed(updatedReq: XpRequest) {
     setXpRequests((prev) =>
-      prev.map((r) => (r.id === updatedReq.id ? { ...r, ...updatedReq } : r))
+      prev.map((r) => (r.id === updatedReq.id ? {
+        ...r,
+        ...updatedReq,
+        requester: updatedReq.requester || r.requester,
+      } : r))
     )
     reload()
+    loadXpRequests()
     setSelectedRequestForReview(null)
   }
 

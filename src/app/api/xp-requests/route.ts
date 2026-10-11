@@ -74,15 +74,18 @@ export async function GET(request: Request) {
       }
     }
 
-    const { data: profilesData } = await dbClient
-      .from('profiles')
-      .select('id, full_name, role, avatar_url, xp_total, departments')
-      .in('id', Array.from(userIds))
-
     const profilesMap = new Map<string, Profile>()
-    if (profilesData) {
-      for (const p of profilesData as Profile[]) {
-        profilesMap.set(p.id, p)
+    const idsArray = Array.from(userIds)
+    if (idsArray.length > 0) {
+      const { data: profilesData } = await dbClient
+        .from('profiles')
+        .select('id, full_name, role, avatar_url, xp_total, departments')
+        .in('id', idsArray)
+
+      if (profilesData) {
+        for (const p of profilesData as Profile[]) {
+          profilesMap.set(p.id, p)
+        }
       }
     }
 
