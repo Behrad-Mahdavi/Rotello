@@ -1206,11 +1206,6 @@ export default function AdminMembersPage() {
                                 )}
                               </div>
                             </div>
-                            {req.suggested_xp && (
-                              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-500 shrink-0">
-                                پیشنهاد: {toPersianDigits(req.suggested_xp)} XP
-                              </div>
-                            )}
                           </div>
 
                           {req.description && (

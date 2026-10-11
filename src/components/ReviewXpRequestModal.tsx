@@ -76,9 +76,7 @@ function ReviewXpRequestDialog({
   const [loadingProjects, setLoadingProjects] = useState(true)
 
   const [awardType, setAwardType] = useState<XpRequestAwardType>(request.award_type || 'task_completion')
-  const [awardedXp, setAwardedXp] = useState<number | ''>(
-    request.suggested_xp && request.suggested_xp > 0 ? request.suggested_xp : 50
-  )
+  const [awardedXp, setAwardedXp] = useState<number | ''>(50)
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>(() => {
     const rawIds = request.target_user_ids?.length ? request.target_user_ids : [request.user_id]
     return rawIds.filter((id) => {
@@ -307,13 +305,6 @@ function ReviewXpRequestDialog({
                 </div>
               </div>
             </div>
-
-            {request.suggested_xp && (
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-500 flex items-center gap-1.5 self-start">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>پیشنهاد عضو: {toPersianDigits(request.suggested_xp)} XP</span>
-              </div>
-            )}
           </div>
 
           {/* Submitted Request Info */}

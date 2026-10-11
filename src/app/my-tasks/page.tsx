@@ -309,11 +309,6 @@ export default function MyTasksPage() {
                             <span>{req.project.name}</span>
                           </span>
                         )}
-                        {req.suggested_xp && (
-                          <span className="rounded-md bg-amber-500/10 text-amber-500 px-2 py-0.5 text-[11px] font-bold border border-amber-500/20">
-                            پیشنهاد من: {toPersianDigits(req.suggested_xp)} XP
-                          </span>
-                        )}
                       </div>
 
                       <div className="flex items-center gap-2 self-start sm:self-auto">

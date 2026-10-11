@@ -39,7 +39,6 @@ function RequestXpModalDialog({
 }) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [suggestedXp, setSuggestedXp] = useState<number | ''>(50)
   const [selectedProjectId, setSelectedProjectId] = useState<string>('')
   const [projects, setProjects] = useState<ProjectOption[]>([])
   const [loadingProjects, setLoadingProjects] = useState(true)
@@ -88,7 +87,6 @@ function RequestXpModalDialog({
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim() || null,
-          suggested_xp: suggestedXp === '' ? null : Number(suggestedXp),
           project_id: selectedProjectId.trim() ? selectedProjectId.trim() : null,
         }),
       })
@@ -108,8 +106,6 @@ function RequestXpModalDialog({
       setLoading(false)
     }
   }
-
-  const quickXpChips = [25, 50, 75, 100, 150, 200]
 
   return (
     <div
@@ -240,51 +236,6 @@ function RequestXpModalDialog({
                 placeholder="توضیح دهید چه کارهایی انجام شده، لینک خروجی کار (در صورت وجود) یا هر نکته‌ای که به راهبر برای تایید سریع‌تر کمک می‌کند..."
                 className="w-full rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-xs sm:text-sm text-default placeholder:text-muted/70 transition-all focus:border-action/60 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20 resize-none leading-relaxed"
               />
-            </div>
-
-            {/* Suggested XP */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-default">
-                  پیشنهاد امتیاز (XP) <span className="text-[11px] font-normal text-muted">(اختیاری)</span>
-                </label>
-                <span className="text-[11px] text-muted">
-                  تصمیم نهایی با راهبر است
-                </span>
-              </div>
-
-              {/* Quick Chips */}
-              <div className="flex flex-wrap gap-1.5 mb-2.5">
-                {quickXpChips.map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => setSuggestedXp(q)}
-                    className={`rounded-lg px-2.5 py-1 text-xs font-bold border transition-all cursor-pointer ${
-                      suggestedXp === q
-                        ? 'border-amber-500 bg-amber-500/15 text-amber-500 shadow-2xs'
-                        : 'border-border bg-surface-2 text-muted hover:border-border-strong hover:text-default'
-                    }`}
-                  >
-                    {toPersianDigits(q)} XP
-                  </button>
-                ))}
-              </div>
-
-              <div className="relative">
-                <input
-                  type="number"
-                  min="1"
-                  max="1000"
-                  value={suggestedXp}
-                  onChange={(e) => setSuggestedXp(e.target.value === '' ? '' : Number(e.target.value))}
-                  placeholder="مثال: 50"
-                  className="w-full rounded-xl border border-border bg-surface-2 px-3.5 py-2 text-xs sm:text-sm text-default transition-all focus:border-action/60 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20"
-                />
-                <span className="absolute left-3.5 top-2 text-xs font-bold text-muted pointer-events-none">
-                  XP
-                </span>
-              </div>
             </div>
 
             {/* Info Notice */}

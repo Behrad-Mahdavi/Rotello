@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { getAllProjectMemberIds } from '@/utils/projectMembersStore'
+import { getAllProjectDepartmentsMap } from '@/utils/projectDepartmentsStore'
 import type { DepartmentKey } from '@/constants/departments'
 
 export const dynamic = 'force-dynamic'
@@ -13,10 +14,7 @@ export interface ProjectOption {
 }
 
 // GET /api/projects/my-projects
-// Returns projects accessible to the authenticated user:
-// - Regular member: ONLY projects they are added to (as project_members or task assignees)
-// - Mentor: Projects matching their departments OR where they are a member
-// - Admin: All projects
+// Returns projects accessible to the authenticated user
 export async function GET(request: Request) {
   try {
     const supabase = await createClient()
@@ -32,7 +30,7 @@ export async function GET(request: Request) {
     try {
       adminClient = createAdminClient() as unknown as typeof supabase
     } catch {
-      // fallback to session client
+      // fallback
     }
 
     const { data: profile } = await adminClient
@@ -42,26 +40,34 @@ export async function GET(request: Request) {
       .single()
 
     const role = profile?.role || user.user_metadata?.role || 'member'
-
     const isAdmin = role === 'admin'
 
-    if (isAdmin) {
-      const { data: allProjects, error: allErr } = await adminClient
-        .from('projects')
-        .select('id, name, department')
-        .order('name', { ascending: true })
+    // Fetch all active projects
+    const { data: allProjects, error: allErr } = await adminClient
+      .from('projects')
+      .select('id, name, department')
+      .order('name', { ascending: true })
 
-      if (allErr) {
-        return NextResponse.json({ error: allErr.message }, { status: 500 })
-      }
+    if (allErr) {
+      return NextResponse.json({ error: allErr.message }, { status: 500 })
+    }
 
+    if (!allProjects || allProjects.length === 0) {
       return NextResponse.json(
-        { projects: allProjects || [] },
+        { projects: [] },
         { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
       )
     }
 
-    // Collect project IDs where user is a member
+    // Admins have access to all projects
+    if (isAdmin) {
+      return NextResponse.json(
+        { projects: allProjects },
+        { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
+      )
+    }
+
+    // Collect project IDs where user is member/assigned
     const userProjectIds = new Set<string>()
 
     // 1. Check Supabase project_members table
@@ -80,18 +86,23 @@ export async function GET(request: Request) {
       // ignore
     }
 
-    // 2. Check task_assignees
+    // 2. Check task_assignees (2-step query for reliability without FK embedding)
     try {
-      const { data: assigneesData } = await adminClient
+      const { data: assignees } = await adminClient
         .from('task_assignees')
-        .select('task_id, tasks(project_id)')
+        .select('task_id')
         .eq('user_id', user.id)
 
-      if (assigneesData) {
-        for (const item of assigneesData as unknown as { tasks?: { project_id: string } | { project_id: string }[] | null }[]) {
-          const t = Array.isArray(item.tasks) ? item.tasks[0] : item.tasks
-          if (t?.project_id) {
-            userProjectIds.add(t.project_id)
+      if (assignees && assignees.length > 0) {
+        const taskIds = assignees.map((a: { task_id: string }) => a.task_id).filter(Boolean)
+        const { data: tasks } = await adminClient
+          .from('tasks')
+          .select('project_id')
+          .in('id', taskIds)
+
+        if (tasks) {
+          for (const t of tasks) {
+            if (t.project_id) userProjectIds.add(t.project_id)
           }
         }
       }
@@ -99,7 +110,23 @@ export async function GET(request: Request) {
       // ignore
     }
 
-    // 3. Fallback / merge local store
+    // 3. Check tasks created by user
+    try {
+      const { data: createdTasks } = await adminClient
+        .from('tasks')
+        .select('project_id')
+        .eq('created_by', user.id)
+
+      if (createdTasks) {
+        for (const t of createdTasks) {
+          if (t.project_id) userProjectIds.add(t.project_id)
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // 4. Check projectMembersStore (local json & roster tasks)
     try {
       const localMap = await getAllProjectMemberIds()
       for (const pid in localMap) {
@@ -111,49 +138,49 @@ export async function GET(request: Request) {
       // ignore
     }
 
-    // 4. If Mentor, also include department matching projects
-    if (role === 'mentor' && profile?.departments && Array.isArray(profile.departments)) {
-      const mentorDeps = profile.departments
-        .map((d: { department: DepartmentKey }) => d.department)
-        .filter(Boolean)
-
-      if (mentorDeps.length > 0) {
-        try {
-          const { data: depProjects } = await adminClient
-            .from('projects')
-            .select('id, department')
-            .in('department', mentorDeps)
-
-          if (depProjects) {
-            for (const p of depProjects) {
-              userProjectIds.add(p.id)
-            }
-          }
-        } catch {
-          // ignore
-        }
+    // 5. Match by departments (for all users: members, mentors)
+    const userDepts = new Set<string>()
+    if (profile?.departments && Array.isArray(profile.departments)) {
+      for (const d of profile.departments) {
+        if (typeof d === 'string') userDepts.add(d)
+        else if (d?.department) userDepts.add(d.department)
+      }
+    }
+    if (user.user_metadata?.departments && Array.isArray(user.user_metadata.departments)) {
+      for (const d of user.user_metadata.departments) {
+        if (typeof d === 'string') userDepts.add(d)
+        else if (d?.department) userDepts.add(d.department)
       }
     }
 
-    if (userProjectIds.size === 0) {
-      return NextResponse.json(
-        { projects: [] },
-        { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
-      )
+    if (userDepts.size > 0) {
+      for (const p of allProjects) {
+        if (p.department && userDepts.has(p.department)) {
+          userProjectIds.add(p.id)
+        }
+      }
+
+      try {
+        const deptMap = await getAllProjectDepartmentsMap()
+        for (const [pid, pDeps] of Object.entries(deptMap)) {
+          if (pDeps.some((d) => userDepts.has(d))) {
+            userProjectIds.add(pid)
+          }
+        }
+      } catch {
+        // ignore
+      }
     }
 
-    const { data: projectsData, error: projErr } = await adminClient
-      .from('projects')
-      .select('id, name, department')
-      .in('id', Array.from(userProjectIds))
-      .order('name', { ascending: true })
-
-    if (projErr) {
-      return NextResponse.json({ error: projErr.message }, { status: 500 })
+    // 6. Final fallback: If user doesn't have an explicit assignment yet,
+    // show available projects so they are never blocked from requesting XP
+    let matchingProjects = allProjects.filter((p) => userProjectIds.has(p.id))
+    if (matchingProjects.length === 0) {
+      matchingProjects = allProjects
     }
 
     return NextResponse.json(
-      { projects: projectsData || [] },
+      { projects: matchingProjects },
       { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
     )
   } catch (err: unknown) {
