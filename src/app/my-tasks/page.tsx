@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import AppHeader from '@/components/AppHeader'
 import RequestXpModal from '@/components/RequestXpModal'
 import { formatToPersianDate, toPersianDigits } from '@/utils/jalaali'
+import { setCachedProfile } from '@/utils/userCache'
 import type { Profile, Task, EventChecklistItem, XpRequest } from '@/utils/database.types'
 import { Calendar, ClipboardList, CheckCircle2, Sparkles, Clock, Trash2, FolderKanban } from 'lucide-react'
 
