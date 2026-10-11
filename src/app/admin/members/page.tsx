@@ -10,12 +10,13 @@ import MemberEditModal from '@/components/MemberEditModal'
 import MemberTasksOverviewTab from '@/components/MemberTasksOverviewTab'
 import type { MemberAssignmentItem } from '@/components/MemberTasksOverviewModal'
 import TaskDetailModal from '@/components/TaskDetailModal'
+import ReviewXpRequestModal from '@/components/ReviewXpRequestModal'
 import UserAvatar from '@/components/UserAvatar'
 import { formatToPersianDate, toPersianDigits } from '@/utils/jalaali'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import { DEPARTMENTS, DEPARTMENT_KEYS, getRoleInfo, type DepartmentKey, type DepartmentLevel } from '@/constants/departments'
-import type { Profile, Role, MemberDepartment } from '@/utils/database.types'
-import { Plus, Crown, X, Search, Pencil, Gift, AlertTriangle } from 'lucide-react'
+import type { Profile, Role, MemberDepartment, XpRequest } from '@/utils/database.types'
+import { Plus, Crown, X, Search, Pencil, Gift, AlertTriangle, Sparkles, CheckCircle2, Clock, Check, Users, MessageSquare } from 'lucide-react'
 
 type MemberAssignment = MemberAssignmentItem
 
@@ -26,7 +27,7 @@ export default function AdminMembersPage() {
   const [members, setMembers] = useState<Profile[]>([])
   const [assignments, setAssignments] = useState<MemberAssignment[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'members' | 'tasks'>('members')
+  const [activeTab, setActiveTab] = useState<'members' | 'tasks' | 'requests'>('members')
   const [showForm, setShowForm] = useState(false)
   const [selectedTaskIdForDetail, setSelectedTaskIdForDetail] = useState<string | null>(null)
   const [selectedMemberForXp, setSelectedMemberForXp] = useState<Profile | null>(null)
@@ -35,6 +36,13 @@ export default function AdminMembersPage() {
   const [memberToEdit, setMemberToEdit] = useState<Profile | null>(null)
   const [memberToDelete, setMemberToDelete] = useState<{ id: string; name: string } | null>(null)
   const [isDeletingMember, setIsDeletingMember] = useState(false)
+
+  // XP Requests state
+  const [xpRequests, setXpRequests] = useState<XpRequest[]>([])
+  const [loadingXpRequests, setLoadingXpRequests] = useState(false)
+  const [selectedRequestForReview, setSelectedRequestForReview] = useState<XpRequest | null>(null)
+  const [xpRequestStatusFilter, setXpRequestStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
+  const [xpRequestSearch, setXpRequestSearch] = useState('')
 
   // Filters & Sorting state
   const [searchQuery, setSearchQuery] = useState('')
@@ -92,6 +100,7 @@ export default function AdminMembersPage() {
       }
 
       if (assignRes?.data) setAssignments(assignRes.data as unknown as MemberAssignment[])
+      await loadXpRequests()
     } catch (err) {
       console.error('Error loading members:', err)
     } finally {
@@ -99,8 +108,39 @@ export default function AdminMembersPage() {
     }
   }
 
+  async function loadXpRequests() {
+    setLoadingXpRequests(true)
+    try {
+      const res = await fetch('/api/xp-requests').catch(() => null)
+      if (res && res.ok) {
+        const data = await res.json()
+        if (data?.requests) {
+          setXpRequests(data.requests)
+        }
+      }
+    } catch (err) {
+      console.warn('Error loading xp requests:', err)
+    } finally {
+      setLoadingXpRequests(false)
+    }
+  }
+
   useEffect(() => {
     loadData()
+
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const tab = params.get('tab')
+      if (tab === 'requests') {
+        setActiveTab('requests')
+      } else if (tab === 'tasks') {
+        setActiveTab('tasks')
+      }
+    }
+
+    const handleReqCreated = () => loadXpRequests()
+    window.addEventListener('xp-request-created', handleReqCreated)
+    return () => window.removeEventListener('xp-request-created', handleReqCreated)
   }, [])
 
   async function reload() {
@@ -115,6 +155,7 @@ export default function AdminMembersPage() {
       }
       const { data: assignData } = await supabase.from('task_assignees').select('user_id, tasks(id, title, status, deadline, xp_value, priority, project_id, projects(name))')
       if (assignData) setAssignments(assignData as unknown as MemberAssignment[])
+      await loadXpRequests()
     } catch (err) {
       console.error('Reload error:', err)
     }
@@ -129,6 +170,14 @@ export default function AdminMembersPage() {
     setMembers((prev) =>
       prev.map((m) => (m.id === userId ? { ...m, xp_total: newXp } : m))
     )
+  }
+
+  function handleRequestReviewed(updatedReq: XpRequest) {
+    setXpRequests((prev) =>
+      prev.map((r) => (r.id === updatedReq.id ? { ...r, ...updatedReq } : r))
+    )
+    reload()
+    setSelectedRequestForReview(null)
   }
 
   function handleMemberUpdated(updated: Profile) {
@@ -352,6 +401,30 @@ export default function AdminMembersPage() {
             }`}>
               {toPersianDigits(assignments.length)}
             </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('requests')}
+            className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-all cursor-pointer ${
+              activeTab === 'requests'
+                ? 'border-action text-action'
+                : 'border-transparent text-muted hover:text-default'
+            }`}
+          >
+            <Sparkles className="h-4 w-4 text-amber-500" />
+            <span>درخواست‌های امتیاز (XP)</span>
+            {xpRequests.filter((r) => r.status === 'pending').length > 0 ? (
+              <span className="rounded-full bg-amber-500 text-white px-2 py-0.5 text-[10px] font-black shadow-xs animate-pulse">
+                {toPersianDigits(xpRequests.filter((r) => r.status === 'pending').length)} جدید
+              </span>
+            ) : (
+              <span className={`rounded-full px-2 py-0.5 text-2xs font-extrabold ${
+                activeTab === 'requests' ? 'bg-action/15 text-action' : 'bg-surface-2 text-muted'
+              }`}>
+                {toPersianDigits(xpRequests.length)}
+              </span>
+            )}
           </button>
         </div>
 
@@ -908,6 +981,274 @@ export default function AdminMembersPage() {
             onOpenTaskDetail={(tid) => setSelectedTaskIdForDetail(tid)}
           />
         )}
+
+        {/* Tab 3: XP Requests Management Tab */}
+        {activeTab === 'requests' && (
+          <div className="space-y-6">
+            {/* Top Stat Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              {/* All */}
+              <div className="rounded-2xl border border-border bg-surface p-3.5 sm:p-4 shadow-2xs">
+                <span className="text-xs font-semibold text-muted">کل درخواست‌ها</span>
+                <div className="mt-1 text-xl sm:text-2xl font-black text-default">
+                  {toPersianDigits(xpRequests.length)}
+                </div>
+              </div>
+
+              {/* Pending */}
+              <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-3.5 sm:p-4 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-500">در انتظار تایید راهبر</span>
+                  <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-ping" />
+                </div>
+                <div className="mt-1 text-xl sm:text-2xl font-black text-amber-500">
+                  {toPersianDigits(xpRequests.filter((r) => r.status === 'pending').length)}
+                </div>
+              </div>
+
+              {/* Approved */}
+              <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/5 p-3.5 sm:p-4 shadow-2xs">
+                <span className="text-xs font-bold text-emerald-500">تایید و واریز شده</span>
+                <div className="mt-1 text-xl sm:text-2xl font-black text-emerald-500">
+                  {toPersianDigits(xpRequests.filter((r) => r.status === 'approved').length)}
+                </div>
+              </div>
+
+              {/* Rejected */}
+              <div className="rounded-2xl border border-border bg-surface p-3.5 sm:p-4 shadow-2xs">
+                <span className="text-xs font-semibold text-muted">رد شده</span>
+                <div className="mt-1 text-xl sm:text-2xl font-black text-muted">
+                  {toPersianDigits(xpRequests.filter((r) => r.status === 'rejected').length)}
+                </div>
+              </div>
+            </div>
+
+            {/* Filter & Search Bar */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-3 shadow-2xs">
+              {/* Status Chips */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                {[
+                  { key: 'all', label: 'همه' },
+                  { key: 'pending', label: 'در انتظار بررسی' },
+                  { key: 'approved', label: 'تایید شده' },
+                  { key: 'rejected', label: 'رد شده' },
+                ].map((st) => (
+                  <button
+                    key={st.key}
+                    type="button"
+                    onClick={() => setXpRequestStatusFilter(st.key as typeof xpRequestStatusFilter)}
+                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      xpRequestStatusFilter === st.key
+                        ? 'bg-action text-white shadow-xs'
+                        : 'text-muted hover:text-default hover:bg-surface-2'
+                    }`}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search */}
+              <div className="relative w-full sm:w-64">
+                <Search className="w-3.5 h-3.5 text-muted absolute right-3 top-2.5" />
+                <input
+                  type="text"
+                  value={xpRequestSearch}
+                  onChange={(e) => setXpRequestSearch(e.target.value)}
+                  placeholder="جستجوی نام عضو یا عنوان تسک..."
+                  className="w-full rounded-xl border border-border bg-surface-2 pr-8 pl-3 py-1.5 text-xs text-default placeholder:text-muted/70 focus:border-action focus:bg-surface focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Requests List */}
+            {loadingXpRequests ? (
+              <div className="space-y-3 py-6 animate-pulse">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-28 rounded-2xl bg-surface-2/70 border border-border" />
+                ))}
+              </div>
+            ) : xpRequests.filter((r) => {
+              if (xpRequestStatusFilter !== 'all' && r.status !== xpRequestStatusFilter) return false
+              if (!xpRequestSearch.trim()) return true
+              const q = xpRequestSearch.toLowerCase()
+              const memberName = r.requester?.full_name?.toLowerCase() || ''
+              const title = r.title?.toLowerCase() || ''
+              const finalName = r.final_task_name?.toLowerCase() || ''
+              return memberName.includes(q) || title.includes(q) || finalName.includes(q)
+            }).length === 0 ? (
+              <div className="rounded-2xl border border-border bg-surface p-12 text-center space-y-2">
+                <Sparkles className="w-8 h-8 text-muted mx-auto" />
+                <div className="text-sm font-bold text-default">هیچ درخواستی در این بخش یافت نشد</div>
+                <p className="text-xs text-muted">
+                  هنگامی که اعضا درخواست امتیاز ثبت کنند، در این قسمت نمایش داده خواهد شد.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {xpRequests
+                  .filter((r) => {
+                    if (xpRequestStatusFilter !== 'all' && r.status !== xpRequestStatusFilter) return false
+                    if (!xpRequestSearch.trim()) return true
+                    const q = xpRequestSearch.toLowerCase()
+                    const memberName = r.requester?.full_name?.toLowerCase() || ''
+                    const title = r.title?.toLowerCase() || ''
+                    const finalName = r.final_task_name?.toLowerCase() || ''
+                    return memberName.includes(q) || title.includes(q) || finalName.includes(q)
+                  })
+                  .map((req) => {
+                    const requesterProfile = req.requester || members.find((m) => m.id === req.user_id)
+                    const roleBadge = getRoleInfo(requesterProfile?.role)
+
+                    return (
+                      <div
+                        key={req.id}
+                        className={`rounded-2xl border-[1.5px] bg-surface p-4 sm:p-5 transition-all shadow-[2.5px_2.5px_0_#202A5A] dark:shadow-[2.5px_2.5px_0_#59BBAF] hover:-translate-y-0.5 ${
+                          req.status === 'pending'
+                            ? 'border-amber-500/50'
+                            : req.status === 'approved'
+                            ? 'border-emerald-500/40'
+                            : 'border-border'
+                        }`}
+                      >
+                        {/* Top: Member Info & Status Badge */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/70 pb-3">
+                          <div className="flex items-center gap-2.5">
+                            <UserAvatar
+                              src={requesterProfile?.avatar_url || null}
+                              name={requesterProfile?.full_name || 'عضو'}
+                              role={requesterProfile?.role}
+                              size="base"
+                              shape="circle"
+                            />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-default">
+                                  {requesterProfile?.full_name || 'عضو باشگاه'}
+                                </span>
+                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${roleBadge.colorClass}`}>
+                                  {roleBadge.label}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-muted flex items-center gap-2 mt-0.5">
+                                <span>امتیاز فعلی: <strong className="text-amber-500 font-extrabold">{toPersianDigits(requesterProfile?.xp_total || 0)} XP</strong></span>
+                                <span>•</span>
+                                <span>ارسال: {formatToPersianDate(req.created_at)}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Status Tag */}
+                          <div className="flex items-center gap-2 self-start sm:self-auto">
+                            {req.status === 'pending' && (
+                              <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-500 flex items-center gap-1.5 shadow-2xs">
+                                <Clock className="w-3.5 h-3.5" />
+                                <span>در انتظار بررسی راهبر</span>
+                              </span>
+                            )}
+                            {req.status === 'approved' && (
+                              <div className="flex items-center gap-2">
+                                <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-500 flex items-center gap-1.5">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>تایید شده (+{toPersianDigits(req.awarded_xp || 0)} XP)</span>
+                                </span>
+                                <span className="rounded-lg bg-surface-2 px-2 py-0.5 text-[11px] font-bold text-muted border border-border">
+                                  {req.award_type === 'reward' ? 'تشویقی' : 'تکمیل تسک'}
+                                </span>
+                              </div>
+                            )}
+                            {req.status === 'rejected' && (
+                              <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-1 text-xs font-bold text-rose-500">
+                                رد شده
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Middle: Request Title & Details */}
+                        <div className="py-3 space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="text-xs text-muted font-medium mb-0.5">عنوان فعالیت ارسالی:</div>
+                              <h4 className="text-sm sm:text-base font-bold text-default">
+                                {req.title}
+                              </h4>
+                            </div>
+                            {req.suggested_xp && (
+                              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-500 shrink-0">
+                                پیشنهاد: {toPersianDigits(req.suggested_xp)} XP
+                              </div>
+                            )}
+                          </div>
+
+                          {req.description && (
+                            <div className="rounded-xl bg-surface-2/60 p-3 text-xs text-subtle leading-relaxed whitespace-pre-wrap border border-border/60">
+                              {req.description}
+                            </div>
+                          )}
+
+                          {/* If Approved: Final details */}
+                          {req.status === 'approved' && (
+                            <div className="mt-2 rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-3 space-y-1.5 text-xs">
+                              <div className="flex items-center justify-between flex-wrap gap-2">
+                                <div>
+                                  <span className="font-semibold text-muted ml-1">نام نهایی تسک:</span>
+                                  <span className="font-bold text-default">{req.final_task_name || req.title}</span>
+                                </div>
+                                <div className="text-muted text-[11px]">
+                                  بررسی‌شده توسط: <strong className="text-default">{req.reviewer?.full_name || 'راهبر'}</strong> در {req.reviewed_at ? formatToPersianDate(req.reviewed_at) : '-'}
+                                </div>
+                              </div>
+                              {req.target_profiles && req.target_profiles.length > 0 && (
+                                <div className="flex items-center gap-2 pt-1 border-t border-emerald-500/10">
+                                  <span className="text-muted text-[11px]">اعطای امتیاز به:</span>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {req.target_profiles.map((tp) => (
+                                      <span key={tp.id} className="rounded-md bg-surface px-2 py-0.5 text-[11px] font-bold text-default border border-border">
+                                        {tp.full_name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {req.reviewer_note && (
+                                <div className="text-[11px] text-muted pt-1">
+                                  <span>یادداشت راهبر: </span>
+                                  <span className="text-default italic">«{req.reviewer_note}»</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* If Rejected: Note */}
+                          {req.status === 'rejected' && req.reviewer_note && (
+                            <div className="rounded-xl bg-rose-500/5 border border-rose-500/20 p-2.5 text-xs text-rose-500">
+                              <span className="font-bold ml-1">دلیل رد درخواست:</span>
+                              <span>{req.reviewer_note}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Bottom Action for Pending */}
+                        {req.status === 'pending' && (
+                          <div className="border-t border-border/70 pt-3 flex items-center justify-end">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedRequestForReview(req)}
+                              className="rokad-btn-primary px-4 py-2 text-xs sm:text-sm font-bold shadow-xs cursor-pointer flex items-center gap-2"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span>بررسی، تعیین نوع و اعطای XP</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       {/* Task Detail Modal */}
@@ -952,6 +1293,15 @@ export default function AdminMembersPage() {
         initialMember={members.find((m) => m.id === profileModalUserId) || null}
         isAdmin={true}
         onXpChanged={handleXpUpdated}
+      />
+
+      {/* Review XP Request Modal */}
+      <ReviewXpRequestModal
+        isOpen={!!selectedRequestForReview}
+        request={selectedRequestForReview}
+        membersList={members}
+        onClose={() => setSelectedRequestForReview(null)}
+        onSuccess={handleRequestReviewed}
       />
 
       {/* Delete Member Confirmation Modal */}

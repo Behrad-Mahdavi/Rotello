@@ -6,10 +6,12 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AppHeader from '@/components/AppHeader'
 import MemberProfileModal from '@/components/MemberProfileModal'
+import ReviewXpRequestModal from '@/components/ReviewXpRequestModal'
 import UserAvatar from '@/components/UserAvatar'
+import { formatToPersianDate, toPersianDigits } from '@/utils/jalaali'
 import { DEPARTMENTS, type DepartmentKey } from '@/constants/departments'
 import { PROJECT_COLORS, extractProjectColorKey } from '@/constants/projectColors'
-import type { Profile, Task, Project } from '@/utils/database.types'
+import type { Profile, Task, Project, XpRequest } from '@/utils/database.types'
 import {
   Crown,
   Medal,
@@ -77,6 +79,8 @@ function getProjectColor(project: Project, index: number) {
 export default function DashboardPage() {
   const [data, setData] = useState<DashData | null>(null)
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  const [pendingXpRequests, setPendingXpRequests] = useState<XpRequest[]>([])
+  const [selectedReqForReview, setSelectedReqForReview] = useState<XpRequest | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const supabase = createClient()
@@ -87,12 +91,13 @@ export default function DashboardPage() {
       const user = session?.user
       if (!user) { router.push('/login'); return }
 
-      const [profRes, projectsRes, tasksRes, membersFetch, deptsMapFetch] = await Promise.all([
+      const [profRes, projectsRes, tasksRes, membersFetch, deptsMapFetch, xpReqsFetch] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('projects').select('*').order('created_at', { ascending: false }),
         supabase.from('tasks').select('*').order('created_at', { ascending: false }),
         fetch('/api/members').then((r) => (r.ok ? r.json() : { members: [] })),
         fetch('/api/projects/departments-map').then((r) => (r.ok ? r.json() : { map: {} })).catch(() => ({ map: {} })),
+        fetch('/api/xp-requests?status=pending').then((r) => (r.ok ? r.json() : { requests: [] })).catch(() => ({ requests: [] })),
       ])
 
       const userRole = (user.user_metadata?.role || profRes.data?.role || 'member')
@@ -119,9 +124,24 @@ export default function DashboardPage() {
         members: membersFetch.members || [],
         departmentsMap: deptsMapFetch.map || {},
       })
+      setPendingXpRequests(xpReqsFetch?.requests || [])
       setLoading(false)
     }
     load()
+
+    const handleReqCreated = async () => {
+      try {
+        const res = await fetch('/api/xp-requests?status=pending')
+        if (res.ok) {
+          const d = await res.json()
+          setPendingXpRequests(d.requests || [])
+        }
+      } catch {
+        // silent
+      }
+    }
+    window.addEventListener('xp-request-created', handleReqCreated)
+    return () => window.removeEventListener('xp-request-created', handleReqCreated)
   }, [router, supabase])
 
   // Computed Metrics
@@ -335,6 +355,89 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Pending XP Requests Highlight Widget */}
+        {pendingXpRequests.length > 0 && (
+          <div className="rounded-2xl border-[1.5px] border-amber-500/50 bg-amber-500/5 p-4 sm:p-5 shadow-[2.5px_2.5px_0_#F8A41D] transition-all">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-500/20 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-500 border border-amber-500/30 shadow-2xs">
+                  <Sparkles className="h-5 w-5 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-default flex items-center gap-2">
+                    <span>درخواست‌های امتیاز (XP) در انتظار تایید</span>
+                    <span className="rounded-full bg-amber-500 text-white px-2 py-0.5 text-xs font-black">
+                      {toPersianDigits(pendingXpRequests.length)} مورد
+                    </span>
+                  </h3>
+                  <p className="text-xs text-muted mt-0.5">
+                    اعضا فعالیت‌های جدیدی ثبت کرده‌اند که نیازمند تایید و تخصیص امتیاز شماست.
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href="/admin/members?tab=requests"
+                className="text-xs font-bold text-amber-500 hover:text-amber-600 dark:hover:text-amber-400 flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+              >
+                <span>مشاهده همه در پنل مدیریت</span>
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            {/* Quick list of requests */}
+            <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+              {pendingXpRequests.slice(0, 3).map((req) => (
+                <div
+                  key={req.id}
+                  className="rounded-xl border border-border bg-surface p-3 shadow-2xs flex flex-col justify-between gap-2.5"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <UserAvatar
+                          src={req.requester?.avatar_url || null}
+                          name={req.requester?.full_name || 'عضو'}
+                          role={req.requester?.role}
+                          size="sm"
+                          shape="circle"
+                        />
+                        <span className="text-xs font-bold text-default truncate">
+                          {req.requester?.full_name || 'عضو باشگاه'}
+                        </span>
+                      </div>
+                      {req.suggested_xp && (
+                        <span className="rounded-md bg-amber-500/10 text-amber-500 px-1.5 py-0.5 text-[10px] font-bold border border-amber-500/20 shrink-0">
+                          {toPersianDigits(req.suggested_xp)} XP
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs font-semibold text-default truncate" title={req.title}>
+                      {req.title}
+                    </div>
+                    {req.description && (
+                      <p className="text-[11px] text-muted line-clamp-2 leading-relaxed">
+                        {req.description}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-border/60 text-[11px]">
+                    <span className="text-muted">{formatToPersianDate(req.created_at)}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedReqForReview(req)}
+                      className="rokad-btn-primary px-2.5 py-1 text-[11px] font-bold"
+                    >
+                      بررسی و اعطا
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 2. Four Master Metric Cards (Rokad Persona Tokens) */}
         <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -961,6 +1064,28 @@ export default function DashboardPage() {
         currentProfile={data.profile}
         initialMember={data.members.find((m) => m.id === selectedMemberId) || null}
         isAdmin={true}
+      />
+
+      {/* Review XP Request Modal */}
+      <ReviewXpRequestModal
+        isOpen={!!selectedReqForReview}
+        request={selectedReqForReview}
+        membersList={data.members}
+        onClose={() => setSelectedReqForReview(null)}
+        onSuccess={async () => {
+          setSelectedReqForReview(null)
+          // Refresh pending list and members
+          try {
+            const [xpRes, memRes] = await Promise.all([
+              fetch('/api/xp-requests?status=pending').then((r) => r.json()),
+              fetch('/api/members').then((r) => r.json()),
+            ])
+            if (xpRes.requests) setPendingXpRequests(xpRes.requests)
+            if (memRes.members) setData((prev) => prev ? { ...prev, members: memRes.members } : prev)
+          } catch {
+            // silent
+          }
+        }}
       />
     </div>
   )

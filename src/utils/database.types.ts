@@ -146,4 +146,30 @@ export interface XpAdjustment {
   creator?: Pick<Profile, 'id' | 'full_name'> | null
 }
 
+export type XpRequestStatus = 'pending' | 'approved' | 'rejected'
+export type XpRequestAwardType = 'task_completion' | 'reward'
+
+export interface XpRequest {
+  id: string
+  user_id: string
+  title: string
+  description: string | null
+  suggested_xp: number | null
+  status: XpRequestStatus
+  reviewed_by: string | null
+  reviewed_at: string | null
+  award_type: XpRequestAwardType | null
+  awarded_xp: number | null
+  final_task_name: string | null
+  reviewer_note: string | null
+  target_user_ids: string[] | null
+  created_at: string
+  updated_at: string
+  // Virtual / Joined relations
+  requester?: Pick<Profile, 'id' | 'full_name' | 'role' | 'avatar_url' | 'xp_total' | 'departments'> | null
+  reviewer?: Pick<Profile, 'id' | 'full_name' | 'role'> | null
+  target_profiles?: Pick<Profile, 'id' | 'full_name' | 'role' | 'avatar_url' | 'xp_total'>[] | null
+}
+
+
 

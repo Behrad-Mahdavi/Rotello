@@ -6,11 +6,12 @@ import { useRouter, usePathname } from 'next/navigation'
 import LogoutButton from '@/components/LogoutButton'
 import ThemeToggle from '@/components/ThemeToggle'
 import UserAvatar from '@/components/UserAvatar'
+import RequestXpModal from '@/components/RequestXpModal'
 import { getCachedProfile, setCachedProfile } from '@/utils/userCache'
 import { createClient } from '@/utils/supabase/client'
 import { toJalaali, PERSIAN_MONTHS, toPersianDigits } from '@/utils/jalaali'
 import type { Profile } from '@/utils/database.types'
-import { Calendar } from 'lucide-react'
+import { Calendar, Sparkles } from 'lucide-react'
 
 interface AppHeaderProps {
   profile?: { full_name: string; xp_total: number; role: string } | null
@@ -24,6 +25,7 @@ export default function AppHeader({ profile: propProfile }: AppHeaderProps) {
     return propProfile || getCachedProfile()
   })
   const [currentDateStr, setCurrentDateStr] = useState<string>('')
+  const [showRequestModal, setShowRequestModal] = useState(false)
 
   // Keep active mobile tab in view on navigation
   useEffect(() => {
@@ -177,6 +179,19 @@ export default function AppHeader({ profile: propProfile }: AppHeaderProps) {
 
         {/* Header Right Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Member Request XP Button */}
+          {currentProfile && currentProfile.role === 'member' && (
+            <button
+              onClick={() => setShowRequestModal(true)}
+              type="button"
+              className="cursor-pointer select-none inline-flex items-center gap-1.5 rounded-xl border border-amber-500/35 bg-amber-500/10 hover:bg-amber-500/20 px-2 sm:px-2.5 py-1.5 text-xs font-bold text-amber-500 transition-all active:scale-95 shadow-2xs"
+              title="ثبت درخواست امتیاز XP برای فعالیت‌های انجام‌شده"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">درخواست XP</span>
+            </button>
+          )}
+
           {/* Live Jalali Date (Section 7.9 standard) */}
           {currentDateStr && (
             <div className="hidden xl:flex items-center gap-1.5 rounded-xl bg-surface-2/80 border border-border/70 px-3 py-1.5 text-xs text-subtle font-medium shadow-2xs">
@@ -244,6 +259,12 @@ export default function AppHeader({ profile: propProfile }: AppHeaderProps) {
           })}
         </div>
       </nav>
+
+      {/* Request XP Modal */}
+      <RequestXpModal
+        isOpen={showRequestModal}
+        onClose={() => setShowRequestModal(false)}
+      />
     </header>
   )
 }
