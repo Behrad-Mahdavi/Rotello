@@ -16,7 +16,7 @@ import { formatToPersianDate, toPersianDigits } from '@/utils/jalaali'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import { DEPARTMENTS, DEPARTMENT_KEYS, getRoleInfo, type DepartmentKey, type DepartmentLevel } from '@/constants/departments'
 import type { Profile, Role, MemberDepartment, XpRequest } from '@/utils/database.types'
-import { Plus, Crown, X, Search, Pencil, Gift, AlertTriangle, Sparkles, CheckCircle2, Clock, Check } from 'lucide-react'
+import { Plus, Crown, X, Search, Pencil, Gift, AlertTriangle, Sparkles, CheckCircle2, Clock } from 'lucide-react'
 
 type MemberAssignment = MemberAssignmentItem
 
@@ -27,7 +27,14 @@ export default function AdminMembersPage() {
   const [members, setMembers] = useState<Profile[]>([])
   const [assignments, setAssignments] = useState<MemberAssignment[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'members' | 'tasks' | 'requests'>('members')
+  const [activeTab, setActiveTab] = useState<'members' | 'tasks' | 'requests'>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const tab = params.get('tab')
+      if (tab === 'requests' || tab === 'tasks') return tab
+    }
+    return 'members'
+  })
   const [showForm, setShowForm] = useState(false)
   const [selectedTaskIdForDetail, setSelectedTaskIdForDetail] = useState<string | null>(null)
   const [selectedMemberForXp, setSelectedMemberForXp] = useState<Profile | null>(null)
@@ -126,21 +133,22 @@ export default function AdminMembersPage() {
   }
 
   useEffect(() => {
-    loadData()
+    let isCancelled = false
 
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      const tab = params.get('tab')
-      if (tab === 'requests') {
-        setActiveTab('requests')
-      } else if (tab === 'tasks') {
-        setActiveTab('tasks')
+    void (async () => {
+      await loadData()
+    })()
+
+    const handleReqCreated = () => {
+      if (!isCancelled) {
+        void loadXpRequests()
       }
     }
-
-    const handleReqCreated = () => loadXpRequests()
     window.addEventListener('xp-request-created', handleReqCreated)
-    return () => window.removeEventListener('xp-request-created', handleReqCreated)
+    return () => {
+      isCancelled = true
+      window.removeEventListener('xp-request-created', handleReqCreated)
+    }
   }, [])
 
   async function reload() {
