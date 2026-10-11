@@ -16,7 +16,7 @@ import { formatToPersianDate, toPersianDigits } from '@/utils/jalaali'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import { DEPARTMENTS, DEPARTMENT_KEYS, getRoleInfo, type DepartmentKey, type DepartmentLevel } from '@/constants/departments'
 import type { Profile, Role, MemberDepartment, XpRequest } from '@/utils/database.types'
-import { Plus, Crown, X, Search, Pencil, Gift, AlertTriangle, Sparkles, CheckCircle2, Clock } from 'lucide-react'
+import { Plus, Crown, X, Search, Pencil, Gift, AlertTriangle, Sparkles, CheckCircle2, Clock, FolderKanban } from 'lucide-react'
 
 type MemberAssignment = MemberAssignmentItem
 
@@ -142,12 +142,17 @@ export default function AdminMembersPage() {
     const handleReqCreated = () => {
       if (!isCancelled) {
         void loadXpRequests()
+        void reload()
       }
     }
     window.addEventListener('xp-request-created', handleReqCreated)
+    window.addEventListener('xp-requests-updated', handleReqCreated)
+    window.addEventListener('member-xp-updated', handleReqCreated)
     return () => {
       isCancelled = true
       window.removeEventListener('xp-request-created', handleReqCreated)
+      window.removeEventListener('xp-requests-updated', handleReqCreated)
+      window.removeEventListener('member-xp-updated', handleReqCreated)
     }
   }, [])
 
@@ -1088,7 +1093,8 @@ export default function AdminMembersPage() {
               const memberName = r.requester?.full_name?.toLowerCase() || ''
               const title = r.title?.toLowerCase() || ''
               const finalName = r.final_task_name?.toLowerCase() || ''
-              return memberName.includes(q) || title.includes(q) || finalName.includes(q)
+              const projectName = r.project?.name?.toLowerCase() || ''
+              return memberName.includes(q) || title.includes(q) || finalName.includes(q) || projectName.includes(q)
             }).length === 0 ? (
               <div className="rounded-2xl border border-border bg-surface p-12 text-center space-y-2">
                 <Sparkles className="w-8 h-8 text-muted mx-auto" />
@@ -1107,7 +1113,8 @@ export default function AdminMembersPage() {
                     const memberName = r.requester?.full_name?.toLowerCase() || ''
                     const title = r.title?.toLowerCase() || ''
                     const finalName = r.final_task_name?.toLowerCase() || ''
-                    return memberName.includes(q) || title.includes(q) || finalName.includes(q)
+                    const projectName = r.project?.name?.toLowerCase() || ''
+                    return memberName.includes(q) || title.includes(q) || finalName.includes(q) || projectName.includes(q)
                   })
                   .map((req) => {
                     const requesterProfile = req.requester || members.find((m) => m.id === req.user_id)
@@ -1180,12 +1187,24 @@ export default function AdminMembersPage() {
 
                         {/* Middle: Request Title & Details */}
                         <div className="py-3 space-y-2">
-                          <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start justify-between gap-2 flex-wrap">
                             <div>
                               <div className="text-xs text-muted font-medium mb-0.5">عنوان فعالیت ارسالی:</div>
-                              <h4 className="text-sm sm:text-base font-bold text-default">
-                                {req.title}
-                              </h4>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="text-sm sm:text-base font-bold text-default">
+                                  {req.title}
+                                </h4>
+                                {req.project?.name ? (
+                                  <span className="inline-flex items-center gap-1 rounded-lg bg-surface-2 px-2 py-0.5 text-xs font-bold text-action border border-border/80 shadow-2xs">
+                                    <FolderKanban className="w-3 h-3 text-action" />
+                                    <span>{req.project.name}</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 rounded-lg bg-surface-2/60 px-2 py-0.5 text-[11px] text-muted border border-border/50">
+                                    فعالیت عمومی
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             {req.suggested_xp && (
                               <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-500 shrink-0">

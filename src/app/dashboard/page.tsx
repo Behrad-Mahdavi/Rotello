@@ -129,17 +129,24 @@ export default function DashboardPage() {
 
     const handleReqCreated = async () => {
       try {
-        const res = await fetch('/api/xp-requests?status=pending')
-        if (res.ok) {
-          const d = await res.json()
-          setPendingXpRequests(d.requests || [])
-        }
+        const [xpRes, memRes] = await Promise.all([
+          fetch('/api/xp-requests?status=pending').then((r) => r.json()),
+          fetch('/api/members').then((r) => r.json()),
+        ])
+        if (xpRes.requests) setPendingXpRequests(xpRes.requests)
+        if (memRes.members) setData((prev) => prev ? { ...prev, members: memRes.members } : prev)
       } catch {
         // silent
       }
     }
     window.addEventListener('xp-request-created', handleReqCreated)
-    return () => window.removeEventListener('xp-request-created', handleReqCreated)
+    window.addEventListener('xp-requests-updated', handleReqCreated)
+    window.addEventListener('member-xp-updated', handleReqCreated)
+    return () => {
+      window.removeEventListener('xp-request-created', handleReqCreated)
+      window.removeEventListener('xp-requests-updated', handleReqCreated)
+      window.removeEventListener('member-xp-updated', handleReqCreated)
+    }
   }, [router, supabase])
 
   // Computed Metrics
@@ -414,6 +421,12 @@ export default function DashboardPage() {
                     <div className="text-xs font-semibold text-default truncate" title={req.title}>
                       {req.title}
                     </div>
+                    {req.project?.name && (
+                      <div className="flex items-center gap-1 text-[11px] text-action font-semibold truncate">
+                        <FolderKanban className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{req.project.name}</span>
+                      </div>
+                    )}
                     {req.description && (
                       <p className="text-[11px] text-muted line-clamp-2 leading-relaxed">
                         {req.description}

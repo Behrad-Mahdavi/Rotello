@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import UserAvatar from '@/components/UserAvatar'
 import { formatToPersianDate, toPersianDigits } from '@/utils/jalaali'
-import { getRoleInfo } from '@/constants/departments'
+import { getRoleInfo, DEPARTMENTS, DepartmentKey } from '@/constants/departments'
 import type { Profile, XpRequest, XpRequestAwardType } from '@/utils/database.types'
 import {
   X,
@@ -17,6 +17,8 @@ import {
   Award,
   Check,
   UserPlus,
+  FolderKanban,
+  ChevronDown,
 } from 'lucide-react'
 
 interface ReviewXpRequestModalProps {
@@ -25,6 +27,12 @@ interface ReviewXpRequestModalProps {
   request: XpRequest | null
   membersList: Profile[]
   onSuccess?: (updatedReq: XpRequest) => void
+}
+
+interface ProjectOption {
+  id: string
+  name: string
+  department: string | null
 }
 
 export default function ReviewXpRequestModal({
@@ -61,13 +69,27 @@ function ReviewXpRequestDialog({
   onSuccess?: (updatedReq: XpRequest) => void
 }) {
   const [finalTaskName, setFinalTaskName] = useState(request.title || '')
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(
+    request.project_id || request.project?.id || ''
+  )
+  const [allProjects, setAllProjects] = useState<ProjectOption[]>([])
+  const [loadingProjects, setLoadingProjects] = useState(true)
+
   const [awardType, setAwardType] = useState<XpRequestAwardType>(request.award_type || 'task_completion')
   const [awardedXp, setAwardedXp] = useState<number | ''>(
     request.suggested_xp && request.suggested_xp > 0 ? request.suggested_xp : 50
   )
-  const [selectedUserIds, setSelectedUserIds] = useState<string[]>(
-    request.target_user_ids?.length ? request.target_user_ids : [request.user_id]
-  )
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>(() => {
+    const rawIds = request.target_user_ids?.length ? request.target_user_ids : [request.user_id]
+    return rawIds.filter((id) => {
+      const m = membersList.find((mem) => mem.id === id)
+      if (m) return m.role === 'member'
+      if (request.requester && request.requester.id === id) {
+        return request.requester.role === 'member'
+      }
+      return true
+    })
+  })
   const [reviewerNote, setReviewerNote] = useState('')
   const [memberSearch, setMemberSearch] = useState('')
   const [showMemberPicker, setShowMemberPicker] = useState(false)
@@ -76,11 +98,34 @@ function ReviewXpRequestDialog({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Filter members for multi-select picker
+  // Load available projects for admin / leader
+  useEffect(() => {
+    let isMounted = true
+    async function loadProjects() {
+      try {
+        const res = await fetch('/api/projects/my-projects?all=true')
+        if (res.ok) {
+          const data = await res.json()
+          if (isMounted && Array.isArray(data.projects)) {
+            setAllProjects(data.projects)
+          }
+        }
+      } catch {
+        // silent
+      } finally {
+        if (isMounted) setLoadingProjects(false)
+      }
+    }
+    loadProjects()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  // Filter members for multi-select picker: Only regular members receive XP
   const filteredMembers = useMemo(() => {
     return membersList.filter((m) => {
-      // XP can only be awarded to regular members (role !== 'admin')
-      if (m.role === 'admin') return false
+      if (m.role !== 'member') return false
       if (!memberSearch.trim()) return true
       const q = memberSearch.toLowerCase()
       return (
@@ -146,9 +191,10 @@ function ReviewXpRequestDialog({
           action: 'approve',
           final_task_name: finalTaskName.trim(),
           award_type: awardType,
-          awarded_xp: Number(awardedXp),
+          awarded_xp: Math.round(Number(awardedXp)),
           target_user_ids: selectedUserIds,
           reviewer_note: reviewerNote.trim() || null,
+          project_id: selectedProjectId.trim() ? selectedProjectId.trim() : null,
         }),
       })
 
@@ -157,6 +203,9 @@ function ReviewXpRequestDialog({
         throw new Error(data.error || 'خطا در تایید درخواست')
       }
 
+      window.dispatchEvent(new CustomEvent('xp-requests-updated'))
+      window.dispatchEvent(new CustomEvent('profile-updated'))
+      window.dispatchEvent(new CustomEvent('member-xp-updated'))
       onSuccess?.(data.request)
       onClose()
     } catch (err: unknown) {
@@ -186,6 +235,8 @@ function ReviewXpRequestDialog({
         throw new Error(data.error || 'خطا در رد درخواست')
       }
 
+      window.dispatchEvent(new CustomEvent('xp-requests-updated'))
+      window.dispatchEvent(new CustomEvent('profile-updated'))
       onSuccess?.(data.request)
       onClose()
     } catch (err: unknown) {
@@ -216,7 +267,7 @@ function ReviewXpRequestDialog({
                 بررسی و تایید درخواست امتیاز (XP)
               </h3>
               <p className="text-xs text-muted mt-0.5">
-                توسط راهبر سیستم: تایید عنوان، نوع، مقدار امتیاز و اعضا
+                توسط راهبر سیستم: تایید عنوان، پروژه، نوع، مقدار امتیاز و اعضا
               </p>
             </div>
           </div>
@@ -266,9 +317,29 @@ function ReviewXpRequestDialog({
           </div>
 
           {/* Submitted Request Info */}
-          <div className="border-t border-border/70 pt-2.5">
-            <div className="text-xs text-muted mb-0.5">عنوان ارسالی عضو:</div>
-            <div className="text-sm font-semibold text-default">{request.title}</div>
+          <div className="border-t border-border/70 pt-2.5 space-y-1.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <span className="text-xs text-muted ml-1">عنوان ارسالی عضو:</span>
+                <span className="text-sm font-semibold text-default">{request.title}</span>
+              </div>
+
+              {/* Requester Chosen Project Badge */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-muted">پروژه ارسالی:</span>
+                {request.project ? (
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-surface px-2 py-0.5 text-xs font-bold text-action border border-border shadow-2xs">
+                    <FolderKanban className="w-3 h-3 text-action" />
+                    <span>{request.project.name}</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-lg bg-surface/70 px-2 py-0.5 text-[11px] text-muted border border-border/60">
+                    فعالیت عمومی (بدون پروژه)
+                  </span>
+                )}
+              </div>
+            </div>
+
             {request.description && (
               <div className="mt-1.5 text-xs text-subtle bg-surface/80 rounded-xl p-2.5 border border-border/60 leading-relaxed whitespace-pre-wrap">
                 {request.description}
@@ -329,14 +400,57 @@ function ReviewXpRequestDialog({
                 className="w-full rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-xs sm:text-sm text-default transition-all focus:border-action/60 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20"
               />
               <span className="text-[11px] text-muted mt-1 block">
-                این عنوان در سوابق امتیازات و لیدربورد عضو درج خواهد شد.
+                این عنوان در سوابق امتیازات و کارنامه عضو درج خواهد شد.
               </span>
             </div>
 
-            {/* 2. Award Type (نوع امتیاز: تسک یا تشویقی) */}
+            {/* 2. Project Selection (پروژه مرتبط - اختیاری با امکان ویرایش توسط راهبر) */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-default flex items-center gap-1.5">
+                  <FolderKanban className="w-3.5 h-3.5 text-action" />
+                  <span>۲. پروژه مرتبط با این تسک</span>
+                  <span className="text-[11px] font-normal text-muted">(اختیاری)</span>
+                </label>
+                <span className="text-[10px] text-muted">
+                  تعیین یا تغییر توسط راهبر
+                </span>
+              </div>
+
+              {loadingProjects ? (
+                <div className="h-10 w-full rounded-xl bg-surface-2 animate-pulse border border-border" />
+              ) : (
+                <div className="relative">
+                  <select
+                    value={selectedProjectId}
+                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                    className="w-full appearance-none rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-xs sm:text-sm text-default transition-all focus:border-action/60 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20 cursor-pointer pl-9"
+                  >
+                    <option value="" className="bg-surface text-default">بدون پروژه مشخص (فعالیت یا تسک عمومی)</option>
+                    {allProjects.map((p) => {
+                      const depConfig = p.department ? DEPARTMENTS[p.department as DepartmentKey] : null
+                      const depLabel = depConfig ? ` (${depConfig.label})` : ''
+                      return (
+                        <option key={p.id} value={p.id} className="bg-surface text-default">
+                          {p.name}{depLabel}
+                        </option>
+                      )
+                    })}
+                  </select>
+                  <div className="pointer-events-none absolute left-3 top-3 text-muted">
+                    <ChevronDown className="w-4 h-4" />
+                  </div>
+                </div>
+              )}
+              <span className="text-[11px] text-muted mt-1 block">
+                می‌توانید پروژه مدنظر عضو را تایید، تغییر داده یا روی حالت فعالیت عمومی قرار دهید.
+              </span>
+            </div>
+
+            {/* 3. Award Type (نوع امتیاز: تسک یا تشویقی) */}
             <div>
               <label className="block text-xs font-bold text-default mb-1.5">
-                ۲. نوع تخصیص امتیاز <span className="text-rose-500">*</span>
+                ۳. نوع تخصیص امتیاز <span className="text-rose-500">*</span>
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -366,10 +480,10 @@ function ReviewXpRequestDialog({
               </div>
             </div>
 
-            {/* 3. XP Amount (مقدار XP) */}
+            {/* 4. XP Amount (مقدار XP) */}
             <div>
               <label className="block text-xs font-bold text-default mb-1.5">
-                ۳. مقدار امتیاز (XP) <span className="text-rose-500">*</span>
+                ۴. مقدار امتیاز (XP) <span className="text-rose-500">*</span>
               </label>
 
               {/* Quick Chips */}
@@ -407,12 +521,12 @@ function ReviewXpRequestDialog({
               </div>
             </div>
 
-            {/* 4. Target Recipients (انتخاب افراد) */}
+            {/* 5. Target Recipients (انتخاب افراد) */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-bold text-default flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-action" />
-                  <span>۴. افراد دریافت‌کننده امتیاز</span>
+                  <span>۵. افراد دریافت‌کننده امتیاز</span>
                 </label>
                 <button
                   type="button"
@@ -506,10 +620,10 @@ function ReviewXpRequestDialog({
               )}
             </div>
 
-            {/* 5. Reviewer Note (اختیاری) */}
+            {/* 6. Reviewer Note (اختیاری) */}
             <div>
               <label className="block text-xs font-semibold text-default mb-1.5">
-                ۵. یادداشت یا بازخورد به عضو <span className="text-[11px] font-normal text-muted">(اختیاری)</span>
+                ۶. یادداشت یا بازخورد به عضو <span className="text-[11px] font-normal text-muted">(اختیاری)</span>
               </label>
               <textarea
                 rows={2}

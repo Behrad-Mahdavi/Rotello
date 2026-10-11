@@ -7,7 +7,7 @@ import AppHeader from '@/components/AppHeader'
 import RequestXpModal from '@/components/RequestXpModal'
 import { formatToPersianDate, toPersianDigits } from '@/utils/jalaali'
 import type { Profile, Task, EventChecklistItem, XpRequest } from '@/utils/database.types'
-import { Calendar, ClipboardList, CheckCircle2, Sparkles, Clock, Trash2 } from 'lucide-react'
+import { Calendar, ClipboardList, CheckCircle2, Sparkles, Clock, Trash2, FolderKanban } from 'lucide-react'
 
 interface TaskWithProject extends Task {
   project_name: string
@@ -107,9 +107,15 @@ export default function MyTasksPage() {
     }
     load()
 
-    const handleReqCreated = () => loadMyRequests()
+    const handleReqCreated = () => void loadMyRequests()
     window.addEventListener('xp-request-created', handleReqCreated)
-    return () => window.removeEventListener('xp-request-created', handleReqCreated)
+    window.addEventListener('xp-requests-updated', handleReqCreated)
+    window.addEventListener('member-xp-updated', handleReqCreated)
+    return () => {
+      window.removeEventListener('xp-request-created', handleReqCreated)
+      window.removeEventListener('xp-requests-updated', handleReqCreated)
+      window.removeEventListener('member-xp-updated', handleReqCreated)
+    }
   }, [])
 
   async function loadMyRequests() {
@@ -118,6 +124,16 @@ export default function MyTasksPage() {
       if (res.ok) {
         const data = await res.json()
         if (data.requests) setMyRequests(data.requests)
+      }
+      // Refresh user profile so updated XP is immediately reflected
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        const { data: pData } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
+        if (pData) {
+          setProfile(pData)
+          setCachedProfile(pData)
+          window.dispatchEvent(new CustomEvent('profile-updated'))
+        }
       }
     } catch {
       // silent
@@ -287,6 +303,12 @@ export default function MyTasksPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/70 pb-3">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-sm text-default">{req.title}</span>
+                        {req.project?.name && (
+                          <span className="inline-flex items-center gap-1 rounded-lg bg-surface-2 px-2 py-0.5 text-[11px] font-bold text-action border border-border/80">
+                            <FolderKanban className="w-3 h-3 text-action" />
+                            <span>{req.project.name}</span>
+                          </span>
+                        )}
                         {req.suggested_xp && (
                           <span className="rounded-md bg-amber-500/10 text-amber-500 px-2 py-0.5 text-[11px] font-bold border border-amber-500/20">
                             پیشنهاد من: {toPersianDigits(req.suggested_xp)} XP

@@ -64,13 +64,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ requests: [] })
     }
 
-    // Collect all unique user IDs (requesters, reviewers, target users)
+    // Collect all unique user IDs (requesters, reviewers, target users) and project IDs
     const userIds = new Set<string>()
+    const projectIds = new Set<string>()
     for (const r of requests) {
       if (r.user_id) userIds.add(r.user_id)
       if (r.reviewed_by) userIds.add(r.reviewed_by)
       if (r.target_user_ids && Array.isArray(r.target_user_ids)) {
         for (const tid of r.target_user_ids) userIds.add(tid)
+      }
+      if (r.project_id) {
+        projectIds.add(r.project_id)
       }
     }
 
@@ -89,14 +93,35 @@ export async function GET(request: Request) {
       }
     }
 
-    // Enrich requests with profile data
+    const projectsMap = new Map<string, { id: string; name: string; department: string | null }>()
+    const projIdsArray = Array.from(projectIds)
+    if (projIdsArray.length > 0) {
+      try {
+        const { data: projectsData } = await dbClient
+          .from('projects')
+          .select('id, name, department')
+          .in('id', projIdsArray)
+
+        if (projectsData) {
+          for (const proj of projectsData) {
+            projectsMap.set(proj.id, proj)
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // Enrich requests with profile and project data
     const enriched = requests.map((req) => {
       const requester = profilesMap.get(req.user_id) || null
       const reviewer = req.reviewed_by ? profilesMap.get(req.reviewed_by) || null : null
       const target_profiles = (req.target_user_ids || []).map((id) => profilesMap.get(id)).filter(Boolean) as Profile[]
+      const project = req.project_id ? projectsMap.get(req.project_id) || null : null
 
       return {
         ...req,
+        project,
         requester: requester
           ? {
               id: requester.id,
@@ -149,8 +174,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'لطفاً ابتدا وارد حساب کاربری خود شوید.' }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { title, description, suggested_xp } = body
+    const body = await request.json().catch(() => ({}))
+    const { title, description, suggested_xp, project_id } = body
 
     if (!title || typeof title !== 'string' || !title.trim()) {
       return NextResponse.json({ error: 'ثبت عنوان فعالیت یا تسک الزامی است.' }, { status: 400 })
@@ -166,6 +191,9 @@ export async function POST(request: Request) {
       }
     }
 
+    const validProjectId =
+      typeof project_id === 'string' && project_id.trim() ? project_id.trim() : null
+
     let dbClient = supabase
     try {
       dbClient = createAdminClient() as unknown as typeof supabase
@@ -173,17 +201,37 @@ export async function POST(request: Request) {
       // fallback to user supabase client
     }
 
-    const { data: inserted, error: insertError } = await dbClient
+    const insertPayload: Record<string, unknown> = {
+      user_id: user.id,
+      title: trimmedTitle,
+      description: trimmedDesc,
+      suggested_xp: validSuggestedXp,
+      status: 'pending',
+    }
+
+    if (validProjectId) {
+      insertPayload.project_id = validProjectId
+    }
+
+    let insertedRecord = null
+    let { data: inserted, error: insertError } = await dbClient
       .from('xp_requests')
-      .insert({
-        user_id: user.id,
-        title: trimmedTitle,
-        description: trimmedDesc,
-        suggested_xp: validSuggestedXp,
-        status: 'pending',
-      })
+      .insert(insertPayload)
       .select('*')
       .single()
+
+    // Defensive fallback: if project_id column does not exist yet in DB schema
+    if (insertError && validProjectId && insertError.message.includes('project_id')) {
+      delete insertPayload.project_id
+      const fallbackRes = await dbClient
+        .from('xp_requests')
+        .insert(insertPayload)
+        .select('*')
+        .single()
+
+      inserted = fallbackRes.data
+      insertError = fallbackRes.error
+    }
 
     if (insertError) {
       return NextResponse.json(
@@ -192,9 +240,11 @@ export async function POST(request: Request) {
       )
     }
 
+    insertedRecord = inserted
+
     return NextResponse.json({
       success: true,
-      request: inserted,
+      request: insertedRecord,
     }, { status: 201 })
   } catch (err: unknown) {
     return NextResponse.json(
