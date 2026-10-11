@@ -163,12 +163,14 @@ export interface XpRequest {
   final_task_name: string | null
   reviewer_note: string | null
   target_user_ids: string[] | null
+  project_id?: string | null
   created_at: string
   updated_at: string
   // Virtual / Joined relations
   requester?: Pick<Profile, 'id' | 'full_name' | 'role' | 'avatar_url' | 'xp_total' | 'departments'> | null
   reviewer?: Pick<Profile, 'id' | 'full_name' | 'role'> | null
   target_profiles?: Pick<Profile, 'id' | 'full_name' | 'role' | 'avatar_url' | 'xp_total'>[] | null
+  project?: Pick<Project, 'id' | 'name' | 'department'> | null
 }
 
 
