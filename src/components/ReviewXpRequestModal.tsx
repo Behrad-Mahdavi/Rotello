@@ -110,6 +110,7 @@ export default function ReviewXpRequestModal({
 
   async function handleApprove(e: React.FormEvent) {
     e.preventDefault()
+    if (!request) return
     if (!finalTaskName.trim()) {
       setError('لطفاً نام نهایی تسک یا فعالیت را وارد کنید.')
       return
@@ -155,6 +156,7 @@ export default function ReviewXpRequestModal({
   }
 
   async function handleReject() {
+    if (!request) return
     setLoading(true)
     setError('')
 
