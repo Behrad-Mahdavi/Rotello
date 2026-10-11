@@ -238,7 +238,140 @@ export default function MyTasksPage() {
           </div>
         </div>
 
-        {totalCount === 0 ? (
+        {activeTab === 'requests' ? (
+          /* Tab: My XP Requests */
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <h3 className="text-sm font-black text-default">وضعیت درخواست‌های امتیاز من</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRequestModal(true)}
+                className="rokad-btn-primary px-3 py-1.5 text-xs font-bold"
+              >
+                + درخواست جدید
+              </button>
+            </div>
+
+            {myRequests.length === 0 ? (
+              <div className="rounded-2xl border border-border bg-surface p-12 text-center space-y-3">
+                <Sparkles className="w-10 h-10 text-amber-500/50 mx-auto" />
+                <div className="text-sm font-bold text-default">هنوز هیچ درخواست امتیازی ثبت نکرده‌اید</div>
+                <p className="text-xs text-muted max-w-sm mx-auto leading-relaxed">
+                  اگر تسک یا فعالیتی انجام داده‌اید که امتیازش برایتان محاسبه نشده، می‌توانید از دکمه بالا درخواست خود را برای راهبر ارسال کنید.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowRequestModal(true)}
+                  className="rokad-btn-primary px-4 py-2 text-xs font-bold inline-flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>ثبت اولین درخواست XP</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {myRequests.map((req) => (
+                  <div
+                    key={req.id}
+                    className={`rounded-2xl border-[1.5px] p-4 sm:p-5 shadow-[2px_2px_0_#202A5A] dark:shadow-[2px_2px_0_#59BBAF] transition-all bg-surface ${
+                      req.status === 'pending'
+                        ? 'border-amber-500/40'
+                        : req.status === 'approved'
+                        ? 'border-emerald-500/40'
+                        : 'border-border'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/70 pb-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-sm text-default">{req.title}</span>
+                        {req.suggested_xp && (
+                          <span className="rounded-md bg-amber-500/10 text-amber-500 px-2 py-0.5 text-[11px] font-bold border border-amber-500/20">
+                            پیشنهاد من: {toPersianDigits(req.suggested_xp)} XP
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 self-start sm:self-auto">
+                        {req.status === 'pending' && (
+                          <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-500 flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>در انتظار بررسی راهبر</span>
+                          </span>
+                        )}
+                        {req.status === 'approved' && (
+                          <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-500 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>تایید شد (+{toPersianDigits(req.awarded_xp || 0)} XP)</span>
+                          </span>
+                        )}
+                        {req.status === 'rejected' && (
+                          <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-1 text-xs font-bold text-rose-500">
+                            رد شده
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Details */}
+                    <div className="py-2.5 space-y-2 text-xs">
+                      {req.description && (
+                        <p className="text-subtle leading-relaxed whitespace-pre-wrap bg-surface-2/60 p-2.5 rounded-xl border border-border/60">
+                          {req.description}
+                        </p>
+                      )}
+
+                      {req.status === 'approved' && (
+                        <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-2.5 space-y-1">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div>
+                              <span className="text-muted font-medium ml-1">عنوان تاییدشده:</span>
+                              <span className="font-bold text-default">{req.final_task_name || req.title}</span>
+                            </div>
+                            <span className="rounded-md bg-surface px-2 py-0.5 text-[10px] font-bold text-muted border border-border">
+                              نوع: {req.award_type === 'reward' ? 'تشویقی' : 'تکمیل تسک'}
+                            </span>
+                          </div>
+                          {req.reviewer_note && (
+                            <div className="text-[11px] text-muted pt-1">
+                              <span>پیام راهبر: </span>
+                              <span className="text-default italic">«{req.reviewer_note}»</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {req.status === 'rejected' && req.reviewer_note && (
+                        <div className="rounded-xl bg-rose-500/5 border border-rose-500/20 p-2.5 text-rose-500">
+                          <span className="font-bold ml-1">توضیح راهبر:</span>
+                          <span>{req.reviewer_note}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between pt-2 border-t border-border/70 text-[11px] text-muted">
+                      <span>ثبت: {formatToPersianDate(req.created_at)}</span>
+
+                      {req.status === 'pending' && (
+                        <button
+                          type="button"
+                          onClick={() => handleCancelRequest(req.id)}
+                          className="text-muted hover:text-rose-500 transition-colors flex items-center gap-1 cursor-pointer font-medium"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>لغو درخواست</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : totalCount === 0 ? (
           <div className="rounded-2xl border border-border bg-surface p-12 text-center text-sm text-muted">
             هیچ تسک یا مسئولیتی به شما محول نشده است.
           </div>
@@ -405,141 +538,6 @@ export default function MyTasksPage() {
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Tab: My XP Requests */}
-        {activeTab === 'requests' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <h3 className="text-sm font-black text-default">وضعیت درخواست‌های امتیاز من</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowRequestModal(true)}
-                className="rokad-btn-primary px-3 py-1.5 text-xs font-bold"
-              >
-                + درخواست جدید
-              </button>
-            </div>
-
-            {myRequests.length === 0 ? (
-              <div className="rounded-2xl border border-border bg-surface p-12 text-center space-y-3">
-                <Sparkles className="w-10 h-10 text-amber-500/50 mx-auto" />
-                <div className="text-sm font-bold text-default">هنوز هیچ درخواست امتیازی ثبت نکرده‌اید</div>
-                <p className="text-xs text-muted max-w-sm mx-auto leading-relaxed">
-                  اگر تسک یا فعالیتی انجام داده‌اید که امتیازش برایتان محاسبه نشده، می‌توانید از دکمه بالا درخواست خود را برای راهبر ارسال کنید.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowRequestModal(true)}
-                  className="rokad-btn-primary px-4 py-2 text-xs font-bold inline-flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>ثبت اولین درخواست XP</span>
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {myRequests.map((req) => (
-                  <div
-                    key={req.id}
-                    className={`rounded-2xl border-[1.5px] p-4 sm:p-5 shadow-[2px_2px_0_#202A5A] dark:shadow-[2px_2px_0_#59BBAF] transition-all bg-surface ${
-                      req.status === 'pending'
-                        ? 'border-amber-500/40'
-                        : req.status === 'approved'
-                        ? 'border-emerald-500/40'
-                        : 'border-border'
-                    }`}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/70 pb-3">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-sm text-default">{req.title}</span>
-                        {req.suggested_xp && (
-                          <span className="rounded-md bg-amber-500/10 text-amber-500 px-2 py-0.5 text-[11px] font-bold border border-amber-500/20">
-                            پیشنهاد من: {toPersianDigits(req.suggested_xp)} XP
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 self-start sm:self-auto">
-                        {req.status === 'pending' && (
-                          <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-bold text-amber-500 flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5" />
-                            <span>در انتظار بررسی راهبر</span>
-                          </span>
-                        )}
-                        {req.status === 'approved' && (
-                          <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-500 flex items-center gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>تایید شد (+{toPersianDigits(req.awarded_xp || 0)} XP)</span>
-                          </span>
-                        )}
-                        {req.status === 'rejected' && (
-                          <span className="rounded-full border border-rose-500/40 bg-rose-500/10 px-3 py-1 text-xs font-bold text-rose-500">
-                            رد شده
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Details */}
-                    <div className="py-2.5 space-y-2 text-xs">
-                      {req.description && (
-                        <p className="text-subtle leading-relaxed whitespace-pre-wrap bg-surface-2/60 p-2.5 rounded-xl border border-border/60">
-                          {req.description}
-                        </p>
-                      )}
-
-                      {req.status === 'approved' && (
-                        <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-2.5 space-y-1">
-                          <div className="flex items-center justify-between flex-wrap gap-2">
-                            <div>
-                              <span className="text-muted font-medium ml-1">عنوان تاییدشده:</span>
-                              <span className="font-bold text-default">{req.final_task_name || req.title}</span>
-                            </div>
-                            <span className="rounded-md bg-surface px-2 py-0.5 text-[10px] font-bold text-muted border border-border">
-                              نوع: {req.award_type === 'reward' ? 'تشویقی' : 'تکمیل تسک'}
-                            </span>
-                          </div>
-                          {req.reviewer_note && (
-                            <div className="text-[11px] text-muted pt-1">
-                              <span>پیام راهبر: </span>
-                              <span className="text-default italic">«{req.reviewer_note}»</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {req.status === 'rejected' && req.reviewer_note && (
-                        <div className="rounded-xl bg-rose-500/5 border border-rose-500/20 p-2.5 text-rose-500">
-                          <span className="font-bold ml-1">توضیح راهبر:</span>
-                          <span>{req.reviewer_note}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-between pt-2 border-t border-border/70 text-[11px] text-muted">
-                      <span>ثبت: {formatToPersianDate(req.created_at)}</span>
-
-                      {req.status === 'pending' && (
-                        <button
-                          type="button"
-                          onClick={() => handleCancelRequest(req.id)}
-                          className="text-muted hover:text-rose-500 transition-colors flex items-center gap-1 cursor-pointer font-medium"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>لغو درخواست</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
               </div>
             )}
           </div>
