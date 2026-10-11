@@ -28,10 +28,8 @@ import {
   Archive,
   AlertTriangle,
   ChevronLeft,
-  Calendar,
   Sparkles,
   PieChart,
-  Activity,
 } from 'lucide-react'
 
 interface DashData {

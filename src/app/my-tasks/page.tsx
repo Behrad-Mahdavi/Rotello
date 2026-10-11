@@ -7,7 +7,7 @@ import AppHeader from '@/components/AppHeader'
 import RequestXpModal from '@/components/RequestXpModal'
 import { formatToPersianDate, toPersianDigits } from '@/utils/jalaali'
 import type { Profile, Task, EventChecklistItem, XpRequest } from '@/utils/database.types'
-import { Calendar, ClipboardList, CheckCircle2, Sparkles, Clock, Trash2, Gift, AlertCircle } from 'lucide-react'
+import { Calendar, ClipboardList, CheckCircle2, Sparkles, Clock, Trash2 } from 'lucide-react'
 
 interface TaskWithProject extends Task {
   project_name: string

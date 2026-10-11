@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import UserAvatar from '@/components/UserAvatar'
 import { formatToPersianDate, toPersianDigits } from '@/utils/jalaali'
@@ -36,10 +36,38 @@ export default function ReviewXpRequestModal({
 }: ReviewXpRequestModalProps) {
   useBodyScrollLock(isOpen)
 
-  const [finalTaskName, setFinalTaskName] = useState('')
-  const [awardType, setAwardType] = useState<XpRequestAwardType>('task_completion')
-  const [awardedXp, setAwardedXp] = useState<number | ''>(50)
-  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
+  if (!isOpen || !request) return null
+
+  return (
+    <ReviewXpRequestDialog
+      key={request.id}
+      request={request}
+      onClose={onClose}
+      membersList={membersList}
+      onSuccess={onSuccess}
+    />
+  )
+}
+
+function ReviewXpRequestDialog({
+  request,
+  onClose,
+  membersList,
+  onSuccess,
+}: {
+  request: XpRequest
+  onClose: () => void
+  membersList: Profile[]
+  onSuccess?: (updatedReq: XpRequest) => void
+}) {
+  const [finalTaskName, setFinalTaskName] = useState(request.title || '')
+  const [awardType, setAwardType] = useState<XpRequestAwardType>(request.award_type || 'task_completion')
+  const [awardedXp, setAwardedXp] = useState<number | ''>(
+    request.suggested_xp && request.suggested_xp > 0 ? request.suggested_xp : 50
+  )
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>(
+    request.target_user_ids?.length ? request.target_user_ids : [request.user_id]
+  )
   const [reviewerNote, setReviewerNote] = useState('')
   const [memberSearch, setMemberSearch] = useState('')
   const [showMemberPicker, setShowMemberPicker] = useState(false)
@@ -47,21 +75,6 @@ export default function ReviewXpRequestModal({
   const [rejectNote, setRejectNote] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
-  useEffect(() => {
-    if (isOpen && request) {
-      setFinalTaskName(request.title || '')
-      setAwardType(request.award_type || 'task_completion')
-      setAwardedXp(request.suggested_xp && request.suggested_xp > 0 ? request.suggested_xp : 50)
-      setSelectedUserIds(request.target_user_ids?.length ? request.target_user_ids : [request.user_id])
-      setReviewerNote('')
-      setRejectNote('')
-      setIsRejecting(false)
-      setShowMemberPicker(false)
-      setMemberSearch('')
-      setError('')
-    }
-  }, [isOpen, request])
 
   // Filter members for multi-select picker
   const filteredMembers = useMemo(() => {
@@ -101,8 +114,6 @@ export default function ReviewXpRequestModal({
       }
     })
   }
-
-  if (!isOpen || !request) return null
 
   const requester = request.requester
   const roleInfo = getRoleInfo(requester?.role)

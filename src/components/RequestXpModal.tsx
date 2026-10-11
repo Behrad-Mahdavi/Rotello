@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import { toPersianDigits } from '@/utils/jalaali'
 import { X, Sparkles, Send, CheckCircle2, AlertCircle } from 'lucide-react'
@@ -18,6 +18,18 @@ export default function RequestXpModal({
 }: RequestXpModalProps) {
   useBodyScrollLock(isOpen)
 
+  if (!isOpen) return null
+
+  return <RequestXpModalDialog onClose={onClose} onSuccess={onSuccess} />
+}
+
+function RequestXpModalDialog({
+  onClose,
+  onSuccess,
+}: {
+  onClose: () => void
+  onSuccess?: () => void
+}) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [suggestedXp, setSuggestedXp] = useState<number | ''>(50)
@@ -25,22 +37,10 @@ export default function RequestXpModal({
   const [error, setError] = useState('')
   const [submitted, setSubmitted] = useState(false)
 
-  useEffect(() => {
-    if (isOpen) {
-      setTitle('')
-      setDescription('')
-      setSuggestedXp(50)
-      setError('')
-      setSubmitted(false)
-    }
-  }, [isOpen])
-
-  if (!isOpen) return null
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim()) {
-      setError('لطفاً عنوان فعالیت یا تسک انجام‌شده را وارد کنید.')
+      setError('لطفاً عنوان فعالیت یا علت درخواست را وارد کنید.')
       return
     }
 

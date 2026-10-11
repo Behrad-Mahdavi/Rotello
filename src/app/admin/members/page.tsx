@@ -16,7 +16,7 @@ import { formatToPersianDate, toPersianDigits } from '@/utils/jalaali'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import { DEPARTMENTS, DEPARTMENT_KEYS, getRoleInfo, type DepartmentKey, type DepartmentLevel } from '@/constants/departments'
 import type { Profile, Role, MemberDepartment, XpRequest } from '@/utils/database.types'
-import { Plus, Crown, X, Search, Pencil, Gift, AlertTriangle, Sparkles, CheckCircle2, Clock, Check, Users, MessageSquare } from 'lucide-react'
+import { Plus, Crown, X, Search, Pencil, Gift, AlertTriangle, Sparkles, CheckCircle2, Clock, Check } from 'lucide-react'
 
 type MemberAssignment = MemberAssignmentItem
 
