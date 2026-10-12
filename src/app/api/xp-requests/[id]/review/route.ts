@@ -230,6 +230,44 @@ export async function POST(
       return NextResponse.json({ error: `خطا در تعیین وضعیت درخواست: ${updateErr.message}` }, { status: 500 })
     }
 
+    // 2.1. If award_type is 'task_completion' AND a project is selected, create a completed task in the project kanban
+    const finalProjectId = (typeof project_id === 'string' && project_id.trim())
+      ? project_id.trim()
+      : (xpReq.project_id || null)
+
+    if (award_type === 'task_completion' && finalProjectId) {
+      try {
+        const { data: createdTask, error: taskErr } = await adminClient
+          .from('tasks')
+          .insert({
+            project_id: finalProjectId,
+            title: trimmedTaskName,
+            description: xpReq.description || (trimmedNote ? `یادداشت راهبر: ${trimmedNote}` : null),
+            status: 'done',
+            xp_value: xpAmount,
+            xp_awarded: true,
+            created_by: user.id,
+            priority: 'normal',
+            created_at: xpReq.created_at || nowIso,
+            updated_at: nowIso,
+          })
+          .select('id')
+          .single()
+
+        if (!taskErr && createdTask) {
+          const assigneesPayload = validTargetUserIds.map((uid) => ({
+            task_id: createdTask.id,
+            user_id: uid,
+          }))
+          await adminClient.from('task_assignees').insert(assigneesPayload)
+        } else if (taskErr) {
+          console.warn('Warning: Could not create completed task record in tasks table:', taskErr.message)
+        }
+      } catch (taskInsertCatch) {
+        console.warn('Warning: Task insertion error:', taskInsertCatch)
+      }
+    }
+
     // 3. Invalidate server cache
     try {
       const { invalidateMembersCache } = await import('@/utils/membersCache')

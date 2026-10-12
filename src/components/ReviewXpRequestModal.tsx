@@ -197,6 +197,10 @@ function ReviewXpRequestDialog({
       setError('حداقل یک عضو باید به عنوان دریافت‌کننده امتیاز انتخاب شود.')
       return
     }
+    if (awardType === 'task_completion' && !selectedProjectId.trim()) {
+      setError('برای نوع «تکمیل تسک»، لطفاً پروژه مرتبط با تسک را مشخص کنید تا تسک در بورد کانبان و کارنامه تسک‌های عضو درج شود (یا نوع را روی «پاداش تشویقی» بگذارید).')
+      return
+    }
 
     setLoading(true)
     setError('')
@@ -461,7 +465,7 @@ function ReviewXpRequestDialog({
                 </div>
               )}
               <span className="text-[11px] text-muted mt-1 block">
-                می‌توانید پروژه مدنظر عضو را تایید، تغییر داده یا روی حالت فعالیت عمومی قرار دهید.
+                با انتخاب پروژه، این تسک مستقیماً در ستون «انجام شده» بورد کانبان پروژه و در لیست کارهای خاتمه‌یافته عضو درج خواهد شد.
               </span>
             </div>
 
