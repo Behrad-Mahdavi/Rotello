@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
-import type { XpRequest, Profile } from '@/utils/database.types'
+import { getAllProjectDepartmentsMap } from '@/utils/projectDepartmentsStore'
+import type { XpRequest, Profile, Role, MemberDepartment } from '@/utils/database.types'
 
 export const dynamic = 'force-dynamic'
 
@@ -83,12 +84,35 @@ export async function GET(request: Request) {
     if (idsArray.length > 0) {
       const { data: profilesData } = await dbClient
         .from('profiles')
-        .select('id, full_name, role, avatar_url, xp_total, departments')
+        .select('id, full_name, role, xp_total, created_at')
         .in('id', idsArray)
 
+      // Get auth users metadata for avatars and departments
+      const authUsersMap = new Map<string, any>()
+      try {
+        const adminClient = createAdminClient()
+        const usersRes = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 })
+        if (usersRes.data?.users) {
+          for (const u of usersRes.data.users) {
+            authUsersMap.set(u.id, u)
+          }
+        }
+      } catch {
+        // silent fallback
+      }
+
       if (profilesData) {
-        for (const p of profilesData as Profile[]) {
-          profilesMap.set(p.id, p)
+        for (const p of profilesData) {
+          const authUser = authUsersMap.get(p.id)
+          profilesMap.set(p.id, {
+            id: p.id,
+            full_name: authUser?.user_metadata?.full_name || p.full_name || 'عضو',
+            role: (authUser?.user_metadata?.role as Role) || p.role || 'member',
+            xp_total: Number(p.xp_total) || 0,
+            created_at: p.created_at || '',
+            avatar_url: (authUser?.user_metadata?.avatar_url as string) || null,
+            departments: (authUser?.user_metadata?.departments as MemberDepartment[]) || [],
+          } as Profile)
         }
       }
     }
@@ -97,14 +121,19 @@ export async function GET(request: Request) {
     const projIdsArray = Array.from(projectIds)
     if (projIdsArray.length > 0) {
       try {
-        const { data: projectsData } = await dbClient
-          .from('projects')
-          .select('id, name, department')
-          .in('id', projIdsArray)
+        const [projectsRes, deptsMap] = await Promise.all([
+          dbClient.from('projects').select('id, name').in('id', projIdsArray),
+          getAllProjectDepartmentsMap(),
+        ])
 
-        if (projectsData) {
-          for (const proj of projectsData) {
-            projectsMap.set(proj.id, proj)
+        if (projectsRes.data) {
+          for (const proj of projectsRes.data) {
+            const pDeps = deptsMap[proj.id] || []
+            projectsMap.set(proj.id, {
+              id: proj.id,
+              name: proj.name,
+              department: pDeps[0] || null,
+            })
           }
         }
       } catch {

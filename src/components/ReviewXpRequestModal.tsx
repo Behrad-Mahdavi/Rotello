@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import UserAvatar from '@/components/UserAvatar'
 import { formatToPersianDate, toPersianDigits } from '@/utils/jalaali'
@@ -43,17 +44,23 @@ export default function ReviewXpRequestModal({
   onSuccess,
 }: ReviewXpRequestModalProps) {
   useBodyScrollLock(isOpen)
+  const [mounted, setMounted] = useState(false)
 
-  if (!isOpen || !request) return null
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
-  return (
+  if (!isOpen || !request || !mounted) return null
+
+  return createPortal(
     <ReviewXpRequestDialog
       key={request.id}
       request={request}
       onClose={onClose}
       membersList={membersList}
       onSuccess={onSuccess}
-    />
+    />,
+    document.body
   )
 }
 
@@ -135,6 +142,18 @@ function ReviewXpRequestDialog({
     })
   }, [membersList, memberSearch])
 
+  // Resolve requester with fallback to membersList by user_id
+  const requester = useMemo(() => {
+    if (request.requester && request.requester.full_name) {
+      return request.requester
+    }
+    const fromList = membersList.find((m) => m.id === request.user_id)
+    if (fromList) {
+      return fromList
+    }
+    return request.requester || null
+  }, [request, membersList])
+
   // Selected profiles
   const selectedProfiles = useMemo(() => {
     const list: Profile[] = []
@@ -142,12 +161,12 @@ function ReviewXpRequestDialog({
       const found = membersList.find((m) => m.id === id)
       if (found) {
         list.push(found)
-      } else if (request && request.requester && request.requester.id === id) {
-        list.push(request.requester as Profile)
+      } else if (requester && requester.id === id) {
+        list.push(requester as Profile)
       }
     }
     return list
-  }, [membersList, selectedUserIds, request])
+  }, [membersList, selectedUserIds, requester])
 
   function toggleMember(memberId: string) {
     setSelectedUserIds((prev) => {
@@ -160,7 +179,6 @@ function ReviewXpRequestDialog({
     })
   }
 
-  const requester = request.requester
   const roleInfo = getRoleInfo(requester?.role)
   const quickXpChips = [25, 50, 75, 100, 150, 200]
 

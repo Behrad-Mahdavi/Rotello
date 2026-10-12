@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
+import { getAllProjectDepartmentsMap } from '@/utils/projectDepartmentsStore'
 import type { XpRequestAwardType } from '@/utils/database.types'
 
 export const dynamic = 'force-dynamic'
@@ -126,7 +127,7 @@ export async function POST(
     // Fetch and validate all target profiles before making any changes
     const { data: targetProfiles, error: fetchProfilesErr } = await adminClient
       .from('profiles')
-      .select('id, full_name, role, xp_total, avatar_url')
+      .select('id, full_name, role, xp_total')
       .in('id', validTargetUserIds)
 
     if (fetchProfilesErr || !targetProfiles || targetProfiles.length === 0) {
@@ -241,12 +242,22 @@ export async function POST(
     let enrichedProject = null
     if (updatedReq?.project_id) {
       try {
-        const { data: projData } = await adminClient
-          .from('projects')
-          .select('id, name, department')
-          .eq('id', updatedReq.project_id)
-          .single()
-        enrichedProject = projData || null
+        const [projRes, deptsMap] = await Promise.all([
+          adminClient
+            .from('projects')
+            .select('id, name')
+            .eq('id', updatedReq.project_id)
+            .single(),
+          getAllProjectDepartmentsMap(),
+        ])
+        if (projRes.data) {
+          const pDeps = deptsMap[projRes.data.id] || []
+          enrichedProject = {
+            id: projRes.data.id,
+            name: projRes.data.name,
+            department: pDeps[0] || null,
+          }
+        }
       } catch {
         // ignore
       }
@@ -259,7 +270,7 @@ export async function POST(
         id: tp.id,
         full_name: tp.full_name,
         role: tp.role,
-        avatar_url: tp.avatar_url,
+        avatar_url: ((tp as any).avatar_url as string | null) || null,
         xp_total: (Number(tp.xp_total) || 0) + xpAmount,
       })),
     }
