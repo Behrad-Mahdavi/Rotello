@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import { toPersianDigits } from '@/utils/jalaali'
 import { DEPARTMENTS, DepartmentKey } from '@/constants/departments'
@@ -24,10 +25,18 @@ export default function RequestXpModal({
   onSuccess,
 }: RequestXpModalProps) {
   useBodyScrollLock(isOpen)
+  const [mounted, setMounted] = useState(false)
 
-  if (!isOpen) return null
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
-  return <RequestXpModalDialog onClose={onClose} onSuccess={onSuccess} />
+  if (!isOpen || !mounted) return null
+
+  return createPortal(
+    <RequestXpModalDialog onClose={onClose} onSuccess={onSuccess} />,
+    document.body
+  )
 }
 
 function RequestXpModalDialog({
@@ -113,25 +122,28 @@ function RequestXpModalDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200"
       onClick={onClose}
+      dir="rtl"
     >
       <div
-        className="relative max-h-[92vh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-3xl border border-border bg-surface p-5 sm:p-6 shadow-2xl transition-all"
+        className="relative w-full max-w-lg max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl border-[1.5px] border-border bg-surface shadow-[4px_4px_0_#202A5A] dark:shadow-[4px_4px_0_#59BBAF] animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
-        dir="rtl"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border/80 pb-4">
+        {/* Mobile Pull Handle */}
+        <div className="mx-auto mt-2.5 h-1.5 w-12 rounded-full bg-border-strong/60 sm:hidden" />
+
+        {/* Modal Header */}
+        <div className="flex items-center justify-between border-b border-border/80 bg-surface px-5 py-3.5 sm:py-4 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-2xs">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-2xs shrink-0">
               <Sparkles className="w-5 h-5 text-amber-500" />
             </div>
             <div>
-              <h3 className="font-bold text-default text-base sm:text-lg flex items-center gap-2">
+              <h3 className="font-bold text-default text-sm sm:text-base flex items-center gap-2">
                 ثبت درخواست امتیاز (XP)
               </h3>
-              <p className="text-xs text-muted mt-0.5">
+              <p className="text-[11px] sm:text-xs text-muted mt-0.5">
                 تسک یا کاری انجام دادی که امتیازش جا مانده؟ اینجا اعلام کن.
               </p>
             </div>
@@ -146,7 +158,7 @@ function RequestXpModalDialog({
         </div>
 
         {submitted ? (
-          <div className="py-8 text-center space-y-4">
+          <div className="p-6 sm:p-8 text-center space-y-4">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
               <CheckCircle2 className="w-8 h-8" />
             </div>
@@ -167,142 +179,145 @@ function RequestXpModalDialog({
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-            {/* Title / Task Name */}
-            <div>
-              <label className="block text-xs font-semibold text-default mb-1.5">
-                عنوان فعالیت یا علت درخواست <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="مثال: طراحی پوستر رویداد، توسعه ماژول ثبت‌نام، رفع باگ صفحه تسک‌ها..."
-                required
-                className="w-full rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-xs sm:text-sm text-default placeholder:text-muted/70 transition-all focus:border-action/60 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20"
-              />
-            </div>
-
-            {/* Project Selection (Optional - only member's assigned projects) */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-default flex items-center gap-1.5">
-                  <FolderKanban className="w-3.5 h-3.5 text-action" />
-                  <span>پروژه مرتبط</span>
-                  <span className="text-[11px] font-normal text-muted">(اختیاری)</span>
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
+            {/* Scrollable Form Body */}
+            <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4">
+              {/* Title / Task Name */}
+              <div>
+                <label className="block text-xs font-semibold text-default mb-1.5">
+                  عنوان فعالیت یا علت درخواست <span className="text-rose-500">*</span>
                 </label>
-                <span className="text-[10px] text-muted">
-                  فقط پروژه‌های عضویت شما
-                </span>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="مثال: طراحی پوستر رویداد، توسعه ماژول ثبت‌نام، رفع باگ صفحه تسک‌ها..."
+                  required
+                  className="w-full rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-xs sm:text-sm text-default placeholder:text-muted/70 transition-all focus:border-action/60 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20"
+                />
               </div>
 
-              {loadingProjects ? (
-                <div className="h-10 w-full rounded-xl bg-surface-2 animate-pulse border border-border" />
-              ) : projects.length > 0 ? (
-                <div className="relative">
-                  <select
-                    value={selectedProjectId}
-                    onChange={(e) => setSelectedProjectId(e.target.value)}
-                    className="w-full appearance-none rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-xs sm:text-sm text-default transition-all focus:border-action/60 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20 cursor-pointer pl-9"
-                  >
-                    <option value="" className="bg-surface text-default">بدون پروژه مشخص (فعالیت یا تسک عمومی)</option>
-                    {projects.map((p) => {
-                      const depConfig = p.department ? DEPARTMENTS[p.department as DepartmentKey] : null
-                      const depLabel = depConfig ? ` (${depConfig.label})` : ''
-                      return (
-                        <option key={p.id} value={p.id} className="bg-surface text-default">
-                          {p.name}{depLabel}
-                        </option>
-                      )
-                    })}
-                  </select>
-                  <div className="pointer-events-none absolute left-3 top-3 text-muted">
-                    <ChevronDown className="w-4 h-4" />
-                  </div>
+              {/* Project Selection (Optional - only member's assigned projects) */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-default flex items-center gap-1.5">
+                    <FolderKanban className="w-3.5 h-3.5 text-action" />
+                    <span>پروژه مرتبط</span>
+                    <span className="text-[11px] font-normal text-muted">(اختیاری)</span>
+                  </label>
+                  <span className="text-[10px] text-muted">
+                    فقط پروژه‌های عضویت شما
+                  </span>
                 </div>
-              ) : (
-                <div className="rounded-xl border border-border/80 bg-surface-2/60 p-2.5 text-xs text-muted flex items-center gap-2">
-                  <FolderKanban className="w-4 h-4 text-muted/70 shrink-0" />
-                  <span>شما در حال حاضر عضو پروژه‌ای نیستید؛ درخواست به‌صورت «فعالیت عمومی» ثبت خواهد شد.</span>
+
+                {loadingProjects ? (
+                  <div className="h-10 w-full rounded-xl bg-surface-2 animate-pulse border border-border" />
+                ) : projects.length > 0 ? (
+                  <div className="relative">
+                    <select
+                      value={selectedProjectId}
+                      onChange={(e) => setSelectedProjectId(e.target.value)}
+                      className="w-full appearance-none rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-xs sm:text-sm text-default transition-all focus:border-action/60 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20 cursor-pointer pl-9"
+                    >
+                      <option value="" className="bg-surface text-default">بدون پروژه مشخص (فعالیت یا تسک عمومی)</option>
+                      {projects.map((p) => {
+                        const depConfig = p.department ? DEPARTMENTS[p.department as DepartmentKey] : null
+                        const depLabel = depConfig ? ` (${depConfig.label})` : ''
+                        return (
+                          <option key={p.id} value={p.id} className="bg-surface text-default">
+                            {p.name}{depLabel}
+                          </option>
+                        )
+                      })}
+                    </select>
+                    <div className="pointer-events-none absolute left-3 top-3 text-muted">
+                      <ChevronDown className="w-4 h-4" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-border/80 bg-surface-2/60 p-2.5 text-xs text-muted flex items-center gap-2">
+                    <FolderKanban className="w-4 h-4 text-muted/70 shrink-0" />
+                    <span>شما در حال حاضر عضو پروژه‌ای نیستید؛ درخواست به‌صورت «فعالیت عمومی» ثبت خواهد شد.</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Description / Work Details */}
+              <div>
+                <label className="block text-xs font-semibold text-default mb-1.5">
+                  توضیح کوتاه و گزارش کار
+                </label>
+                <textarea
+                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="توضیح دهید چه کارهایی انجام شده، لینک خروجی کار (در صورت وجود) یا هر نکته‌ای که به راهبر برای تایید سریع‌تر کمک می‌کند..."
+                  className="w-full rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-xs sm:text-sm text-default placeholder:text-muted/70 transition-all focus:border-action/60 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20 resize-none leading-relaxed"
+                />
+              </div>
+
+              {/* Suggested XP */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-default">
+                    پیشنهاد امتیاز (XP) <span className="text-[11px] font-normal text-muted">(اختیاری)</span>
+                  </label>
+                  <span className="text-[11px] text-muted">
+                    تصمیم نهایی با راهبر است
+                  </span>
+                </div>
+
+                {/* Quick Chips */}
+                <div className="flex flex-wrap gap-1.5 mb-2.5">
+                  {quickXpChips.map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => setSuggestedXp(q)}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-bold border transition-all cursor-pointer ${
+                        suggestedXp === q
+                          ? 'border-amber-500 bg-amber-500/15 text-amber-500 shadow-2xs'
+                          : 'border-border bg-surface-2 text-muted hover:border-border-strong hover:text-default'
+                      }`}
+                    >
+                      {toPersianDigits(q)} XP
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    value={suggestedXp}
+                    onChange={(e) => setSuggestedXp(e.target.value === '' ? '' : Number(e.target.value))}
+                    placeholder="مثال: 50"
+                    className="w-full rounded-xl border border-border bg-surface-2 px-3.5 py-2 text-xs sm:text-sm text-default transition-all focus:border-action/60 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20"
+                  />
+                  <span className="absolute left-3.5 top-2 text-xs font-bold text-muted pointer-events-none">
+                    XP
+                  </span>
+                </div>
+              </div>
+
+              {/* Info Notice */}
+              <div className="rounded-xl border border-border/80 bg-surface-2/60 p-3 text-xs text-muted flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-action shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  راهبر در صفحه مدیریت، درخواست شما را بررسی می‌کند، پروژه و عنوان نهایی تسک را تعیین کرده و بر اساس نوع (تسک یا تشویقی)، امتیاز متناسب را تخصیص می‌دهد.
+                </p>
+              </div>
+
+              {error && (
+                <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs text-rose-500 font-medium">
+                  {error}
                 </div>
               )}
             </div>
 
-            {/* Description / Work Details */}
-            <div>
-              <label className="block text-xs font-semibold text-default mb-1.5">
-                توضیح کوتاه و گزارش کار
-              </label>
-              <textarea
-                rows={3}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="توضیح دهید چه کارهایی انجام شده، لینک خروجی کار (در صورت وجود) یا هر نکته‌ای که به راهبر برای تایید سریع‌تر کمک می‌کند..."
-                className="w-full rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-xs sm:text-sm text-default placeholder:text-muted/70 transition-all focus:border-action/60 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20 resize-none leading-relaxed"
-              />
-            </div>
-
-            {/* Suggested XP */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-default">
-                  پیشنهاد امتیاز (XP) <span className="text-[11px] font-normal text-muted">(اختیاری)</span>
-                </label>
-                <span className="text-[11px] text-muted">
-                  تصمیم نهایی با راهبر است
-                </span>
-              </div>
-
-              {/* Quick Chips */}
-              <div className="flex flex-wrap gap-1.5 mb-2.5">
-                {quickXpChips.map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => setSuggestedXp(q)}
-                    className={`rounded-lg px-2.5 py-1 text-xs font-bold border transition-all cursor-pointer ${
-                      suggestedXp === q
-                        ? 'border-amber-500 bg-amber-500/15 text-amber-500 shadow-2xs'
-                        : 'border-border bg-surface-2 text-muted hover:border-border-strong hover:text-default'
-                    }`}
-                  >
-                    {toPersianDigits(q)} XP
-                  </button>
-                ))}
-              </div>
-
-              <div className="relative">
-                <input
-                  type="number"
-                  min="1"
-                  max="1000"
-                  value={suggestedXp}
-                  onChange={(e) => setSuggestedXp(e.target.value === '' ? '' : Number(e.target.value))}
-                  placeholder="مثال: 50"
-                  className="w-full rounded-xl border border-border bg-surface-2 px-3.5 py-2 text-xs sm:text-sm text-default transition-all focus:border-action/60 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20"
-                />
-                <span className="absolute left-3.5 top-2 text-xs font-bold text-muted pointer-events-none">
-                  XP
-                </span>
-              </div>
-            </div>
-
-            {/* Info Notice */}
-            <div className="rounded-xl border border-border/80 bg-surface-2/60 p-3 text-xs text-muted flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-action shrink-0 mt-0.5" />
-              <p className="leading-relaxed">
-                راهبر در صفحه مدیریت، درخواست شما را بررسی می‌کند، پروژه و عنوان نهایی تسک را تعیین کرده و بر اساس نوع (تسک یا تشویقی)، امتیاز متناسب را تخصیص می‌دهد.
-              </p>
-            </div>
-
-            {error && (
-              <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs text-rose-500 font-medium">
-                {error}
-              </div>
-            )}
-
-            {/* Submit & Cancel Actions */}
-            <div className="pt-2 flex items-center justify-end gap-2.5">
+            {/* Docked Sticky Footer */}
+            <div className="border-t border-border/80 bg-surface-2/50 px-4 py-3 sm:px-6 sm:py-3.5 flex items-center justify-end gap-2.5 shrink-0">
               <button
                 type="button"
                 onClick={onClose}

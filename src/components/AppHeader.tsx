@@ -120,7 +120,8 @@ export default function AppHeader({ profile: propProfile }: AppHeaderProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-canvas/90 backdrop-blur-md transition-colors duration-200">
+    <>
+      <header className="sticky top-0 z-40 border-b border-border bg-canvas/90 backdrop-blur-md transition-colors duration-200">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3">
         {/* Brand Logo & Title */}
         <div 
@@ -260,11 +261,13 @@ export default function AppHeader({ profile: propProfile }: AppHeaderProps) {
         </div>
       </nav>
 
-      {/* Request XP Modal */}
+      </header>
+
+      {/* Request XP Modal outside header to prevent backdrop-blur containing block issues */}
       <RequestXpModal
         isOpen={showRequestModal}
         onClose={() => setShowRequestModal(false)}
       />
-    </header>
+    </>
   )
 }
