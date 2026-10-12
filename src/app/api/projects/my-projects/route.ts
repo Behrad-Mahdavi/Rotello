@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { getAllProjectMemberIds } from '@/utils/projectMembersStore'
+import { getAllProjectDepartmentsMap } from '@/utils/projectDepartmentsStore'
 import type { DepartmentKey } from '@/constants/departments'
 
 export const dynamic = 'force-dynamic'
@@ -14,9 +15,9 @@ export interface ProjectOption {
 
 // GET /api/projects/my-projects
 // Returns projects accessible to the authenticated user:
-// - Regular member: ONLY projects they are added to (as project_members or task assignees)
-// - Mentor: Projects matching their departments OR where they are a member
 // - Admin: All projects
+// - Mentor: Projects matching their departments OR where they are a member
+// - Regular member: Projects they are added to (in roster, task assignees, or matching departments)
 export async function GET(request: Request) {
   try {
     const supabase = await createClient()
@@ -35,28 +36,48 @@ export async function GET(request: Request) {
       // fallback to session client
     }
 
+    // Get user profile (do NOT select departments because profiles.departments does not exist in schema)
     const { data: profile } = await adminClient
       .from('profiles')
-      .select('id, role, departments')
+      .select('id, role')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
-    const role = profile?.role || user.user_metadata?.role || 'member'
-
+    const role = profile?.role || (user.user_metadata?.role as string) || 'member'
     const isAdmin = role === 'admin'
 
-    if (isAdmin) {
-      const { data: allProjects, error: allErr } = await adminClient
-        .from('projects')
-        .select('id, name, department')
-        .order('name', { ascending: true })
+    // Get all projects from database
+    const { data: allProjects, error: allErr } = await adminClient
+      .from('projects')
+      .select('id, name')
+      .order('name', { ascending: true })
 
-      if (allErr) {
-        return NextResponse.json({ error: allErr.message }, { status: 500 })
+    if (allErr) {
+      return NextResponse.json({ error: allErr.message }, { status: 500 })
+    }
+
+    // Fetch department and member mapping
+    const [deptsMap, localMembersMap] = await Promise.all([
+      getAllProjectDepartmentsMap(),
+      getAllProjectMemberIds(),
+    ])
+
+    const projectsList = allProjects || []
+
+    // Helper to format project option
+    const formatProject = (p: { id: string; name: string }): ProjectOption => {
+      const pDeps = deptsMap[p.id] || []
+      return {
+        id: p.id,
+        name: p.name,
+        department: pDeps[0] || null,
       }
+    }
 
+    // Admin has access to all projects
+    if (isAdmin) {
       return NextResponse.json(
-        { projects: allProjects || [] },
+        { projects: projectsList.map(formatProject), isAdmin: true },
         { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
       )
     }
@@ -64,34 +85,30 @@ export async function GET(request: Request) {
     // Collect project IDs where user is a member
     const userProjectIds = new Set<string>()
 
-    // 1. Check Supabase project_members table
-    try {
-      const { data: pmData } = await adminClient
-        .from('project_members')
-        .select('project_id')
-        .eq('user_id', user.id)
-
-      if (pmData) {
-        for (const row of pmData) {
-          if (row.project_id) userProjectIds.add(row.project_id)
-        }
+    // 1. Check member map (from tasks, roster, and local backup)
+    for (const [pid, memberIds] of Object.entries(localMembersMap)) {
+      if (memberIds.includes(user.id)) {
+        userProjectIds.add(pid)
       }
-    } catch {
-      // ignore
     }
 
-    // 2. Check task_assignees
+    // 2. Direct task_assignees check
     try {
       const { data: assigneesData } = await adminClient
         .from('task_assignees')
-        .select('task_id, tasks(project_id)')
+        .select('task_id')
         .eq('user_id', user.id)
 
-      if (assigneesData) {
-        for (const item of assigneesData as unknown as { tasks?: { project_id: string } | { project_id: string }[] | null }[]) {
-          const t = Array.isArray(item.tasks) ? item.tasks[0] : item.tasks
-          if (t?.project_id) {
-            userProjectIds.add(t.project_id)
+      if (assigneesData && assigneesData.length > 0) {
+        const taskIds = assigneesData.map((a: { task_id: string }) => a.task_id)
+        const { data: tasksData } = await adminClient
+          .from('tasks')
+          .select('project_id')
+          .in('id', taskIds)
+
+        if (tasksData) {
+          for (const t of tasksData) {
+            if (t.project_id) userProjectIds.add(t.project_id)
           }
         }
       }
@@ -99,61 +116,38 @@ export async function GET(request: Request) {
       // ignore
     }
 
-    // 3. Fallback / merge local store
-    try {
-      const localMap = await getAllProjectMemberIds()
-      for (const pid in localMap) {
-        if (localMap[pid]?.includes(user.id)) {
+    // 3. Department matching for Mentors and Members (stored in user_metadata)
+    const userDepartments: { department: DepartmentKey }[] =
+      (user.user_metadata?.departments as { department: DepartmentKey }[]) || []
+    const userDeptKeys = userDepartments
+      .map((d) => d.department)
+      .filter(Boolean)
+
+    if (role === 'mentor' && userDeptKeys.length > 0) {
+      for (const [pid, pDeps] of Object.entries(deptsMap)) {
+        if (pDeps.some((d) => userDeptKeys.includes(d))) {
           userProjectIds.add(pid)
         }
       }
-    } catch {
-      // ignore
     }
 
-    // 4. If Mentor, also include department matching projects
-    if (role === 'mentor' && profile?.departments && Array.isArray(profile.departments)) {
-      const mentorDeps = profile.departments
-        .map((d: { department: DepartmentKey }) => d.department)
-        .filter(Boolean)
+    // Filter projects matching userProjectIds
+    let matchedProjects = projectsList.filter((p) => userProjectIds.has(p.id))
 
-      if (mentorDeps.length > 0) {
-        try {
-          const { data: depProjects } = await adminClient
-            .from('projects')
-            .select('id, department')
-            .in('department', mentorDeps)
-
-          if (depProjects) {
-            for (const p of depProjects) {
-              userProjectIds.add(p.id)
-            }
-          }
-        } catch {
-          // ignore
-        }
-      }
-    }
-
-    if (userProjectIds.size === 0) {
-      return NextResponse.json(
-        { projects: [] },
-        { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
-      )
-    }
-
-    const { data: projectsData, error: projErr } = await adminClient
-      .from('projects')
-      .select('id, name, department')
-      .in('id', Array.from(userProjectIds))
-      .order('name', { ascending: true })
-
-    if (projErr) {
-      return NextResponse.json({ error: projErr.message }, { status: 500 })
+    // Fallback: If user has a department matching a project, also include it
+    if (matchedProjects.length === 0 && userDeptKeys.length > 0) {
+      matchedProjects = projectsList.filter((p) => {
+        const pDeps = deptsMap[p.id] || []
+        return pDeps.some((d) => userDeptKeys.includes(d))
+      })
     }
 
     return NextResponse.json(
-      { projects: projectsData || [] },
+      {
+        projects: matchedProjects.map(formatProject),
+        allProjects: projectsList.map(formatProject),
+        isAdmin: false,
+      },
       { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
     )
   } catch (err: unknown) {

@@ -51,6 +51,7 @@ function RequestXpModalDialog({
   const [suggestedXp, setSuggestedXp] = useState<number | ''>(50)
   const [selectedProjectId, setSelectedProjectId] = useState<string>('')
   const [projects, setProjects] = useState<ProjectOption[]>([])
+  const [allProjects, setAllProjects] = useState<ProjectOption[]>([])
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -63,8 +64,15 @@ function RequestXpModalDialog({
         const res = await fetch('/api/projects/my-projects')
         if (res.ok) {
           const data = await res.json()
-          if (isMounted && Array.isArray(data.projects)) {
-            setProjects(data.projects)
+          if (isMounted) {
+            if (Array.isArray(data.projects)) {
+              setProjects(data.projects)
+            }
+            if (Array.isArray(data.allProjects)) {
+              setAllProjects(data.allProjects)
+            } else if (Array.isArray(data.projects)) {
+              setAllProjects(data.projects)
+            }
           }
         }
       } catch {
@@ -197,7 +205,7 @@ function RequestXpModalDialog({
                 />
               </div>
 
-              {/* Project Selection (Optional - only member's assigned projects) */}
+              {/* Project Selection (Optional) */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-semibold text-default flex items-center gap-1.5">
@@ -206,13 +214,13 @@ function RequestXpModalDialog({
                     <span className="text-[11px] font-normal text-muted">(اختیاری)</span>
                   </label>
                   <span className="text-[10px] text-muted">
-                    فقط پروژه‌های عضویت شما
+                    {projects.length > 0 ? 'پروژه‌های عضویت و فعالیت شما' : 'هدایت درخواست به راهبر مربوطه'}
                   </span>
                 </div>
 
                 {loadingProjects ? (
                   <div className="h-10 w-full rounded-xl bg-surface-2 animate-pulse border border-border" />
-                ) : projects.length > 0 ? (
+                ) : (projects.length > 0 || allProjects.length > 0) ? (
                   <div className="relative">
                     <select
                       value={selectedProjectId}
@@ -220,15 +228,46 @@ function RequestXpModalDialog({
                       className="w-full appearance-none rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-xs sm:text-sm text-default transition-all focus:border-action/60 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-action/20 cursor-pointer pl-9"
                     >
                       <option value="" className="bg-surface text-default">بدون پروژه مشخص (فعالیت یا تسک عمومی)</option>
-                      {projects.map((p) => {
-                        const depConfig = p.department ? DEPARTMENTS[p.department as DepartmentKey] : null
-                        const depLabel = depConfig ? ` (${depConfig.label})` : ''
-                        return (
-                          <option key={p.id} value={p.id} className="bg-surface text-default">
-                            {p.name}{depLabel}
-                          </option>
-                        )
-                      })}
+                      {projects.length > 0 ? (
+                        <>
+                          <optgroup label="پروژه‌های شما">
+                            {projects.map((p) => {
+                              const depConfig = p.department ? DEPARTMENTS[p.department as DepartmentKey] : null
+                              const depLabel = depConfig ? ` (${depConfig.label})` : ''
+                              return (
+                                <option key={p.id} value={p.id} className="bg-surface text-default">
+                                  {p.name}{depLabel}
+                                </option>
+                              )
+                            })}
+                          </optgroup>
+                          {allProjects.filter((ap) => !projects.some((p) => p.id === ap.id)).length > 0 && (
+                            <optgroup label="سایر پروژه‌های باشگاه">
+                              {allProjects
+                                .filter((ap) => !projects.some((p) => p.id === ap.id))
+                                .map((p) => {
+                                  const depConfig = p.department ? DEPARTMENTS[p.department as DepartmentKey] : null
+                                  const depLabel = depConfig ? ` (${depConfig.label})` : ''
+                                  return (
+                                    <option key={p.id} value={p.id} className="bg-surface text-default">
+                                      {p.name}{depLabel}
+                                    </option>
+                                  )
+                                })}
+                            </optgroup>
+                          )}
+                        </>
+                      ) : (
+                        allProjects.map((p) => {
+                          const depConfig = p.department ? DEPARTMENTS[p.department as DepartmentKey] : null
+                          const depLabel = depConfig ? ` (${depConfig.label})` : ''
+                          return (
+                            <option key={p.id} value={p.id} className="bg-surface text-default">
+                              {p.name}{depLabel}
+                            </option>
+                          )
+                        })
+                      )}
                     </select>
                     <div className="pointer-events-none absolute left-3 top-3 text-muted">
                       <ChevronDown className="w-4 h-4" />
@@ -237,7 +276,7 @@ function RequestXpModalDialog({
                 ) : (
                   <div className="rounded-xl border border-border/80 bg-surface-2/60 p-2.5 text-xs text-muted flex items-center gap-2">
                     <FolderKanban className="w-4 h-4 text-muted/70 shrink-0" />
-                    <span>شما در حال حاضر عضو پروژه‌ای نیستید؛ درخواست به‌صورت «فعالیت عمومی» ثبت خواهد شد.</span>
+                    <span>درخواست به‌صورت «فعالیت عمومی» ثبت خواهد شد.</span>
                   </div>
                 )}
               </div>
